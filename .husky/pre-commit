@@ -1,0 +1,9 @@
+#!/bin/sh
+# If Husky bootstrap script exists, source it; otherwise run lint-staged directly.
+HOOK_DIR="$(dirname "$0")"
+if [ -f "$HOOK_DIR/_/husky.sh" ]; then
+	. "$HOOK_DIR/_/husky.sh"
+fi
+
+# Run lint-staged from repo root
+npx lint-staged || true

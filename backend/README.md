@@ -11,6 +11,7 @@ This service is intentionally simple and designed as a reference for end-to-end 
 ## Environment notes (Windows)
 
 This project assumes:
+
 - Java 21 is installed
 - `JAVA_HOME` is set to the JDK installation directory
 - `%JAVA_HOME%\bin` is on the PATH

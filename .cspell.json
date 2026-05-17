@@ -1,0 +1,29 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "Vite",
+    "React",
+    "Redux",
+    "TSX",
+    "JSX",
+    "eslint",
+    "prettier",
+    "Husky",
+    "lint-staged",
+    "cspell",
+    "CodeQL",
+    "Snyk",
+    "Maven",
+    "npm"
+  ],
+  "ignorePaths": [
+    "node_modules",
+    "frontend/node_modules",
+    "backend/target",
+    "dist",
+    "build",
+    ".git",
+    ".husky"
+  ]
+}

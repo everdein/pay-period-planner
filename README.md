@@ -85,6 +85,7 @@ macOS/Linux (bash) — from repo root:
 ```
 
 Notes:
+
 - The scripts open the backend and frontend in separate terminal windows (Windows),
   or run them together in one terminal (macOS/Linux).
 - Stop with Ctrl+C in each terminal window/process.
@@ -116,6 +117,7 @@ Browser                Vite Dev Server                 Spring Boot
 ```
 
 Because the Vite proxy is used:
+
 - The frontend does not hard-code backend URLs
 - No CORS configuration is required for local development
 

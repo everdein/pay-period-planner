@@ -12,6 +12,7 @@ This frontend is intentionally small and designed as a reference for end-to-end 
 ## Environment notes (Windows)
 
 This project was developed and tested with:
+
 - Node.js 20 LTS
 - npm 11+
 
