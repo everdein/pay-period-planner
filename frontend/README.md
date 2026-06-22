@@ -172,36 +172,46 @@ npm run type-check
 
 ```text
 frontend/
-├── src/
-│   ├── components/
-│   ├── services/
-│   ├── store/
-│   ├── test/
-│   └── main.tsx
-│
-├── vite.config.ts
-├── eslint.config.js
-├── tsconfig.app.json
-├── tsconfig.node.json
-└── package.json
+|-- src/
+|   |-- api/
+|   |-- app/
+|   |-- features/
+|   |-- setupTests.ts
+|   `-- main.tsx
+|
+|-- vite.config.ts
+|-- eslint.config.js
+|-- tsconfig.app.json
+|-- tsconfig.node.json
+`-- package.json
 ```
 
 ---
 
 ## Key application files
 
-### `src/services/api.ts`
+### `src/api/client.ts`
 
-Defines API integration logic.
+Defines shared HTTP request helpers.
+
+Responsibilities:
+
+- request configuration
+- response parsing
+- error handling
+- frontend/backend communication
+
+### `src/api/endpoints/hello.ts`
+
+Defines the hello API integration logic.
 
 Responsibilities:
 
 - API endpoint definitions
-- request configuration
 - response typing
 - frontend/backend communication
 
-### `src/store.ts`
+### `src/app/store.ts`
 
 Redux store configuration.
 
@@ -210,6 +220,15 @@ Responsibilities:
 - Redux Toolkit store setup
 - middleware registration
 - centralized application state
+
+### `src/app/hooks.ts`
+
+Typed Redux hook helpers.
+
+Responsibilities:
+
+- typed dispatch access
+- typed selector access
 
 ### `src/main.tsx`
 
@@ -295,13 +314,13 @@ Git hooks automatically run checks on staged files before commits.
 The frontend uses the `@` alias for cleaner imports:
 
 ```ts
-import Button from '@/components/Button';
+import { helloService } from '@/api/endpoints/hello';
 ```
 
 instead of deeply nested relative imports:
 
 ```ts
-import Button from '../../../components/Button';
+import { helloService } from '../../api/endpoints/hello';
 ```
 
 ### Strict TypeScript

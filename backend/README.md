@@ -125,8 +125,9 @@ Example response:
 
 ```json
 {
-  "message": "Hello from Spring Boot",
-  "source": "backend"
+  "message": "Hello from BACKEND!",
+  "source": "backend",
+  "timestamp": 1715890000000
 }
 ```
 
@@ -151,7 +152,8 @@ Example response:
 ```json
 {
   "message": "Hello backend",
-  "source": "backend"
+  "source": "backend",
+  "timestamp": 1715890000000
 }
 ```
 

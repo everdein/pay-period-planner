@@ -49,12 +49,11 @@ patterns and workflows that can scale over time.
 
 ```text
 end-to-end-app/
-├── backend/              # Spring Boot API
-├── frontend/             # React + TypeScript frontend
-├── scripts/              # Convenience scripts
-├── .github/workflows/    # CI pipelines
-├── .husky/               # Git hooks
-└── README.md
+|-- backend/              # Spring Boot API
+|-- frontend/             # React + TypeScript frontend
+|-- .github/workflows/    # CI pipelines
+|-- .husky/               # Git hooks
+`-- README.md
 ```
 
 ---
@@ -94,7 +93,7 @@ npm install
 
 ## Running the application (local development)
 
-You can run with separate terminals manually or use convenience scripts.
+Run the backend and frontend in separate terminals during local development.
 
 ### Manual startup
 
@@ -124,24 +123,6 @@ Frontend URL:
 http://localhost:3000
 ```
 
----
-
-## Convenience scripts
-
-Windows (PowerShell):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1
-```
-
-macOS/Linux:
-
-```sh
-./scripts/dev.sh
-```
-
----
-
 ## Request flow
 
 ### Local development flow
@@ -154,9 +135,9 @@ Browser                Vite Dev Server                 Spring Boot
   |    (serves React app)    |                             |
   |<-------------------------|                             |
   |                          |                             |
-  |  GET /api/hello          |                             |
+  |  GET /api/getHello       |                             |
   |------------------------->|                             |
-  |        (proxy)           |  GET http://localhost:8080/api/hello
+  |        (proxy)           |  GET http://localhost:8080/api/getHello
   |                          |---------------------------->|
   |                          |        JSON response        |
   |                          |<----------------------------|
@@ -174,18 +155,20 @@ Because the Vite proxy is used:
 
 ## API contract
 
-Endpoint:
+Endpoints:
 
 ```http
 GET /api/getHello
+POST /api/postHello
 ```
 
 Example response:
 
 ```json
 {
-  "message": "Hello from Spring Boot",
-  "source": "backend"
+  "message": "Hello from BACKEND!",
+  "source": "backend",
+  "timestamp": 1715890000000
 }
 ```
 
