@@ -22,7 +22,7 @@ engineering patterns and workflows that can scale over time.
 
 ### Core
 
-- Java 21
+- Java 25
 - Spring Boot 4
 - Spring MVC
 - Maven
@@ -42,7 +42,7 @@ engineering patterns and workflows that can scale over time.
 
 ## Requirements
 
-- Java 21+
+- Java 25+
 - No database required
 - No external infrastructure required
 
@@ -58,7 +58,7 @@ java -version
 
 This project assumes:
 
-- Java 21 is installed
+- Java 25 is installed
 - `JAVA_HOME` points to the JDK installation directory
 - `%JAVA_HOME%\bin` is available on the system PATH
 

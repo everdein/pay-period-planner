@@ -29,7 +29,7 @@ patterns and workflows that can scale over time.
 ### Backend
 
 - Spring Boot 4
-- Java 21
+- Java 25
 - Maven
 
 ### Tooling / Quality
@@ -61,7 +61,7 @@ end-to-end-app/
 
 ## Requirements
 
-- Java 21+
+- Java 25+
 - Node.js 20+
 - npm 10+
 
