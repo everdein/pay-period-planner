@@ -183,6 +183,7 @@ The application includes a personal financial snapshot area with sidebar
 sections for:
 
 - overview totals, including assets, debt, net worth, and disposable income
+- next pay period projections for paycheck income, bills, rent set-asides, debt payoff, and possible HYSA transfer
 - monthly withdrawals with pay period planning
 - annual withdrawals that can be included in the active pay period
 - income summary assumptions by interval
@@ -197,6 +198,17 @@ sections for:
 Editable tables support adding, editing, removing, warning before removal,
 resetting unsaved changes, and saving the full draft snapshot. Displayed dates
 use `MM/DD/YYYY`; browser date inputs use native date controls for editing.
+
+Pay period dates are automatically derived from the saved schedule and today's
+date when the app opens. Manually changing the pay period dates updates that
+schedule anchor on the next save.
+
+The Projection view is derived from the saved snapshot and current draft state.
+It focuses on the next pay period, using bi-weekly net income, bills due, annual
+withdrawals due, the rent bill, the rent savings account, and current debt to
+estimate what can go toward credit card debt. If debt is covered, remaining cash
+is shown as a possible Apple HYSA transfer. The current period is shown only as
+supporting context.
 
 Financial data is stored locally by the backend in:
 

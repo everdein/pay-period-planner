@@ -1,7 +1,9 @@
 import type { FormEvent } from 'react';
 
+import { EditButton } from './EditButton';
 import { formatDate } from './financialsFormatters';
 import type { DraftImportantDate, ImportantDateFormState } from './financialsTypes';
+import { RemoveButton } from './RemoveButton';
 
 export function ImportantDatesTab({
   cancelImportantDateEdit,
@@ -63,16 +65,14 @@ export function ImportantDatesTab({
                     </span>
                   </td>
                   <td className="actions">
-                    <button onClick={() => startImportantDateEdit(importantDate)} type="button">
-                      Edit
-                    </button>
-                    <button
-                      className="ghost"
+                    <EditButton
+                      label={`Edit ${importantDate.event}`}
+                      onClick={() => startImportantDateEdit(importantDate)}
+                    />
+                    <RemoveButton
+                      label={`Remove ${importantDate.event}`}
                       onClick={() => requestRemoveImportantDate(importantDate)}
-                      type="button"
-                    >
-                      Remove
-                    </button>
+                    />
                   </td>
                 </tr>
               ))}

@@ -93,6 +93,11 @@ h2 {
   margin: 6px 0 0;
 }
 
+.withdrawals-header .helper-text {
+  font-size: 0.86rem;
+  max-width: 620px;
+}
+
 .pay-period,
 .bill-form {
   display: grid;
@@ -187,11 +192,267 @@ button.danger {
   margin-top: 4px;
 }
 
+.projection-summary .metric-card {
+  border-left-width: 5px;
+}
+
+.overview-sections {
+  display: grid;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.overview-group {
+  border-bottom: 1px solid #e5eaf0;
+  padding-bottom: 20px;
+}
+
+.overview-group:last-child {
+  border-bottom: 0;
+}
+
+.overview-group h2 {
+  color: #344054;
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+
+.overview-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.metric-card {
+  border: 1px solid #d7e0eb;
+  border-left-width: 5px;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.metric-card span {
+  color: #536179;
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.metric-card strong {
+  display: block;
+  font-size: 1.35rem;
+}
+
+.metric-card small {
+  color: #536179;
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.metric-card.good {
+  background: #f3fbf0;
+  border-color: #b9ddb0;
+  border-left-color: #3f7f36;
+}
+
+.metric-card.bad {
+  background: #fff4f2;
+  border-color: #efc5bd;
+  border-left-color: #b42318;
+}
+
+.metric-card.caution {
+  background: #fff9e8;
+  border-color: #ead79c;
+  border-left-color: #b7791f;
+}
+
+.metric-card.neutral {
+  background: #f8fbff;
+  border-color: #d7e0eb;
+  border-left-color: #5f7fa3;
+}
+
 .expenses-layout {
   align-items: start;
   display: grid;
   gap: 20px;
   grid-template-columns: minmax(0, 1fr) 300px;
+}
+
+.debt-progress-card,
+.projection-period-card {
+  border: 1px solid #d7e0eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.debt-progress-card {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.debt-progress-card.good {
+  background: #f3fbf0;
+  border-color: #b9ddb0;
+}
+
+.debt-progress-card.bad {
+  background: #fff4f2;
+  border-color: #efc5bd;
+}
+
+.debt-progress-card div:first-child {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.debt-progress-card span {
+  color: #536179;
+  font-weight: 700;
+}
+
+.debt-progress-track {
+  background: #e5eaf0;
+  border-radius: 999px;
+  height: 14px;
+  overflow: hidden;
+}
+
+.debt-progress-fill {
+  background: #17365d;
+  height: 100%;
+}
+
+.debt-progress-card.good .debt-progress-fill {
+  background: #3f7f36;
+}
+
+.debt-progress-card.bad .debt-progress-fill {
+  background: #b42318;
+}
+
+.projection-periods,
+.projection-focus {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.projection-focus {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.projection-period-card {
+  display: grid;
+  gap: 16px;
+}
+
+.projection-period-card header {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.projection-period-card h3 {
+  margin: 0 0 12px;
+}
+
+.projection-period-card p {
+  color: #536179;
+  font-weight: 700;
+  margin: 0;
+}
+
+.projection-period-card header strong {
+  font-size: 1.35rem;
+  white-space: nowrap;
+}
+
+.projection-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.projection-metrics div {
+  background: #f8fbff;
+  border-left: 4px solid #5f7fa3;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.projection-metrics div.good {
+  background: #f3fbf0;
+  border-left-color: #3f7f36;
+}
+
+.projection-metrics div.caution {
+  background: #fff9e8;
+  border-left-color: #b7791f;
+}
+
+.projection-metrics div.bad {
+  background: #fff4f2;
+  border-left-color: #b42318;
+}
+
+.projection-metrics dt {
+  color: #536179;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.projection-metrics dd {
+  font-weight: 800;
+  margin: 4px 0 0;
+}
+
+.current-period-context {
+  background: #f8fbff;
+  border: 1px solid #d7e0eb;
+  border-left: 5px solid #5f7fa3;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.current-period-context h3 {
+  margin: 0 0 8px;
+}
+
+.current-period-context p,
+.current-period-context small {
+  color: #536179;
+  font-weight: 700;
+}
+
+.current-period-context dl {
+  margin: 16px 0;
+}
+
+.current-period-context div {
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.current-period-context dt {
+  color: #536179;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.current-period-context dd {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 4px 0 0;
 }
 
 .table-wrap {
@@ -241,6 +502,22 @@ tr.current-income td {
 
 tr.next-important-date td {
   background: #fff8e5;
+}
+
+tr.projection-row.good td {
+  background: #f3fbf0;
+}
+
+tr.projection-row.caution td {
+  background: #fff9e8;
+}
+
+tr.projection-row.bad td {
+  background: #fff4f2;
+}
+
+tr.projection-row.neutral td {
+  background: #f8fbff;
 }
 
 .amount {
@@ -298,6 +575,42 @@ tr.next-important-date td {
 
 .actions button {
   padding: 6px 9px;
+}
+
+.icon-button {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  height: 32px;
+  justify-content: center;
+  padding: 0;
+  width: 32px;
+}
+
+.danger-icon {
+  background: #fff4f2;
+  border-color: #efc5bd;
+  color: #9f1f16;
+}
+
+.edit-icon {
+  background: #f8fbff;
+  border-color: #c9d3e1;
+  color: #17365d;
+}
+
+.edit-icon:hover,
+.edit-icon:focus-visible {
+  background: #17365d;
+  border-color: #17365d;
+  color: #ffffff;
+}
+
+.danger-icon:hover,
+.danger-icon:focus-visible {
+  background: #9f1f16;
+  border-color: #9f1f16;
+  color: #ffffff;
 }
 
 tfoot td {
@@ -375,7 +688,9 @@ tfoot td {
   .withdrawals-header,
   .section-header,
   .expenses-layout,
-  .financials-layout {
+  .financials-layout,
+  .projection-periods,
+  .projection-focus {
     display: block;
   }
 
@@ -407,12 +722,18 @@ tfoot td {
   }
 
   .pay-period,
-  .summary-grid {
+  .summary-grid,
+  .overview-grid {
     grid-template-columns: 1fr;
     margin-top: 16px;
   }
 
   .bill-form {
+    margin-top: 20px;
+  }
+
+  .projection-period-card,
+  .current-period-context {
     margin-top: 20px;
   }
 }

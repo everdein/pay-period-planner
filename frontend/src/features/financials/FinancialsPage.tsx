@@ -65,12 +65,15 @@ import type {
   IncomeEventFormState,
   IncomeSummaryFormState,
   PendingRemoval,
+  ProjectionPeriod,
+  ProjectionSummary,
 } from './financialsTypes';
 import { ImportantDatesTab } from './ImportantDatesTab';
 import { IncomeCalendarTab } from './IncomeCalendarTab';
 import { IncomeSummaryTab } from './IncomeSummaryTab';
 import { MonthlyWithdrawalsTab } from './MonthlyWithdrawalsTab';
 import { Overview } from './OverviewTab';
+import { ProjectionTab } from './ProjectionTab';
 import { SaveControls } from './SaveControls';
 
 export default function FinancialsPage() {
@@ -237,6 +240,9 @@ export default function FinancialsPage() {
   const biWeeklyDisposableIncome = incomeSummaryItems.find(
     (item) => item.category === 'Disposable Income' && item.interval === 'Bi-Weekly'
   );
+  const biWeeklyNetIncome = incomeSummaryItems.find(
+    (item) => item.category === 'Net Income' && item.interval === 'Bi-Weekly'
+  );
   const incomeEvents = useMemo(
     () => withIncomeEventStatuses(draftIncomeEvents, todayIso),
     [draftIncomeEvents, todayIso]
@@ -262,13 +268,79 @@ export default function FinancialsPage() {
   const insuranceBenefits = assetCategories.find(
     (category) => category.key === 'insurance-benefits'
   );
+  const projection = useMemo<ProjectionSummary>(() => {
+    const rentBill = sortedBills.find((bill) => bill.bill.toLowerCase().includes('rent'));
+    const rentSavingsBalance =
+      cashSavings?.accounts.find((account) => account.account.toLowerCase().includes('rent'))
+        ?.amount ?? 0;
+    const paycheckIncome = biWeeklyNetIncome?.amount ?? biWeeklyDisposableIncome?.amount ?? 0;
+    const currentPeriod = buildProjectionPeriod(
+      'Current Pay Period',
+      payPeriodStart,
+      payPeriodEnd,
+      sortedBills,
+      annualWithdrawalsInPayPeriod,
+      paycheckIncome,
+      rentBill,
+      rentSavingsBalance
+    );
+    const nextPeriodDates = nextPayPeriod(payPeriodStart, payPeriodEnd);
+    const nextBills = sortedBills.map((bill) =>
+      toDraftBill(bill, nextPeriodDates.start, nextPeriodDates.end)
+    );
+    const nextAnnualWithdrawals = annualWithdrawals.map((withdrawal) =>
+      toDraftAnnualWithdrawal(withdrawal, nextPeriodDates.start, nextPeriodDates.end)
+    );
+    const nextPeriod = buildProjectionPeriod(
+      'Next Pay Period',
+      nextPeriodDates.start,
+      nextPeriodDates.end,
+      nextBills,
+      nextAnnualWithdrawals.filter((withdrawal) => withdrawal.inPayPeriod),
+      paycheckIncome,
+      rentBill,
+      currentPeriod.endingRentSavings
+    );
+    const periods = [currentPeriod.period, nextPeriod.period];
+    const nextPayPeriodCashAfterBills = nextPeriod.period.projectedBeforeDebt;
+    const nextPayPeriodDebtPayment = Math.min(Math.max(nextPayPeriodCashAfterBills, 0), totalDebt);
+    const nextPayPeriodDebtRemaining = Math.max(totalDebt - nextPayPeriodDebtPayment, 0);
+    const nextPayPeriodHysaTransfer = Math.max(nextPayPeriodCashAfterBills - totalDebt, 0);
+
+    return {
+      currentDebt: totalDebt,
+      debtCoveredByProjectedCash: nextPayPeriodDebtPayment,
+      debtCoveragePercent: totalDebt === 0 ? 100 : (nextPayPeriodDebtPayment / totalDebt) * 100,
+      nextPayPeriodCashAfterBills,
+      nextPayPeriodDebtPayment,
+      nextPayPeriodDebtRemaining,
+      nextPayPeriodHysaTransfer,
+      projectedAfterDebt: nextPayPeriodCashAfterBills - totalDebt,
+      projectedBeforeDebt: nextPayPeriodCashAfterBills,
+      remainingDebtAfterProjectedCash: nextPayPeriodDebtRemaining,
+      periods,
+    };
+  }, [
+    annualWithdrawals,
+    annualWithdrawalsInPayPeriod,
+    biWeeklyDisposableIncome,
+    biWeeklyNetIncome,
+    cashSavings,
+    payPeriodEnd,
+    payPeriodStart,
+    sortedBills,
+    totalDebt,
+  ]);
   const navigationSections: Array<{
     items: Array<[FinancialTab, string]>;
     label: string;
   }> = [
     {
       label: 'Snapshot',
-      items: [['overview', 'Overview']],
+      items: [
+        ['overview', 'Overview'],
+        ['projection', 'Projection'],
+      ],
     },
     {
       label: 'Cash Flow',
@@ -803,11 +875,14 @@ export default function FinancialsPage() {
                   currentPaycheck={currentPaycheck}
                   nextImportantDate={nextImportantDate}
                   netWorth={netWorth}
+                  projection={projection}
                   totalDebt={totalDebt}
                   totalTrackedAssets={totalTrackedAssets}
                   withdrawalTotal={totals.totalMonthlyExpenses}
                 />
               )}
+
+              {activeTab === 'projection' && <ProjectionTab projection={projection} />}
 
               {activeTab === 'monthly-withdrawals' && (
                 <MonthlyWithdrawalsTab
@@ -960,4 +1035,79 @@ export default function FinancialsPage() {
       )}
     </main>
   );
+}
+
+function buildProjectionPeriod(
+  title: string,
+  payPeriodStart: string,
+  payPeriodEnd: string,
+  bills: DraftBill[],
+  annualWithdrawals: DraftAnnualWithdrawal[],
+  paycheckIncome: number,
+  rentBill: DraftBill | undefined,
+  startingRentSavings: number
+): { endingRentSavings: number; period: ProjectionPeriod } {
+  const rentBillAmount = rentBill?.amount ?? 0;
+  const rentDueInPeriod = bills.some((bill) => bill.id === rentBill?.id && bill.inPayPeriod)
+    ? rentBillAmount
+    : 0;
+  const rentCoveredBySavings = Math.min(startingRentSavings, rentDueInPeriod);
+  const rentSavingsAfterDue = Math.max(startingRentSavings - rentDueInPeriod, 0);
+  const rentRemainingNeed = Math.max(rentBillAmount - rentSavingsAfterDue, 0);
+  const rentContribution = Math.min(rentBillAmount / 2, rentRemainingNeed);
+  const projectedBills = bills.filter((bill) => bill.inPayPeriod && bill.id !== rentBill?.id);
+  const monthlyWithdrawalsDue = projectedBills.reduce((total, bill) => total + bill.amount, 0);
+  const annualWithdrawalsDue = annualWithdrawals.reduce(
+    (total, withdrawal) => total + withdrawal.amount,
+    0
+  );
+  const projectedBeforeDebt =
+    paycheckIncome - monthlyWithdrawalsDue - annualWithdrawalsDue - rentContribution;
+
+  return {
+    endingRentSavings: rentSavingsAfterDue + rentContribution,
+    period: {
+      annualWithdrawalsDue,
+      monthlyWithdrawalsDue,
+      paycheckIncome,
+      payPeriodEnd,
+      payPeriodStart,
+      projectedBeforeDebt,
+      rentBillAmount,
+      rentContribution,
+      rentCoveredBySavings,
+      rentRemainingNeed,
+      rentSavingsBalance: startingRentSavings,
+      title,
+      withdrawalLines: projectedBills.map((bill) => ({
+        amount: bill.amount,
+        label: bill.bill,
+      })),
+    },
+  };
+}
+
+function nextPayPeriod(payPeriodStart: string, payPeriodEnd: string) {
+  if (!payPeriodStart || !payPeriodEnd) {
+    return { end: payPeriodEnd, start: payPeriodStart };
+  }
+
+  const start = new Date(`${payPeriodStart}T00:00:00`);
+  const end = new Date(`${payPeriodEnd}T00:00:00`);
+  const periodDays = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  const nextStart = addDays(end, 1);
+  const nextEnd = addDays(nextStart, periodDays - 1);
+
+  return { end: toIsoDate(nextEnd), start: toIsoDate(nextStart) };
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function toIsoDate(date: Date) {
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 }

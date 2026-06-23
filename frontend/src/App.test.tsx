@@ -35,6 +35,19 @@ const mockFinancialsState = {
         total: 39658.11,
         accounts: [],
       },
+      {
+        key: 'cash-savings',
+        label: 'Cash & Savings',
+        total: 1300,
+        accounts: [
+          {
+            id: 2,
+            account: 'Member Savings (Rent)',
+            company: 'Example Credit Union',
+            amount: 1300,
+          },
+        ],
+      },
     ],
     debtAccounts: [
       {
@@ -53,6 +66,12 @@ const mockFinancialsState = {
       },
       {
         id: 2,
+        category: 'Net Income',
+        interval: 'Bi-Weekly',
+        amount: 3396.25,
+      },
+      {
+        id: 3,
         category: 'Disposable Income',
         interval: 'Bi-Weekly',
         amount: 1901.58,
@@ -132,6 +151,7 @@ describe('App', () => {
 
     expect(screen.getByRole('heading', { name: /financials/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /monthly withdrawals/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /projection/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /annual withdrawals/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /income summary/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /income calendar/i })).toBeInTheDocument();
@@ -145,6 +165,10 @@ describe('App', () => {
     expect(screen.getByText(/^Bi-weekly disposable$/i)).toBeInTheDocument();
     expect(screen.getByText(/^Current paycheck$/i)).toBeInTheDocument();
     expect(screen.getByText('#12')).toBeInTheDocument();
+    expect(screen.getByText(/^Cash after bills$/i)).toBeInTheDocument();
+    expect(screen.getAllByText('$2,096.25')).not.toHaveLength(0);
+    expect(screen.getByText(/^Debt left after payment$/i)).toBeInTheDocument();
+    expect(screen.getAllByText('$33.78')).not.toHaveLength(0);
     expect(screen.getByText('$140.58')).toBeInTheDocument();
     expect(screen.getByText(/^Next important date$/i)).toBeInTheDocument();
     expect(screen.getByText(/Christmas/i)).toBeInTheDocument();
@@ -189,6 +213,21 @@ describe('App', () => {
     expect(screen.getAllByText('$140.58')).not.toHaveLength(0);
   });
 
+  it('renders pay period projection tab', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /projection/i }));
+
+    expect(screen.getByRole('heading', { name: /next paycheck projection/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /next pay period/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /current period context/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('cell', { name: /rent set aside/i })).not.toHaveLength(0);
+    expect(screen.getAllByRole('cell', { name: /rent paid from savings/i })).not.toHaveLength(0);
+    expect(screen.getByText(/^Possible HYSA transfer$/i)).toBeInTheDocument();
+    expect(screen.getAllByText('$0.00')).not.toHaveLength(0);
+    expect(screen.getAllByText('$33.78')).not.toHaveLength(0);
+  });
+
   it('renders income summary tab', () => {
     render(<App />);
 
@@ -196,7 +235,7 @@ describe('App', () => {
 
     expect(screen.getAllByRole('heading', { name: /income summary/i })).not.toHaveLength(0);
     expect(screen.getAllByText(/net income/i)).not.toHaveLength(0);
-    expect(screen.getByRole('cell', { name: /bi-weekly/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('cell', { name: /bi-weekly/i })).not.toHaveLength(0);
     expect(screen.getByText('$1,901.58')).toBeInTheDocument();
   });
 

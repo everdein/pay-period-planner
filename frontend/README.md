@@ -117,6 +117,7 @@ The main application screen is a personal financial snapshot with grouped
 sidebar navigation for:
 
 - Overview
+- Projection
 - Monthly Withdrawals
 - Annual Withdrawals
 - Income Summary
@@ -132,6 +133,7 @@ The Monthly Withdrawals tab supports:
 
 - pay period start and end dates
 - automatic pay period highlighting
+- automatic pay period dates based on today's date and the saved schedule
 - monthly, paid, unpaid, and in-period totals
 - annual withdrawals due in the active pay period
 - adding withdrawal rows
@@ -139,6 +141,18 @@ The Monthly Withdrawals tab supports:
 - removing withdrawal rows
 - resetting unsaved changes
 - saving the full draft snapshot
+
+The backend returns the pay period that contains today's date. If the user edits
+the pay period dates and saves, those dates become the new schedule anchor for
+future automatic updates.
+
+The Projection tab derives a next-paycheck forecast from the current draft. It
+uses bi-weekly net income, next pay period bills, annual withdrawals due in the
+period, the rent bill, the current rent savings balance, and current debt to
+show cash after bills, the credit card payment that leftover cash could make,
+remaining debt, and any possible Apple HYSA transfer after debt is covered. The
+current pay period is shown only as supporting context. The Overview shows the
+projection headline numbers.
 
 Annual Withdrawals tracks recurring yearly charges with native calendar inputs
 while storing month/day recurrence data. Income Summary tracks net and
@@ -333,6 +347,7 @@ Responsibilities:
 The financials feature is split into focused tab and shared UI modules:
 
 - `OverviewTab.tsx`
+- `ProjectionTab.tsx`
 - `MonthlyWithdrawalsTab.tsx`
 - `AnnualWithdrawalsTab.tsx`
 - `IncomeSummaryTab.tsx`

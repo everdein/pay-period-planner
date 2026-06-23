@@ -28,6 +28,7 @@ import com.example.backend.repository.FinancialsRepository;
 import com.example.backend.repository.ImportantDate;
 import com.example.backend.repository.IncomeEvent;
 import com.example.backend.repository.IncomeSummaryItem;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -35,6 +36,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -46,9 +48,16 @@ public class FinancialsService {
       DateTimeFormatter.ofPattern("MM/dd/yyyy");
 
   private final FinancialsRepository financialsRepository;
+  private final Clock clock;
 
+  @Autowired
   public FinancialsService(FinancialsRepository financialsRepository) {
+    this(financialsRepository, Clock.systemDefaultZone());
+  }
+
+  FinancialsService(FinancialsRepository financialsRepository, Clock clock) {
     this.financialsRepository = financialsRepository;
+    this.clock = clock;
   }
 
   public ExpenseSnapshotResponse getSnapshot() {
@@ -510,7 +519,7 @@ public class FinancialsService {
   private LocalDate[] currentPayPeriod() {
     LocalDate startDate = financialsRepository.payPeriodStart();
     LocalDate endDate = financialsRepository.payPeriodEnd();
-    LocalDate today = LocalDate.now();
+    LocalDate today = LocalDate.now(clock);
     long periodDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
 
     while (today.isAfter(endDate)) {

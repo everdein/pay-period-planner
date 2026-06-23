@@ -17,7 +17,10 @@ import com.example.backend.repository.FinancialsRepository;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -76,6 +79,23 @@ class FinancialsServiceTests {
 
     assertThat(snapshot.payPeriodStart()).isNotNull();
     assertThat(snapshot.payPeriodEnd()).isNotNull();
+  }
+
+  @Test
+  void rollsSavedPayPeriodForwardToCurrentDate() throws IOException {
+    Clock clock = Clock.fixed(Instant.parse("2026-06-22T12:00:00Z"), ZoneOffset.UTC);
+    FinancialsService service = new FinancialsService(repository(), clock);
+
+    var snapshot = service.getSnapshot();
+
+    assertThat(snapshot.payPeriodStart()).isEqualTo(LocalDate.of(2026, 6, 15));
+    assertThat(snapshot.payPeriodEnd()).isEqualTo(LocalDate.of(2026, 6, 29));
+    assertThat(snapshot.bills())
+        .anyMatch(
+            (bill) ->
+                bill.bill().equals("Example Savings Transfer")
+                    && bill.dueDate().equals(LocalDate.of(2026, 6, 15))
+                    && bill.inPayPeriod());
   }
 
   @Test

@@ -1,7 +1,9 @@
 import type { FormEvent } from 'react';
 
+import { EditButton } from './EditButton';
 import { formatDate } from './financialsFormatters';
 import type { DraftIncomeEvent, IncomeEventFormState } from './financialsTypes';
+import { RemoveButton } from './RemoveButton';
 
 export function IncomeCalendarTab({
   cancelIncomeEventEdit,
@@ -67,16 +69,14 @@ export function IncomeCalendarTab({
                     </span>
                   </td>
                   <td className="actions">
-                    <button onClick={() => startIncomeEventEdit(event)} type="button">
-                      Edit
-                    </button>
-                    <button
-                      className="ghost"
+                    <EditButton
+                      label={`Edit ${event.label}`}
+                      onClick={() => startIncomeEventEdit(event)}
+                    />
+                    <RemoveButton
+                      label={`Remove ${event.label}`}
                       onClick={() => requestRemoveIncomeEvent(event)}
-                      type="button"
-                    >
-                      Remove
-                    </button>
+                    />
                   </td>
                 </tr>
               ))}

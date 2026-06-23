@@ -1,7 +1,9 @@
 import type { FormEvent } from 'react';
 
+import { EditButton } from './EditButton';
 import { currency, formatDate } from './financialsFormatters';
 import type { AnnualWithdrawalFormState, DraftAnnualWithdrawal } from './financialsTypes';
+import { RemoveButton } from './RemoveButton';
 
 export function AnnualWithdrawalsTab({
   annualWithdrawalForm,
@@ -88,16 +90,14 @@ export function AnnualWithdrawalsTab({
                   </td>
                   <td>{withdrawal.inPayPeriod ? formatDate(withdrawal.dueDate) : '-'}</td>
                   <td className="actions">
-                    <button onClick={() => startAnnualWithdrawalEdit(withdrawal)} type="button">
-                      Edit
-                    </button>
-                    <button
-                      className="ghost"
+                    <EditButton
+                      label={`Edit ${withdrawal.bill}`}
+                      onClick={() => startAnnualWithdrawalEdit(withdrawal)}
+                    />
+                    <RemoveButton
+                      label={`Remove ${withdrawal.bill}`}
                       onClick={() => requestRemoveAnnualWithdrawal(withdrawal)}
-                      type="button"
-                    >
-                      Remove
-                    </button>
+                    />
                   </td>
                 </tr>
               ))}

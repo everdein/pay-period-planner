@@ -1,7 +1,9 @@
 import type { FormEvent } from 'react';
 
+import { EditButton } from './EditButton';
 import { currency } from './financialsFormatters';
 import type { AssetFormState, DraftAssetAccount, DraftAssetCategory } from './financialsTypes';
+import { RemoveButton } from './RemoveButton';
 
 export function AssetTable({
   assetForm,
@@ -44,16 +46,14 @@ export function AssetTable({
                 <td>{account.company}</td>
                 <td className="amount">{currency.format(account.amount)}</td>
                 <td className="actions">
-                  <button onClick={() => startAssetEdit(category.key, account)} type="button">
-                    Edit
-                  </button>
-                  <button
-                    className="ghost"
+                  <EditButton
+                    label={`Edit ${account.account}`}
+                    onClick={() => startAssetEdit(category.key, account)}
+                  />
+                  <RemoveButton
+                    label={`Remove ${account.account}`}
                     onClick={() => requestRemoveAsset(category.key, account)}
-                    type="button"
-                  >
-                    Remove
-                  </button>
+                  />
                 </td>
               </tr>
             ))}

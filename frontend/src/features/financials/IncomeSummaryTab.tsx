@@ -1,7 +1,9 @@
 import type { FormEvent } from 'react';
 
+import { EditButton } from './EditButton';
 import { currency } from './financialsFormatters';
 import type { DraftIncomeSummaryItem, IncomeSummaryFormState } from './financialsTypes';
+import { RemoveButton } from './RemoveButton';
 
 export function IncomeSummaryTab({
   cancelIncomeSummaryEdit,
@@ -58,16 +60,14 @@ export function IncomeSummaryTab({
                         <td>{item.interval}</td>
                         <td className="amount">{currency.format(item.amount)}</td>
                         <td className="actions">
-                          <button onClick={() => startIncomeSummaryEdit(item)} type="button">
-                            Edit
-                          </button>
-                          <button
-                            className="ghost"
+                          <EditButton
+                            label={`Edit ${item.category} ${item.interval}`}
+                            onClick={() => startIncomeSummaryEdit(item)}
+                          />
+                          <RemoveButton
+                            label={`Remove ${item.category} ${item.interval}`}
                             onClick={() => requestRemoveIncomeSummaryItem(item)}
-                            type="button"
-                          >
-                            Remove
-                          </button>
+                          />
                         </td>
                       </tr>
                     ))}

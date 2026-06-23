@@ -75,6 +75,41 @@ export type DraftImportantDate = ImportantDate & {
   status?: ImportantDateStatus;
 };
 
+export type ProjectionLine = {
+  amount: number;
+  label: string;
+};
+
+export type ProjectionPeriod = {
+  annualWithdrawalsDue: number;
+  monthlyWithdrawalsDue: number;
+  paycheckIncome: number;
+  payPeriodEnd: string;
+  payPeriodStart: string;
+  projectedBeforeDebt: number;
+  rentCoveredBySavings: number;
+  rentBillAmount: number;
+  rentContribution: number;
+  rentRemainingNeed: number;
+  rentSavingsBalance: number;
+  title: string;
+  withdrawalLines: ProjectionLine[];
+};
+
+export type ProjectionSummary = {
+  currentDebt: number;
+  debtCoveredByProjectedCash: number;
+  debtCoveragePercent: number;
+  nextPayPeriodCashAfterBills: number;
+  nextPayPeriodDebtPayment: number;
+  nextPayPeriodDebtRemaining: number;
+  nextPayPeriodHysaTransfer: number;
+  projectedAfterDebt: number;
+  projectedBeforeDebt: number;
+  remainingDebtAfterProjectedCash: number;
+  periods: ProjectionPeriod[];
+};
+
 export type DraftAssetCategory = {
   key: string;
   label: string;
@@ -84,6 +119,7 @@ export type DraftAssetCategory = {
 
 export type FinancialTab =
   | 'overview'
+  | 'projection'
   | 'monthly-withdrawals'
   | 'annual-withdrawals'
   | 'income-summary'

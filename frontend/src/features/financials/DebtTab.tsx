@@ -1,7 +1,9 @@
 import type { FormEvent } from 'react';
 
+import { EditButton } from './EditButton';
 import { currency } from './financialsFormatters';
 import type { AssetFormState, DraftDebtAccount } from './financialsTypes';
+import { RemoveButton } from './RemoveButton';
 
 export function DebtTab({
   cancelDebtEdit,
@@ -61,16 +63,14 @@ export function DebtTab({
                   <td>{account.company}</td>
                   <td className="amount">{currency.format(account.amount)}</td>
                   <td className="actions">
-                    <button onClick={() => startDebtEdit(account)} type="button">
-                      Edit
-                    </button>
-                    <button
-                      className="ghost"
+                    <EditButton
+                      label={`Edit ${account.account}`}
+                      onClick={() => startDebtEdit(account)}
+                    />
+                    <RemoveButton
+                      label={`Remove ${account.account}`}
                       onClick={() => requestRemoveDebt(account)}
-                      type="button"
-                    >
-                      Remove
-                    </button>
+                    />
                   </td>
                 </tr>
               ))}

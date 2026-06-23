@@ -1,7 +1,9 @@
 import type { FormEvent } from 'react';
 
+import { EditButton } from './EditButton';
 import { currency, formatDate } from './financialsFormatters';
 import type { BillFormState, DraftAnnualWithdrawal, DraftBill } from './financialsTypes';
+import { RemoveButton } from './RemoveButton';
 
 export function MonthlyWithdrawalsTab({
   annualPayPeriodTotal,
@@ -49,6 +51,10 @@ export function MonthlyWithdrawalsTab({
         <div>
           <h2>Monthly Withdrawals</h2>
           <p>Cash outflows for bills, subscriptions, transfers, and savings contributions.</p>
+          <p className="helper-text">
+            Pay period dates open to the schedule that includes today. Editing them updates the
+            schedule anchor when you save.
+          </p>
         </div>
         <div className="pay-period">
           <label>
@@ -122,16 +128,11 @@ export function MonthlyWithdrawalsTab({
                     </td>
                     <td>{bill.inPayPeriod ? formatDate(bill.dueDate) : '-'}</td>
                     <td className="actions">
-                      <button onClick={() => startEdit(bill)} type="button">
-                        Edit
-                      </button>
-                      <button
-                        className="ghost"
+                      <EditButton label={`Edit ${bill.bill}`} onClick={() => startEdit(bill)} />
+                      <RemoveButton
+                        label={`Remove ${bill.bill}`}
                         onClick={() => requestRemoveBill(bill)}
-                        type="button"
-                      >
-                        Remove
-                      </button>
+                      />
                     </td>
                   </tr>
                 ))}
