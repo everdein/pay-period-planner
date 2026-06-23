@@ -136,9 +136,9 @@ Browser                Vite Dev Server                 Spring Boot
   |    (serves React app)    |                             |
   |<-------------------------|                             |
   |                          |                             |
-  |  GET /api/getHello       |                             |
+  |  GET /api/financials/expenses                         |
   |------------------------->|                             |
-  |        (proxy)           |  GET http://localhost:8080/api/getHello
+  |        (proxy)           |  GET http://localhost:8080/api/financials/expenses
   |                          |---------------------------->|
   |                          |        JSON response        |
   |                          |<----------------------------|
@@ -155,23 +155,6 @@ Because the Vite proxy is used:
 ---
 
 ## API contract
-
-Hello endpoints:
-
-```http
-GET /api/getHello
-POST /api/postHello
-```
-
-Example response:
-
-```json
-{
-  "message": "Hello from BACKEND!",
-  "source": "backend",
-  "timestamp": 1715890000000
-}
-```
 
 Financials endpoints:
 
@@ -196,18 +179,24 @@ The individual bill endpoints remain available as a more granular API option.
 
 ## Financials feature
 
-The application includes a personal financial snapshot area with tabs for:
+The application includes a personal financial snapshot area with sidebar
+sections for:
 
-- overview totals
-- monthly withdrawals
+- overview totals, including assets, debt, net worth, and disposable income
+- monthly withdrawals with pay period planning
+- annual withdrawals that can be included in the active pay period
+- income summary assumptions by interval
+- income calendar events with received/current/upcoming status
 - retirement accounts
 - investments
 - cash and savings
 - insurance and benefits
+- debt balances
+- important dates with passed/next/upcoming status
 
-Monthly withdrawals support adding, editing, removing, paid status tracking,
-and pay period start/end dates. Asset categories support editable account rows
-with category totals and an overall tracked-assets total.
+Editable tables support adding, editing, removing, warning before removal,
+resetting unsaved changes, and saving the full draft snapshot. Displayed dates
+use `MM/DD/YYYY`; browser date inputs use native date controls for editing.
 
 Financial data is stored locally by the backend in:
 

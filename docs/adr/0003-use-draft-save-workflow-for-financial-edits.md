@@ -6,8 +6,9 @@ Accepted
 
 ## Context
 
-The financials UI includes monthly withdrawals, pay period dates, and asset
-account categories. Users may want to make several edits before deciding to
+The financials UI includes withdrawals, pay period dates, income planning
+items, income calendar events, asset account categories, debt balances, and
+important dates. Users may want to make several edits before deciding to
 persist the final result.
 
 An earlier approach could call the backend for each individual add, edit, or
@@ -31,7 +32,9 @@ PUT /api/financials/expenses/snapshot
 ```
 
 The backend validates and persists the snapshot, then returns the updated
-snapshot as the new committed state.
+snapshot as the new committed state. Derived values such as totals, pay-period
+inclusion, current paycheck status, important date status, debt totals, and net
+worth are recalculated from the source rows.
 
 ## Consequences
 

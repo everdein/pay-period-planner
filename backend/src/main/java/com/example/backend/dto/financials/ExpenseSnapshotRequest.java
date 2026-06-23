@@ -7,4 +7,9 @@ public record ExpenseSnapshotRequest(
     LocalDate payPeriodStart,
     LocalDate payPeriodEnd,
     List<ExpenseBillSnapshotRequest> bills,
-    List<AssetCategorySnapshotRequest> assetCategories) {}
+    List<AnnualWithdrawalSnapshotRequest> annualWithdrawals,
+    List<AssetCategorySnapshotRequest> assetCategories,
+    List<DebtAccountSnapshotRequest> debtAccounts,
+    List<IncomeSummaryItemSnapshotRequest> incomeSummaryItems,
+    List<IncomeEventSnapshotRequest> incomeEvents,
+    List<ImportantDateSnapshotRequest> importantDates) {}

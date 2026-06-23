@@ -34,11 +34,39 @@ export type ExpenseBillSnapshotRequest = {
   paid: boolean;
 };
 
+export type AnnualWithdrawal = {
+  id: number;
+  bill: string;
+  month: number;
+  day: number;
+  dateLabel: string;
+  dueDate: string;
+  amount: number;
+  account: string;
+  paid: boolean;
+  inPayPeriod: boolean;
+};
+
+export type AnnualWithdrawalSnapshotRequest = {
+  id: number | null;
+  bill: string;
+  month: number;
+  day: number;
+  amount: number;
+  account: string;
+  paid: boolean;
+};
+
 export type ExpenseSnapshotRequest = {
   payPeriodStart: string;
   payPeriodEnd: string;
   bills: ExpenseBillSnapshotRequest[];
+  annualWithdrawals: AnnualWithdrawalSnapshotRequest[];
   assetCategories: AssetCategorySnapshotRequest[];
+  debtAccounts: DebtAccountSnapshotRequest[];
+  incomeSummaryItems: IncomeSummaryItemSnapshotRequest[];
+  incomeEvents: IncomeEventSnapshotRequest[];
+  importantDates: ImportantDateSnapshotRequest[];
 };
 
 export type AssetAccount = {
@@ -68,6 +96,65 @@ export type AssetCategorySnapshotRequest = {
   accounts: AssetAccountSnapshotRequest[];
 };
 
+export type DebtAccount = {
+  id: number;
+  account: string;
+  company: string;
+  amount: number;
+};
+
+export type DebtAccountSnapshotRequest = {
+  id: number | null;
+  account: string;
+  company: string;
+  amount: number;
+};
+
+export type IncomeSummaryItem = {
+  id: number;
+  category: string;
+  interval: string;
+  amount: number;
+};
+
+export type IncomeSummaryItemSnapshotRequest = {
+  id: number | null;
+  category: string;
+  interval: string;
+  amount: number;
+};
+
+export type IncomeEvent = {
+  id: number;
+  date: string;
+  label: string;
+  type: string;
+  checkNumber: number | null;
+  checksInMonth: number;
+};
+
+export type IncomeEventSnapshotRequest = {
+  id: number | null;
+  date: string;
+  label: string;
+  type: string;
+  checkNumber: number | null;
+};
+
+export type ImportantDate = {
+  id: number;
+  date: string;
+  event: string;
+  type: string;
+};
+
+export type ImportantDateSnapshotRequest = {
+  id: number | null;
+  date: string;
+  event: string;
+  type: string;
+};
+
 export type ExpenseSnapshot = {
   payPeriodStart: string;
   payPeriodEnd: string;
@@ -75,9 +162,18 @@ export type ExpenseSnapshot = {
   paidTotal: number;
   unpaidTotal: number;
   payPeriodTotal: number;
+  totalAnnualWithdrawals: number;
+  annualPayPeriodTotal: number;
   totalTrackedAssets: number;
+  totalDebt: number;
+  netWorth: number;
   assetCategories: AssetCategory[];
+  debtAccounts: DebtAccount[];
+  incomeSummaryItems: IncomeSummaryItem[];
   bills: ExpenseBill[];
+  annualWithdrawals: AnnualWithdrawal[];
+  incomeEvents: IncomeEvent[];
+  importantDates: ImportantDate[];
 };
 
 export const financialsService = {

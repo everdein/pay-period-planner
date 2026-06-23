@@ -15,7 +15,9 @@ not be committed to Git.
 
 ## Decision
 
-Store financial data in a backend-managed local JSON file.
+Store financial data in a backend-managed local JSON file. The file contains
+the full financial snapshot aggregate, including withdrawals, income planning
+items, assets, debts, calendar events, and important dates.
 
 Commit a safe example file:
 
@@ -40,6 +42,8 @@ local file does not already exist.
   starting point.
 - The repository layer gives us a clear place to replace JSON storage with a
   database later.
+- The JSON shape can evolve as the financial workspace grows, while old local
+  files remain loadable by treating missing collections as empty.
 - The current storage model is single-user and local-only.
 - File-backed JSON is not appropriate for concurrent multi-user production
   writes.

@@ -113,28 +113,45 @@ This provides:
 
 ## Financials UI
 
-The main application screen is a personal financial snapshot with tabs for:
+The main application screen is a personal financial snapshot with grouped
+sidebar navigation for:
 
 - Overview
 - Monthly Withdrawals
+- Annual Withdrawals
+- Income Summary
+- Income Calendar
 - Retirement
 - Investments
 - Cash & Savings
 - Insurance / Benefits
+- Debt
+- Important Dates
 
 The Monthly Withdrawals tab supports:
 
 - pay period start and end dates
 - automatic pay period highlighting
 - monthly, paid, unpaid, and in-period totals
+- annual withdrawals due in the active pay period
 - adding withdrawal rows
 - editing existing withdrawal rows
 - removing withdrawal rows
 - resetting unsaved changes
 - saving the full draft snapshot
 
-The asset tabs support editable account rows grouped by category. Each category
-shows account, company, amount, row actions, and a calculated total.
+Annual Withdrawals tracks recurring yearly charges with native calendar inputs
+while storing month/day recurrence data. Income Summary tracks net and
+disposable income assumptions by interval. Income Calendar tracks paydays and
+one-time income events, with derived received/current/upcoming statuses.
+
+The asset and debt tabs support editable account rows. Asset categories show
+category totals and an overall tracked-assets total. Debt contributes to total
+debt and net worth. Important Dates tracks holidays and personal/company dates,
+with derived passed/next/upcoming statuses.
+
+Displayed dates use `MM/DD/YYYY`. Editable date fields use native browser date
+inputs.
 
 ### Data flow
 
@@ -243,16 +260,6 @@ Responsibilities:
 - error handling
 - frontend/backend communication
 
-### `src/api/endpoints/hello.ts`
-
-Defines the hello API integration logic.
-
-Responsibilities:
-
-- API endpoint definitions
-- response typing
-- frontend/backend communication
-
 ### `src/api/endpoints/financials.ts`
 
 Defines the financials API integration logic.
@@ -303,18 +310,41 @@ Responsibilities:
 - demonstrating frontend/backend flow
 - hosting the application shell
 
-### `src/features/financials/MonthlyExpenses.tsx`
+### `src/features/financials/FinancialsPage.tsx`
 
 Financial snapshot feature UI.
 
 Responsibilities:
 
-- tabbed financial sections
+- sidebar financial sections
 - local draft state for edits
 - monthly withdrawal forms
+- annual withdrawal forms
+- income summary forms
+- income calendar forms
 - asset account forms
+- debt account forms
+- important date forms
 - pay period calculations
 - save/reset workflow
+
+### Financials tab components
+
+The financials feature is split into focused tab and shared UI modules:
+
+- `OverviewTab.tsx`
+- `MonthlyWithdrawalsTab.tsx`
+- `AnnualWithdrawalsTab.tsx`
+- `IncomeSummaryTab.tsx`
+- `IncomeCalendarTab.tsx`
+- `AssetTable.tsx`
+- `DebtTab.tsx`
+- `ImportantDatesTab.tsx`
+- `ConfirmRemoveModal.tsx`
+- `SaveControls.tsx`
+- `financialsDraft.ts`
+- `financialsFormatters.ts`
+- `financialsTypes.ts`
 
 ### `src/features/financials/financialsSlice.ts`
 
@@ -391,13 +421,13 @@ Git hooks automatically run checks on staged files before commits.
 The frontend uses the `@` alias for cleaner imports:
 
 ```ts
-import { helloService } from '@/api/endpoints/hello';
+import { financialsService } from '@/api/endpoints/financials';
 ```
 
 instead of deeply nested relative imports:
 
 ```ts
-import { helloService } from '../../api/endpoints/hello';
+import { financialsService } from '../../api/endpoints/financials';
 ```
 
 ### Strict TypeScript

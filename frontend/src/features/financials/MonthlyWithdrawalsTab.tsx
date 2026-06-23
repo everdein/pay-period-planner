@@ -1,0 +1,253 @@
+import type { FormEvent } from 'react';
+
+import { currency, formatDate } from './financialsFormatters';
+import type { BillFormState, DraftAnnualWithdrawal, DraftBill } from './financialsTypes';
+
+export function MonthlyWithdrawalsTab({
+  annualPayPeriodTotal,
+  annualWithdrawalsInPayPeriod,
+  cancelEdit,
+  editingId,
+  form,
+  formTitle,
+  payPeriodEnd,
+  payPeriodStart,
+  requestRemoveBill,
+  sortedBills,
+  startEdit,
+  submitBill,
+  totals,
+  updateForm,
+  updatePayPeriodEnd,
+  updatePayPeriodStart,
+}: {
+  annualPayPeriodTotal: number;
+  annualWithdrawalsInPayPeriod: DraftAnnualWithdrawal[];
+  cancelEdit: () => void;
+  editingId: number | null;
+  form: BillFormState;
+  formTitle: string;
+  payPeriodEnd: string;
+  payPeriodStart: string;
+  requestRemoveBill: (bill: DraftBill) => void;
+  sortedBills: DraftBill[];
+  startEdit: (bill: DraftBill) => void;
+  submitBill: (event: FormEvent<HTMLFormElement>) => void;
+  totals: {
+    totalMonthlyExpenses: number;
+    paidTotal: number;
+    unpaidTotal: number;
+    payPeriodTotal: number;
+  };
+  updateForm: <K extends keyof BillFormState>(key: K, value: BillFormState[K]) => void;
+  updatePayPeriodEnd: (value: string) => void;
+  updatePayPeriodStart: (value: string) => void;
+}) {
+  return (
+    <>
+      <section className="withdrawals-header">
+        <div>
+          <h2>Monthly Withdrawals</h2>
+          <p>Cash outflows for bills, subscriptions, transfers, and savings contributions.</p>
+        </div>
+        <div className="pay-period">
+          <label>
+            Pay period start
+            <input
+              onChange={(event) => updatePayPeriodStart(event.target.value)}
+              type="date"
+              value={payPeriodStart}
+            />
+          </label>
+          <label>
+            Pay period end
+            <input
+              onChange={(event) => updatePayPeriodEnd(event.target.value)}
+              type="date"
+              value={payPeriodEnd}
+            />
+          </label>
+        </div>
+      </section>
+
+      <section aria-label="Withdrawal summary" className="summary-grid">
+        <div>
+          <span>Monthly total</span>
+          <strong>{currency.format(totals.totalMonthlyExpenses)}</strong>
+        </div>
+        <div>
+          <span>Paid</span>
+          <strong>{currency.format(totals.paidTotal)}</strong>
+        </div>
+        <div>
+          <span>Unpaid</span>
+          <strong>{currency.format(totals.unpaidTotal)}</strong>
+        </div>
+        <div>
+          <span>Pay period total</span>
+          <strong>{currency.format(totals.payPeriodTotal + annualPayPeriodTotal)}</strong>
+        </div>
+      </section>
+
+      <section className="expenses-layout">
+        <div className="stacked-tables">
+          <div className="table-wrap">
+            <table>
+              <caption>
+                Monthly withdrawals from {formatDate(payPeriodStart)} to {formatDate(payPeriodEnd)}{' '}
+                are highlighted.
+              </caption>
+              <thead>
+                <tr>
+                  <th>Withdrawal</th>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Account</th>
+                  <th>Paid</th>
+                  <th>Pay Period</th>
+                  <th aria-label="Actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {sortedBills.map((bill) => (
+                  <tr className={bill.inPayPeriod ? 'in-period' : undefined} key={bill.id}>
+                    <td>{bill.bill}</td>
+                    <td>{bill.dueLabel}</td>
+                    <td className="amount">{currency.format(bill.amount)}</td>
+                    <td>{bill.account}</td>
+                    <td>
+                      <span className={bill.paid ? 'pill paid' : 'pill unpaid'}>
+                        {bill.paid ? 'Paid' : 'Open'}
+                      </span>
+                    </td>
+                    <td>{bill.inPayPeriod ? formatDate(bill.dueDate) : '-'}</td>
+                    <td className="actions">
+                      <button onClick={() => startEdit(bill)} type="button">
+                        Edit
+                      </button>
+                      <button
+                        className="ghost"
+                        onClick={() => requestRemoveBill(bill)}
+                        type="button"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={2}>Total</td>
+                  <td className="amount">{currency.format(totals.totalMonthlyExpenses)}</td>
+                  <td colSpan={4} />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div className="table-wrap">
+            <table>
+              <caption>Annual withdrawals due in this pay period.</caption>
+              <thead>
+                <tr>
+                  <th>Withdrawal</th>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Account</th>
+                  <th>Paid</th>
+                </tr>
+              </thead>
+              <tbody>
+                {annualWithdrawalsInPayPeriod.length > 0 ? (
+                  annualWithdrawalsInPayPeriod.map((withdrawal) => (
+                    <tr className="in-period" key={withdrawal.id}>
+                      <td>{withdrawal.bill}</td>
+                      <td>{formatDate(withdrawal.dueDate)}</td>
+                      <td className="amount">{currency.format(withdrawal.amount)}</td>
+                      <td>{withdrawal.account}</td>
+                      <td>
+                        <span className={withdrawal.paid ? 'pill paid' : 'pill unpaid'}>
+                          {withdrawal.paid ? 'Paid' : 'Open'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5}>No annual withdrawals in this pay period.</td>
+                  </tr>
+                )}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={2}>Pay period annual total</td>
+                  <td className="amount">{currency.format(annualPayPeriodTotal)}</td>
+                  <td colSpan={2} />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <form className="bill-form" onSubmit={submitBill}>
+          <h2>{formTitle}</h2>
+          <label>
+            Withdrawal
+            <input
+              onChange={(event) => updateForm('bill', event.target.value)}
+              required
+              value={form.bill}
+            />
+          </label>
+          <label>
+            Due day
+            <input
+              max={31}
+              min={1}
+              onChange={(event) => updateForm('dueDay', event.target.value)}
+              required
+              type="number"
+              value={form.dueDay}
+            />
+          </label>
+          <label>
+            Amount
+            <input
+              min={0}
+              onChange={(event) => updateForm('amount', event.target.value)}
+              required
+              step="0.01"
+              type="number"
+              value={form.amount}
+            />
+          </label>
+          <label>
+            Account
+            <input
+              onChange={(event) => updateForm('account', event.target.value)}
+              required
+              value={form.account}
+            />
+          </label>
+          <label className="checkbox-row">
+            <input
+              checked={form.paid}
+              onChange={(event) => updateForm('paid', event.target.checked)}
+              type="checkbox"
+            />
+            Paid
+          </label>
+          <div className="form-actions">
+            <button type="submit">{editingId ? 'Update Draft' : 'Add to Draft'}</button>
+            {editingId && (
+              <button className="ghost" onClick={cancelEdit} type="button">
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
+      </section>
+    </>
+  );
+}

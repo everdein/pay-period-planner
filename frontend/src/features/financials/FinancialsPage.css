@@ -29,31 +29,57 @@ h2 {
   margin: 0;
 }
 
-.tabs {
-  border-bottom: 1px solid #d7e0eb;
-  display: flex;
-  gap: 6px;
-  margin-bottom: 20px;
-  overflow-x: auto;
+.financials-layout {
+  align-items: start;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 220px minmax(0, 1fr);
 }
 
-.tabs button {
+.sidebar {
+  border-right: 1px solid #d7e0eb;
+  display: grid;
+  gap: 18px;
+  padding-right: 18px;
+}
+
+.sidebar-section p {
+  color: #536179;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.sidebar nav {
+  display: grid;
+  gap: 4px;
+}
+
+.sidebar button {
   background: transparent;
   border: 0;
-  border-bottom: 3px solid transparent;
-  border-radius: 0;
-  color: #536179;
-  padding: 10px 12px;
-  white-space: nowrap;
+  border-radius: 6px;
+  color: #344054;
+  justify-content: flex-start;
+  padding: 9px 10px;
+  text-align: left;
+  width: 100%;
 }
 
-.tabs button.active,
-.tabs button[aria-current="page"] {
-  border-bottom-color: #17365d;
+.sidebar button.active,
+.sidebar button[aria-current="page"] {
+  background: #d9eaf7;
   color: #17365d;
 }
 
-.withdrawals-header {
+.financials-content {
+  min-width: 0;
+}
+
+.withdrawals-header,
+.section-header {
   align-items: end;
   display: flex;
   gap: 24px;
@@ -61,7 +87,8 @@ h2 {
   margin-bottom: 20px;
 }
 
-.withdrawals-header p {
+.withdrawals-header p,
+.section-header p {
   color: #536179;
   margin: 6px 0 0;
 }
@@ -80,6 +107,7 @@ h2 {
 .save-actions {
   display: flex;
   gap: 8px;
+  justify-content: flex-end;
 }
 
 label {
@@ -90,7 +118,8 @@ label {
   gap: 6px;
 }
 
-input {
+input,
+select {
   border: 1px solid #c9d3e1;
   border-radius: 6px;
   color: #172033;
@@ -119,6 +148,11 @@ button.ghost {
   color: #17365d;
 }
 
+button.danger {
+  background: #9f1f16;
+  border-color: #9f1f16;
+}
+
 .summary-grid {
   display: grid;
   gap: 12px;
@@ -141,7 +175,16 @@ button.ghost {
 }
 
 .summary-grid strong {
+  display: block;
   font-size: 1.35rem;
+}
+
+.summary-grid small {
+  color: #536179;
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-top: 4px;
 }
 
 .expenses-layout {
@@ -153,6 +196,11 @@ button.ghost {
 
 .table-wrap {
   overflow-x: auto;
+}
+
+.stacked-tables {
+  display: grid;
+  gap: 20px;
 }
 
 table {
@@ -187,6 +235,14 @@ tr.in-period td {
   background: #f8fbff;
 }
 
+tr.current-income td {
+  background: #eef7ff;
+}
+
+tr.next-important-date td {
+  background: #fff8e5;
+}
+
 .amount {
   text-align: right;
 }
@@ -207,6 +263,31 @@ tr.in-period td {
 .unpaid {
   background: #fff2cc;
   color: #7a4d00;
+}
+
+.current {
+  background: #d9eaf7;
+  color: #17365d;
+}
+
+.received {
+  background: #e2f0d9;
+  color: #26651f;
+}
+
+.next {
+  background: #fff2cc;
+  color: #7a4d00;
+}
+
+.passed {
+  background: #e2f0d9;
+  color: #26651f;
+}
+
+.upcoming {
+  background: #f3f6fa;
+  color: #536179;
 }
 
 .actions {
@@ -240,6 +321,39 @@ tfoot td {
   gap: 8px;
 }
 
+.modal-backdrop {
+  align-items: center;
+  background: rgb(23 32 51 / 48%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 10;
+}
+
+.modal {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 18px 60px rgb(23 32 51 / 24%);
+  max-width: 420px;
+  padding: 20px;
+  width: min(100%, 420px);
+}
+
+.modal p {
+  color: #536179;
+  line-height: 1.5;
+  margin: 12px 0 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
 .status,
 .error {
   border-radius: 8px;
@@ -259,8 +373,37 @@ tfoot td {
 
   .app-header,
   .withdrawals-header,
-  .expenses-layout {
+  .section-header,
+  .expenses-layout,
+  .financials-layout {
     display: block;
+  }
+
+  .sidebar {
+    border-bottom: 1px solid #d7e0eb;
+    border-right: 0;
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    padding: 0 0 12px;
+  }
+
+  .sidebar-section {
+    flex: 0 0 auto;
+  }
+
+  .sidebar nav {
+    display: flex;
+  }
+
+  .sidebar button {
+    white-space: nowrap;
+  }
+
+  .app-header .save-actions {
+    justify-content: flex-start;
+    margin-top: 16px;
   }
 
   .pay-period,

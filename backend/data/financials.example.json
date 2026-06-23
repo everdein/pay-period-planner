@@ -19,6 +19,26 @@
       "paid": false
     }
   ],
+  "annualWithdrawals": [
+    {
+      "id": 1,
+      "bill": "Example Membership",
+      "month": 1,
+      "day": 15,
+      "amount": 99.0,
+      "account": "Checking",
+      "paid": false
+    },
+    {
+      "id": 2,
+      "bill": "Example Insurance Renewal",
+      "month": 7,
+      "day": 1,
+      "amount": 180.0,
+      "account": "Checking",
+      "paid": false
+    }
+  ],
   "assetAccounts": [
     {
       "id": 1,
@@ -36,5 +56,106 @@
       "company": "Example Bank",
       "amount": 5000.0
     }
+  ],
+  "debtAccounts": [
+    {
+      "id": 1,
+      "account": "Example Credit Card",
+      "company": "Example Bank",
+      "amount": 500.0
+    },
+    {
+      "id": 2,
+      "account": "Example Line of Credit",
+      "company": "Example Credit Union",
+      "amount": 0.0
+    }
+  ],
+  "incomeSummaryItems": [
+    {
+      "id": 1,
+      "category": "Net Income",
+      "interval": "Annual",
+      "amount": 75000.0
+    },
+    {
+      "id": 2,
+      "category": "Net Income",
+      "interval": "Month",
+      "amount": 6250.0
+    },
+    {
+      "id": 3,
+      "category": "Disposable Income",
+      "interval": "Bi-Weekly",
+      "amount": 1500.0
+    }
+  ],
+  "incomeEvents": [
+    { "id": 1, "date": "2026-01-09", "label": "Paycheck", "type": "Paycheck", "checkNumber": 1 },
+    { "id": 2, "date": "2026-01-23", "label": "Paycheck", "type": "Paycheck", "checkNumber": 2 },
+    { "id": 3, "date": "2026-02-06", "label": "Paycheck", "type": "Paycheck", "checkNumber": 3 },
+    {
+      "id": 4,
+      "date": "2026-02-11",
+      "label": "Tax Return",
+      "type": "Tax Return",
+      "checkNumber": null
+    },
+    { "id": 5, "date": "2026-02-20", "label": "Paycheck", "type": "Paycheck", "checkNumber": 4 },
+    {
+      "id": 6,
+      "date": "2026-03-06",
+      "label": "Paycheck + Merit",
+      "type": "Paycheck",
+      "checkNumber": 5
+    },
+    {
+      "id": 7,
+      "date": "2026-03-20",
+      "label": "Paycheck + Bonus",
+      "type": "Paycheck",
+      "checkNumber": 6
+    },
+    { "id": 8, "date": "2026-04-03", "label": "Paycheck", "type": "Paycheck", "checkNumber": 7 },
+    { "id": 9, "date": "2026-04-17", "label": "Paycheck", "type": "Paycheck", "checkNumber": 8 },
+    { "id": 10, "date": "2026-05-01", "label": "Paycheck", "type": "Paycheck", "checkNumber": 9 },
+    { "id": 11, "date": "2026-05-15", "label": "Paycheck", "type": "Paycheck", "checkNumber": 10 },
+    { "id": 12, "date": "2026-05-29", "label": "Paycheck", "type": "Paycheck", "checkNumber": 11 },
+    { "id": 13, "date": "2026-06-12", "label": "Paycheck", "type": "Paycheck", "checkNumber": 12 },
+    { "id": 14, "date": "2026-06-26", "label": "Paycheck", "type": "Paycheck", "checkNumber": 13 },
+    { "id": 15, "date": "2026-07-10", "label": "Paycheck", "type": "Paycheck", "checkNumber": 14 },
+    { "id": 16, "date": "2026-07-24", "label": "Paycheck", "type": "Paycheck", "checkNumber": 15 },
+    { "id": 17, "date": "2026-08-07", "label": "Paycheck", "type": "Paycheck", "checkNumber": 16 },
+    { "id": 18, "date": "2026-08-21", "label": "Paycheck", "type": "Paycheck", "checkNumber": 17 },
+    { "id": 19, "date": "2026-09-04", "label": "Paycheck", "type": "Paycheck", "checkNumber": 18 },
+    { "id": 20, "date": "2026-09-18", "label": "Paycheck", "type": "Paycheck", "checkNumber": 19 },
+    { "id": 21, "date": "2026-10-02", "label": "Paycheck", "type": "Paycheck", "checkNumber": 20 },
+    { "id": 22, "date": "2026-10-16", "label": "Paycheck", "type": "Paycheck", "checkNumber": 21 },
+    { "id": 23, "date": "2026-10-30", "label": "Paycheck", "type": "Paycheck", "checkNumber": 22 },
+    { "id": 24, "date": "2026-11-13", "label": "Paycheck", "type": "Paycheck", "checkNumber": 23 },
+    { "id": 25, "date": "2026-11-27", "label": "Paycheck", "type": "Paycheck", "checkNumber": 24 },
+    { "id": 26, "date": "2026-12-11", "label": "Paycheck", "type": "Paycheck", "checkNumber": 25 },
+    { "id": 27, "date": "2026-12-25", "label": "Paycheck", "type": "Paycheck", "checkNumber": 26 }
+  ],
+  "importantDates": [
+    { "id": 1, "date": "2026-01-01", "event": "New Years", "type": "Holiday" },
+    { "id": 2, "date": "2026-02-14", "event": "Valentine's Day", "type": "Holiday" },
+    { "id": 3, "date": "2026-05-07", "event": "Example Birthday", "type": "Birthday" },
+    { "id": 4, "date": "2026-05-23", "event": "Memorial Day Weekend", "type": "Company Day Off" },
+    { "id": 5, "date": "2026-05-24", "event": "Memorial Day Weekend", "type": "Company Day Off" },
+    { "id": 6, "date": "2026-05-25", "event": "Memorial Day", "type": "Holiday" },
+    { "id": 7, "date": "2026-07-04", "event": "4th of July", "type": "Holiday" },
+    { "id": 8, "date": "2026-08-09", "event": "Example Birthday", "type": "Birthday" },
+    { "id": 9, "date": "2026-08-28", "event": "Example Anniversary", "type": "Anniversary" },
+    { "id": 10, "date": "2026-09-05", "event": "Labor Day Weekend", "type": "Company Day Off" },
+    { "id": 11, "date": "2026-09-06", "event": "Labor Day Weekend", "type": "Company Day Off" },
+    { "id": 12, "date": "2026-09-07", "event": "Labor Day", "type": "Holiday" },
+    { "id": 13, "date": "2026-09-15", "event": "Example Anniversary", "type": "Anniversary" },
+    { "id": 14, "date": "2026-10-31", "event": "Halloween", "type": "Holiday" },
+    { "id": 15, "date": "2026-11-26", "event": "Thanksgiving", "type": "Holiday" },
+    { "id": 16, "date": "2026-12-24", "event": "Christmas Eve", "type": "Holiday" },
+    { "id": 17, "date": "2026-12-25", "event": "Christmas", "type": "Holiday" },
+    { "id": 18, "date": "2026-12-31", "event": "New Years Eve", "type": "Holiday" }
   ]
 }

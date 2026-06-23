@@ -117,58 +117,15 @@ http://localhost:8080
 
 ## Available endpoints
 
-### Get hello message
-
-```http
-GET /api/getHello
-```
-
-Example response:
-
-```json
-{
-  "message": "Hello from BACKEND!",
-  "source": "backend",
-  "timestamp": 1715890000000
-}
-```
-
----
-
-### Post hello message
-
-```http
-POST /api/postHello
-```
-
-Example request:
-
-```json
-{
-  "message": "Hello backend"
-}
-```
-
-Example response:
-
-```json
-{
-  "message": "Hello backend",
-  "source": "backend",
-  "timestamp": 1715890000000
-}
-```
-
----
-
 ### Get financial snapshot
 
 ```http
 GET /api/financials/expenses
 ```
 
-Returns the current pay period, monthly withdrawals, asset category totals, and
-overall tracked-assets total.
+Returns the current pay period, withdrawals, income summaries, income calendar
+events, asset category totals, debt balances, important dates, and calculated
+overview totals.
 
 ---
 
@@ -302,8 +259,13 @@ The financials service calculates:
 - paid total
 - unpaid total
 - pay period total
+- annual withdrawal total
+- annual withdrawals due in the active pay period
 - per-category asset totals
 - total tracked assets
+- total debt
+- net worth
+- income calendar monthly paycheck counts
 
 Pay periods are stored as start and end dates. When a snapshot is read, the
 service advances or rewinds the stored pay period window to include the current
@@ -312,6 +274,15 @@ date while preserving the original period length.
 Withdrawal due dates are derived from each row's due day and the active pay
 period month. Days beyond the end of a month are clamped to the last valid day
 of that month.
+
+Annual withdrawals are stored as recurring month/day values. The service
+projects them into the active pay period year so they can be displayed as
+`MM/DD/YYYY` and included in pay period planning.
+
+The persisted snapshot currently includes monthly bills, annual withdrawals,
+asset accounts, debt accounts, income summary items, income calendar events,
+and important dates. This is intentionally a single-user local aggregate until
+the app needs database-backed collaboration or integrations.
 
 ---
 
