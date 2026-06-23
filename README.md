@@ -62,8 +62,11 @@ end-to-end-app/
 ## Requirements
 
 - Java 25+
-- Node.js 20+
+- Node.js 24+
 - npm 10+
+
+For backend commands, make sure `JAVA_HOME` points to the Java 25 JDK. Maven uses
+`JAVA_HOME`, even when `java -version` on your PATH reports a different version.
 
 Verify tools are available:
 
@@ -71,6 +74,7 @@ Verify tools are available:
 java -version
 node -v
 npm -v
+cd backend && mvnw.cmd -v
 ```
 
 ---

@@ -48,7 +48,7 @@ engineering patterns that can scale over time.
 
 ## Requirements
 
-- Node.js 20+
+- Node.js 24+
 - npm 10+
 - Backend application running locally
 
