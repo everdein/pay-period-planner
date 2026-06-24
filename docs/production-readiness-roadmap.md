@@ -1,24 +1,22 @@
 # Production Readiness Roadmap
 
 This roadmap tracks the code review findings that should not get lost between
-feature work. Items are ordered by expected return on investment and production
-risk reduction.
+feature work. The current strategy is organized by product maturity rather than
+by isolated technical concern.
 
-## Phase 1 - Do Now
+## Completed Foundations
 
 - [x] Make Snyk fail CI on high-severity issues instead of reporting only.
 - [x] Add frontend coverage thresholds so test coverage cannot quietly regress.
-- [x] Document the current API as a versioned financial snapshot aggregate.
-- [x] Add projection unit tests for rent reserves, debt payoff, HYSA transfer,
-      annual withdrawals, next pay period math, and date edge cases.
+- [x] Add backend JaCoCo coverage reporting and verification.
+- [x] Document the financials API as a versioned snapshot aggregate.
 - [x] Extract projection logic from `FinancialsPage.tsx` into a pure domain
       module.
+- [x] Add projection unit tests for rent reserves, debt payoff, HYSA transfer,
+      annual withdrawals, next pay period math, and date edge cases.
 - [x] Replace fragile label guessing with protected projection anchors for rent,
       rent reserve, and primary paycheck rows.
-
-## Phase 2 - Before Real Users
-
-- [x] Replace floating-point money values with integer cents or `BigDecimal`.
+- [x] Replace backend floating-point money values with `BigDecimal`.
 - [x] Add DTO validation with `@Valid` and Bean Validation annotations.
 - [x] Centralize API error handling with consistent problem responses.
 - [x] Rename API routes to snapshot-oriented endpoints under `/api/v1/financials`.
@@ -27,34 +25,45 @@ risk reduction.
 - [x] Improve modal accessibility with focus management, Escape handling, and
       focus return.
 
-## Phase 3 - Production Readiness
+## Phase A - Make It Real
 
-- [ ] Add authentication and authorization for all financial APIs.
-- [ ] Move persistence to PostgreSQL with migrations and transactions.
-- [ ] Add optimistic concurrency or snapshot versioning.
-- [ ] Add end-to-end tests for core financial workflows.
-- [x] Add backend coverage reporting and thresholds.
-- [ ] Harden CI/CD with dependency review, CodeQL, cache consistency, PR coverage
-      summaries, and better job independence.
-- [ ] Add production configuration guardrails for CORS, actuator exposure,
-      logging, request size limits, and secure defaults.
-
-## Phase 4 - Future Scaling
-
-- [ ] Introduce API versioning before external clients depend on the contract.
-- [ ] Add audit/history support for financial changes and projections.
-- [ ] Add recurring income/payday generation.
+- [ ] Add PostgreSQL persistence.
+- [ ] Introduce a clearer backend domain model around financial records.
+- [ ] Add CRUD APIs for financial records beyond the existing bill endpoints.
+- [ ] Add recurring payday generation.
 - [ ] Add CSV/XLSX import and export tooling.
+
+## Phase B - Make It Safe
+
+- [ ] Add snapshot versioning or optimistic concurrency.
+- [ ] Harden and complete validation/error handling across all future endpoints.
+- [ ] Add authentication and authorization for all financial APIs.
+- [ ] Add production configuration guardrails for CORS, actuator exposure,
+      logging, request size limits, profile-specific settings, and secure
+      defaults.
+
+## Phase C - Make It Impressive
+
+- [ ] Add Playwright end-to-end tests for core financial workflows.
+- [ ] Add audit/history support for financial changes and projections.
+- [ ] Add PR coverage summaries.
+- [ ] Add CodeQL and GitHub dependency review.
+
+## Future Scaling
+
 - [ ] Add observability with structured logs, request IDs, frontend error
       reporting, and basic metrics.
 - [ ] Split frontend draft state by domain feature.
-- [ ] Add multi-user support after auth and database foundations are mature.
+- [ ] Add multi-user support after auth and database ownership foundations are
+      mature.
 
 ## Current Priority
 
-Start with Phase 1 in this order:
+Start Phase A with a narrow PostgreSQL foundation:
 
-1. Snyk and coverage CI gates.
-2. Snapshot terminology in documentation.
-3. Projection logic extraction plus focused unit tests.
-4. Protected projection anchors to remove fragile label guessing.
+1. Add database dependencies and profile-based configuration.
+2. Add migrations for the current financial snapshot/domain tables.
+3. Keep the existing JSON repository available as a local fallback until the
+   database-backed repository is ready.
+4. Move one read/write path at a time so the current UI keeps working during
+   the transition.

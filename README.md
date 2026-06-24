@@ -31,6 +31,7 @@ patterns and workflows that can scale over time.
 - Spring Boot 4
 - Java 21
 - Maven
+- PostgreSQL foundation with Flyway migrations
 
 ### Tooling / Quality
 
@@ -229,7 +230,7 @@ The Income Summary view stores `Net Income / Bi-Weekly` as the source value.
 Annual, monthly, weekly, and disposable income rows are calculated from that
 source and the current monthly withdrawal total.
 
-Financial data is stored locally by the backend in:
+Financial data is stored locally by the backend in JSON by default:
 
 ```text
 backend/data/financials.local.json
@@ -244,6 +245,21 @@ backend/data/financials.example.json
 
 If the local file does not exist, the backend creates it from the example file
 on startup.
+
+PostgreSQL is being introduced as the production persistence path. The default
+profile intentionally remains JSON-backed so the app still runs without external
+infrastructure. To use the database foundation, run the backend with the
+`postgres` Spring profile and provide connection settings:
+
+```properties
+SPRING_PROFILES_ACTIVE=postgres
+DATABASE_URL=jdbc:postgresql://localhost:5432/end_to_end_app
+DATABASE_USERNAME=app
+DATABASE_PASSWORD=app
+```
+
+The `postgres` profile enables Flyway migrations from
+`backend/src/main/resources/db/migration`.
 
 ---
 
@@ -351,10 +367,10 @@ Each subproject README is intentionally self-contained.
 
 Current intentional limitations:
 
-- no database
+- PostgreSQL schema exists, but the active repository is still JSON-backed by default
 - no authentication
 - no routing
-- local file-backed persistence only
+- database-backed CRUD is not implemented yet
 - no deployment infrastructure
 - no external financial website integrations
 

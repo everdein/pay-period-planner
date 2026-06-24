@@ -16,6 +16,7 @@ as the codebase evolves.
 | [0004](0004-model-financials-as-a-single-snapshot-aggregate.md) | Accepted | Model financials as a single snapshot aggregate |
 | [0005](0005-enforce-domain-invariants-with-ensure-functions.md) | Accepted | Enforce domain invariants with ensure functions |
 | [0006](0006-add-backend-production-readiness-guardrails.md)     | Accepted | Add backend production readiness guardrails     |
+| [0007](0007-introduce-postgresql-for-financial-persistence.md)  | Accepted | Introduce PostgreSQL for financial persistence  |
 
 ## Template
 

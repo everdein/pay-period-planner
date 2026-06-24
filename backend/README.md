@@ -9,7 +9,7 @@ focused on:
 - REST API design
 - layered architecture
 - DTO usage
-- file-backed local persistence
+- file-backed local persistence with a PostgreSQL migration path
 - local development workflows
 - backend tooling and CI integration
 
@@ -27,6 +27,9 @@ engineering patterns and workflows that can scale over time.
 - Spring MVC
 - Maven
 - Jackson
+- Spring JDBC
+- PostgreSQL
+- Flyway
 
 ### Tooling
 
@@ -44,7 +47,7 @@ engineering patterns and workflows that can scale over time.
 ## Requirements
 
 - Java 21+
-- No database required
+- No database required for the default JSON-backed profile
 - No external infrastructure required
 
 Verify Java installation:
@@ -160,7 +163,7 @@ though the current UI saves the full snapshot as the source of truth.
 
 ## Financial data storage
 
-Financial data is stored in a local JSON file:
+Financial data is stored in a local JSON file by default:
 
 ```text
 backend/data/financials.local.json
@@ -184,6 +187,34 @@ financials.data.path=data/financials.local.json
 financials.example-data.path=data/financials.example.json
 ```
 
+## PostgreSQL profile
+
+PostgreSQL is the planned production persistence path. The current application
+still uses the JSON repository by default, but a database profile and initial
+schema migrations are available for the migration work.
+
+Run with the `postgres` profile to enable datasource auto-configuration and
+Flyway:
+
+```sh
+./mvnw spring-boot:run
+```
+
+Connection settings:
+
+```properties
+SPRING_PROFILES_ACTIVE=postgres
+DATABASE_URL=jdbc:postgresql://localhost:5432/end_to_end_app
+DATABASE_USERNAME=app
+DATABASE_PASSWORD=app
+```
+
+The initial schema is managed in:
+
+```text
+src/main/resources/db/migration/V1__create_financials_schema.sql
+```
+
 ---
 
 ## Project structure
@@ -201,6 +232,7 @@ backend/
 |   |-- com/example/backend/service/
 |   `-- com/example/backend/BackendApplication.java
 |-- src/test/java/
+|-- src/main/resources/db/migration/
 |-- pom.xml
 `-- README.md
 ```
@@ -382,8 +414,8 @@ The backend participates in repository CI pipelines for:
 
 Intentional simplifications:
 
-- no database
-- local JSON persistence only
+- JSON remains the default active repository
+- PostgreSQL schema exists, but database-backed CRUD is not implemented yet
 - no authentication
 - no authorization
 - no external APIs
