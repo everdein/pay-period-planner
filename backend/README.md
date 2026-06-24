@@ -104,17 +104,35 @@ From the `backend` directory:
 
 ### Development profile (recommended)
 
-```sh
-./mvnw -Pdev spring-boot:run
+```powershell
+$env:SPRING_PROFILES_ACTIVE="postgres"
+$env:DATABASE_URL="jdbc:postgresql://localhost:5432/financial_app"
+$env:DATABASE_USERNAME="financial_app_user"
+$env:DATABASE_PASSWORD="financial_app_password"
+
+./mvnw.cmd -Pdev spring-boot:run
 ```
 
 The `dev` profile enables Spring Boot DevTools for improved local development
-experience.
+experience. The `postgres` Spring profile enables PostgreSQL persistence using
+the dedicated `financial_app_user` account.
 
 Backend URL:
 
 ```text
 http://localhost:8080
+```
+
+The frontend runs separately at:
+
+```text
+http://localhost:3000/
+```
+
+From the repository root, the PostgreSQL-backed backend can also be started with:
+
+```powershell
+.\scripts\start-backend-postgres.ps1
 ```
 
 ---
@@ -444,6 +462,26 @@ This avoids local CORS configuration requirements during development.
 ```sh
 ./mvnw clean verify
 ```
+
+## PostgreSQL integration test
+
+The PostgreSQL snapshot store has an opt-in integration test so normal builds do
+not require a local database. The test creates and drops its own schema named
+`financial_snapshot_store_test` inside the configured database.
+
+PowerShell:
+
+```powershell
+$env:RUN_POSTGRES_INTEGRATION_TESTS="true"
+$env:DATABASE_URL="jdbc:postgresql://localhost:5432/financial_app"
+$env:DATABASE_USERNAME="financial_app_user"
+$env:DATABASE_PASSWORD="financial_app_password"
+
+./mvnw test "-Dtest=PostgresFinancialsSnapshotStoreIT" "-Djacoco.skip=true"
+```
+
+The `jacoco.skip` flag keeps this local database smoke test focused and avoids
+Java agent noise when running on newer local JDKs.
 
 ---
 

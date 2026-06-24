@@ -24,10 +24,12 @@ by isolated technical concern.
 - [x] Add controller and persistence tests.
 - [x] Improve modal accessibility with focus management, Escape handling, and
       focus return.
+- [x] Add PostgreSQL snapshot persistence.
+- [x] Add opt-in PostgreSQL snapshot store integration test.
+- [x] Add documented PostgreSQL backend startup helper.
 
 ## Phase A - Make It Real
 
-- [x] Add PostgreSQL snapshot persistence.
 - [ ] Add granular PostgreSQL CRUD persistence for financial records.
 - [ ] Introduce a clearer backend domain model around financial records.
 - [ ] Add CRUD APIs for financial records beyond the existing bill endpoints.
@@ -60,11 +62,12 @@ by isolated technical concern.
 
 ## Current Priority
 
-Start Phase A with a narrow PostgreSQL foundation:
+Next highest-value items:
 
-1. Add database dependencies and profile-based configuration.
-2. Add migrations for the current financial snapshot/domain tables.
-3. Keep the existing JSON repository available as a local fallback until the
-   database-backed repository is ready.
-4. Move one read/write path at a time so the current UI keeps working during
-   the transition.
+1. Add snapshot versioning or optimistic concurrency so two sessions cannot
+   silently overwrite each other.
+2. Add export/backup support for the current financial snapshot.
+3. Add Playwright end-to-end coverage for load, edit, save, refresh, and delete
+   confirmation workflows.
+4. Add recurring payday generation so yearly income calendars do not need to be
+   manually entered.

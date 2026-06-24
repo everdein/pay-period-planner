@@ -106,9 +106,8 @@ Run the backend and frontend in separate terminals during local development.
 
 Backend:
 
-```sh
-cd backend
-./mvnw spring-boot:run -Pdev
+```powershell
+.\scripts\start-backend-postgres.ps1
 ```
 
 Backend URL:
@@ -119,7 +118,7 @@ http://localhost:8080
 
 Frontend:
 
-```sh
+```powershell
 cd frontend
 npm run dev
 ```
@@ -129,6 +128,9 @@ Frontend URL:
 ```text
 http://localhost:3000
 ```
+
+Starting the backend without `SPRING_PROFILES_ACTIVE=postgres` uses the default
+JSON-backed local file store instead of PostgreSQL.
 
 ## Request flow
 
