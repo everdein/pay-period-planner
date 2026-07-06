@@ -14,6 +14,7 @@
     "HYSA",
     "Initializr",
     "jacoco",
+    "javac",
     "JSX",
     "lint-staged",
     "Maven",

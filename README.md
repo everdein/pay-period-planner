@@ -221,7 +221,7 @@ Use this when developing or testing the database-backed persistence path.
 The preferred setup path is the repository setup script:
 
 ```powershell
-cd C:\Users\Mattwo\dev\end-to-end-app
+cd C:\Users\<you>\dev\end-to-end-app
 .\scripts\setup-local-postgres.ps1
 ```
 
