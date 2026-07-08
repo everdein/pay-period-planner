@@ -1,0 +1,4 @@
+interface:
+  display_name: "Inspect Financial PostgreSQL"
+  short_description: "Inspect local financial data read-only"
+  default_prompt: "Use $inspect-financial-postgres to inspect the local database safely."

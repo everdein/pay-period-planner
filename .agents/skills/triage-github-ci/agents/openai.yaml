@@ -1,0 +1,4 @@
+interface:
+  display_name: "Triage GitHub CI"
+  short_description: "Diagnose GitHub Actions and Snyk failures"
+  default_prompt: "Use $triage-github-ci to diagnose the current pipeline failures."
