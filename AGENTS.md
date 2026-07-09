@@ -48,6 +48,9 @@ Use `docs/known-limitations.md` before changing an intentional simplification;
 update its status and add an ADR when a limitation is resolved architecturally.
 Use `docs/troubleshooting-decision-tree.md` for non-destructive, symptom-driven
 diagnosis and escalation evidence.
+Use `docs/mcp-integration-guide.md` for GitHub MCP, external connector,
+hosted-action, PostgreSQL MCP, browser/Playwright, Snyk MCP/API,
+branch-cleanup, and future integration boundaries.
 
 ## PostgreSQL Profiles and Setup
 
@@ -86,6 +89,12 @@ diagnosis and escalation evidence.
 - Prefer existing naming and package patterns. Avoid broad cleanup mixed with a
   behavioral change.
 - Never log secrets or full personal financial snapshots.
+- Use GitHub MCP or `gh` for scoped repository reads when live PR, CI, issue, or
+  branch state is required. External writes require explicit user intent.
+- Use `financial_app_reader` or another dedicated read-only PostgreSQL role for
+  MCP/reporting tools; never connect external tools with the application owner.
+- Keep Snyk MCP/API setup user-scoped or CI-scoped. Do not commit Snyk tokens,
+  personal MCP config, or policy ignores without an explicit owner decision.
 
 ## Commands
 
@@ -98,6 +107,8 @@ From the repository root:
 .\scripts\verify-local.ps1 -IncludePostgres
 .\scripts\run-security-checks.ps1
 .\scripts\inspect-postgres.ps1
+.\scripts\setup-postgres-readonly-role.ps1
+.\scripts\run-browser-checks.ps1
 ```
 
 Run `.\scripts\run-security-checks.ps1` only when authenticated tooling and

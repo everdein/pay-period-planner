@@ -195,14 +195,18 @@ changes in a new ADR.
 - **Revisit when:** CI receives an ephemeral PostgreSQL service or Testcontainers
   strategy.
 
-### LIM-019 — No browser end-to-end workflow suite
+### LIM-019 — Browser workflow coverage is smoke-level
 
 - **Status:** Known gap
-- **Impact:** Component tests do not prove the Vite proxy, live backend,
-  navigation, focus behavior, and save/reload workflow together.
-- **Current mitigation:** Testing Library coverage, API/service tests, and
-  manual browser verification for UI changes.
-- **Revisit when:** Browser tooling is integrated or release frequency grows.
+- **Impact:** The Playwright smoke test proves Vite startup, browser
+  navigation, mocked API loading, draft editing, and save payload construction,
+  but it does not prove the Vite proxy, live backend, PostgreSQL profile, or
+  full save/reload workflow together.
+- **Current mitigation:** Testing Library coverage, API/service tests,
+  `scripts/run-browser-checks.ps1`, and manual browser verification for UI
+  changes.
+- **Revisit when:** Live-backend browser tests are added or release frequency
+  grows.
 
 ### LIM-020 — Accessibility automation is partial
 
@@ -219,9 +223,10 @@ changes in a new ADR.
 - **Status:** Known reproducibility gap
 - **Impact:** A new global CLI release can change project discovery, output, or
   failure behavior without a repository change.
-- **Current mitigation:** Hosted high-severity gate and CI triage workflow.
-- **Revisit when:** The scan job is next modified; pin or otherwise standardize
-  the scanner.
+- **Current mitigation:** Hosted high-severity gate, CI triage workflow, local
+  security script, and documented Snyk MCP/API boundaries.
+- **Revisit when:** The scan job is next modified or a Snyk API automation is
+  added; pin or otherwise standardize the scanner.
 
 ### LIM-022 — Deployment is a placeholder
 

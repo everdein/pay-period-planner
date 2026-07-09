@@ -42,6 +42,7 @@ and projection values are not stored.
 | Profile selection                   | `application*.properties` and Spring `@Profile` |
 | Schema history                      | Ordered files under `db/migration/`             |
 | Local role/database creation        | `scripts/setup-local-postgres.ps1`              |
+| Read-only role creation             | `scripts/setup-postgres-readonly-role.ps1`      |
 | Read-only diagnosis                 | `scripts/inspect-postgres.ps1`                  |
 | Personal-data custody               | The local developer/operator                    |
 
@@ -161,7 +162,26 @@ model.
 ### Read-only inspection role
 
 Use a separate login for MCP servers, reporting, or tools that do not need to
-save. An administrator can grant a pre-created role:
+save. Create or update the local read-only role with:
+
+```powershell
+.\scripts\setup-postgres-readonly-role.ps1
+```
+
+The script prompts for the PostgreSQL administrator password and the
+read-only-role password, then:
+
+1. Creates or updates `financial_app_reader`.
+2. Grants database `CONNECT`.
+3. Grants `USAGE` on `public`.
+4. Grants `SELECT` on existing public tables.
+5. Grants default `SELECT` privileges for future tables created by
+   `financial_app_user`.
+6. Sets the role's default transaction mode to read-only for `financial_app`.
+7. Verifies the role cannot create database/schema objects or write public
+   tables.
+
+Manual equivalent SQL:
 
 ```sql
 GRANT CONNECT ON DATABASE financial_app TO financial_app_reader;
@@ -185,6 +205,10 @@ ROLLBACK;
 Read-only tooling must not receive `CREATE`, `INSERT`, `UPDATE`, `DELETE`,
 `TRUNCATE`, sequence mutation, or function-execution privileges beyond what it
 explicitly needs.
+
+Use `financial_app_reader` for PostgreSQL MCP servers. Use
+`financial_app_user` only for the Spring Boot application runtime and local
+schema setup.
 
 ## Migrations
 

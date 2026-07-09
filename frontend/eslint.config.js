@@ -12,7 +12,7 @@ import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
   {
-    ignores: ['dist'],
+    ignores: ['dist', 'playwright-report', 'test-results'],
   },
 
   js.configs.recommended,
@@ -93,6 +93,13 @@ export default defineConfig([
 
       // Accessibility
       'jsx-a11y/anchor-is-valid': 'warn',
+    },
+  },
+
+  {
+    files: ['*.config.{js,ts}'],
+    languageOptions: {
+      globals: globals.node,
     },
   },
 

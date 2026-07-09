@@ -51,7 +51,8 @@ by isolated technical concern.
 
 ## Phase C - Make It Impressive
 
-- [ ] Add Playwright end-to-end tests for core financial workflows.
+- [ ] Expand Playwright from synthetic smoke coverage to live-backend
+      end-to-end tests for core financial workflows.
 - [ ] Add audit/history support for financial changes and projections.
 - [ ] Add PR coverage summaries.
 - [ ] Add CodeQL and GitHub dependency review.

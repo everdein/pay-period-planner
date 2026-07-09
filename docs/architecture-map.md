@@ -177,6 +177,7 @@ manual placeholder, not production infrastructure.
 - Change verification: `docs/verification-matrix.md`
 - Accepted gaps and revisit triggers: `docs/known-limitations.md`
 - Symptom-driven diagnosis: `docs/troubleshooting-decision-tree.md`
+- External connector and MCP boundaries: `docs/mcp-integration-guide.md`
 - API and backend operations: `backend/README.md`
 - Frontend development: `frontend/README.md`
 - Architectural decisions: `docs/adr/`

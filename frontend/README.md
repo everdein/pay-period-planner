@@ -208,6 +208,22 @@ npm run preview
 npm run test
 ```
 
+### Run browser workflow smoke tests
+
+```sh
+npm run test:e2e
+```
+
+On a new machine, install the local Playwright Chromium browser first:
+
+```sh
+npm run test:e2e:install
+```
+
+The current smoke test starts the Vite dev server, mocks
+`/api/v1/financials` with synthetic data, edits a monthly withdrawal, and
+verifies the save payload. It does not require the Spring Boot backend.
+
 ### Run tests in watch mode
 
 ```sh

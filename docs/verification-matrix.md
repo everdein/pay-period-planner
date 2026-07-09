@@ -42,6 +42,7 @@ skipped; never silently omit a relevant row.
 | GitHub workflow             | Run exact local equivalents                           | Hosted PR run required                                    | Events, permissions, job dependencies, cache paths, secrets       |
 | Security configuration      | Focused configuration inspection                      | Authenticated Snyk scan                                   | Tool/auth state, severity threshold, fixed versions               |
 | Accessibility               | JSX accessibility lint plus focused interaction tests | Full local verification                                   | Manual/browser keyboard and focus review when behavior changed    |
+| Browser workflow            | `scripts/run-browser-checks.ps1`                      | Full local verification plus browser smoke when relevant  | Synthetic data, screenshots/traces only when intentionally shared |
 | Cross-layer feature         | Narrow checks in every affected layer                 | Full local verification; add PostgreSQL if applicable     | End-to-end contract and persistence parity                        |
 
 ## Canonical Commands
@@ -53,6 +54,7 @@ skipped; never silently omit a relevant row.
 .\scripts\check-environment.ps1 -IncludePostgres
 .\scripts\bootstrap-local.ps1
 .\scripts\bootstrap-local.ps1 -IncludePostgres
+.\scripts\setup-postgres-readonly-role.ps1
 ```
 
 Bootstrap installs dependencies. The PostgreSQL option also creates or updates
@@ -65,6 +67,7 @@ npm --prefix frontend run type-check
 npm --prefix frontend run lint
 npm --prefix frontend run test
 npm --prefix frontend run test -- --coverage
+npm --prefix frontend run test:e2e
 npm --prefix frontend run build
 ```
 
@@ -116,6 +119,19 @@ PostgreSQL verification is required for changes to:
 - Database role assumptions
 - JSON/PostgreSQL parity
 
+### Browser workflow
+
+```powershell
+.\scripts\run-browser-checks.ps1
+.\scripts\run-browser-checks.ps1 -InstallBrowsers
+```
+
+The browser smoke test starts Vite, mocks `/api/v1/financials` with synthetic
+data, edits a monthly withdrawal, and verifies the save request payload. It is
+required for changes to browser-only behavior, route interception, visual
+workflow assumptions, or the Playwright harness. It does not replace backend
+API, persistence, or full local verification.
+
 ### Security
 
 ```powershell
@@ -126,6 +142,12 @@ This requires network access, the Snyk CLI, and `SNYK_TOKEN`. It runs root and
 frontend npm audits plus authenticated Snyk discovery across all projects.
 Missing tooling/authentication or an unavailable service is a skipped/failed
 check, not a pass.
+
+Snyk MCP/API usage is supporting triage only. It can explain findings or
+propose upgrades, but it does not replace the security script or hosted CI
+gate. When MCP/API is used, report the Snyk tool, profile, auth state, scanned
+manifest, advisory identifier, fixed version, and skipped/unavailable checks
+without exposing token values.
 
 ### Documentation and diff hygiene
 
@@ -147,8 +169,10 @@ scripts/configuration.
 | `verify-local.ps1`                  | Build, test, and coverage output; may create ignored local JSON if absent | None by default                                    | Maven metadata/dependencies may need network |
 | `verify-local.ps1 -IncludePostgres` | Same as above                                                             | Creates/truncates/drops isolated test schema       | Local database credentials                   |
 | `inspect-postgres.ps1`              | None                                                                      | Explicit read-only transactions                    | Local database credentials                   |
+| `run-browser-checks.ps1`            | Playwright reports/traces in ignored paths                                | None                                               | May install browser binaries with flag       |
 | `run-security-checks.ps1`           | Tool caches/reporting side effects                                        | None                                               | Network and Snyk token                       |
 | `setup-local-postgres.ps1`          | None                                                                      | Creates/updates role, database, and schema         | PostgreSQL administrator credential          |
+| `setup-postgres-readonly-role.ps1`  | None                                                                      | Creates/updates read-only role and grants          | PostgreSQL administrator credential          |
 | `start-backend-postgres.ps1`        | Logs/runtime output                                                       | Seeds active snapshot when empty; later app writes | Application database credential              |
 
 Do not run mutating or credentialed checks solely to make a checklist look

@@ -260,7 +260,9 @@ document row. Do not backfill normalized tables as a troubleshooting step.
 2. Confirm whether the caller should be the write-capable app role or a
    read-only inspection role.
 3. Grant only the missing intended privilege through an administrator.
-4. Never make an MCP/reporting role the database owner.
+4. Use `.\scripts\setup-postgres-readonly-role.ps1` for the local read-only
+   inspection role.
+5. Never make an MCP/reporting role the database owner.
 
 ## 5. Missing or Unexpected Data
 

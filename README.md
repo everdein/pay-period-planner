@@ -605,6 +605,22 @@ This runs npm audits and an authenticated Snyk scan. It requires the Snyk CLI,
 `SNYK_TOKEN`, and network access; CI remains the canonical Snyk environment.
 The older `.\scripts\verify.ps1` entry point remains as a compatibility wrapper.
 
+Run the opt-in browser workflow smoke test with Playwright:
+
+```powershell
+.\scripts\run-browser-checks.ps1
+```
+
+On a new machine, install the local Playwright Chromium browser first:
+
+```powershell
+.\scripts\run-browser-checks.ps1 -InstallBrowsers
+```
+
+The current browser smoke uses synthetic mocked API data to validate browser
+navigation, draft editing, and save request construction without touching
+personal data or requiring the backend process.
+
 Inspect the local PostgreSQL schema and snapshot metadata without modifying
 data:
 
@@ -614,6 +630,18 @@ data:
 
 The inspection script wraps its queries in an explicit read-only transaction
 and prints aggregate metadata rather than the full financial snapshot.
+
+Create or update a dedicated read-only PostgreSQL role for MCP servers,
+reporting, and inspection tools:
+
+```powershell
+.\scripts\setup-postgres-readonly-role.ps1
+```
+
+The script prompts for the PostgreSQL administrator password and the read-only
+role password. Do not commit or paste those credentials. Use
+`financial_app_reader` for external inspection tools, not the write-capable
+application role.
 
 ---
 
@@ -630,6 +658,11 @@ rules, and completion criteria. Repository-scoped skills under
 
 These workflows complement deterministic scripts; they do not replace tests,
 review, or authenticated security scans.
+
+Use `docs/mcp-integration-guide.md` for GitHub MCP, connector, PR, CI,
+PostgreSQL MCP, browser/Playwright, Snyk MCP/API, and branch-cleanup
+boundaries. Use `docs/snyk-integration-assessment.md` for the Snyk MCP/API
+feasibility decision and token-handling rules.
 
 ---
 

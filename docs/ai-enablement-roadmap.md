@@ -46,10 +46,10 @@ beyond the repository skills and review checklist.
 
 ## P3: External Integrations
 
-- [ ] GitHub MCP setup and read/write boundaries
-- [ ] Read-only PostgreSQL MCP role and setup
-- [ ] Browser/Playwright workflow testing
-- [ ] Snyk MCP/API feasibility assessment
+- [x] GitHub MCP setup and read/write boundaries
+- [x] Read-only PostgreSQL MCP role and setup
+- [x] Browser/Playwright workflow testing
+- [x] Snyk MCP/API feasibility assessment
 - [ ] Observability integration when production telemetry exists
 
 Filesystem MCP is intentionally omitted because agents already have workspace
