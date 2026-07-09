@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Bootstrap End-to-End App'
+  short_description: 'Prepare local tools, dependencies, and PostgreSQL'
+  default_prompt: 'Use $bootstrap-end-to-end-app to prepare this repository for local development.'

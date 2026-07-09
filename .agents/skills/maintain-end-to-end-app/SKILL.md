@@ -17,7 +17,8 @@ description: Implement, refactor, debug, or verify changes in the end-to-end-app
    - storage behavior in the backend `repository/` package.
 5. Add focused regression tests for defects and contract tests for boundary
    changes.
-6. Run targeted checks while iterating, then run `.\scripts\verify.ps1`.
+6. Run targeted checks while iterating, then run
+   `.\scripts\verify-local.ps1`.
 7. Add `-IncludePostgres` when PostgreSQL configuration, SQL, serialization, or
    storage behavior changes.
 8. Report skipped checks and residual risks explicitly.

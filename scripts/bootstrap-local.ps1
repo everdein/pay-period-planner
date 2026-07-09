@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
-& (Join-Path $PSScriptRoot "check-environment.ps1")
+& (Join-Path $PSScriptRoot "check-environment.ps1") -IncludePostgres:$IncludePostgres
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

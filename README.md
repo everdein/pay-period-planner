@@ -570,13 +570,11 @@ cd backend
 
 ### PostgreSQL profile smoke test
 
-After local PostgreSQL setup, this command verifies that the Spring Boot test
-context can start with the `postgres` profile:
+After local PostgreSQL setup, this command runs the snapshot-store integration
+tests in the dedicated `financial_snapshot_store_test` schema:
 
 ```powershell
-cd backend
-$env:SPRING_PROFILES_ACTIVE="postgres"
-.\mvnw.cmd -B test
+.\scripts\verify-local.ps1 -IncludePostgres
 ```
 
 ---
@@ -587,19 +585,25 @@ Run the local equivalent of the non-security CI checks from the repository
 root:
 
 ```powershell
-.\scripts\verify.ps1
+.\scripts\verify-local.ps1
 ```
 
 When a change affects PostgreSQL configuration, serialization, migrations, or
 storage behavior:
 
 ```powershell
-.\scripts\verify.ps1 -IncludePostgres
+.\scripts\verify-local.ps1 -IncludePostgres
 ```
 
-The optional `-IncludeSecurity` flag also runs npm audits and an authenticated
-Snyk scan. It requires the Snyk CLI and `SNYK_TOKEN`; CI remains the canonical
-Snyk environment.
+Run networked security checks separately:
+
+```powershell
+.\scripts\run-security-checks.ps1
+```
+
+This runs npm audits and an authenticated Snyk scan. It requires the Snyk CLI,
+`SNYK_TOKEN`, and network access; CI remains the canonical Snyk environment.
+The older `.\scripts\verify.ps1` entry point remains as a compatibility wrapper.
 
 Inspect the local PostgreSQL schema and snapshot metadata without modifying
 data:

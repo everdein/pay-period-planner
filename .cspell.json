@@ -17,6 +17,7 @@
     "javac",
     "JSX",
     "lint-staged",
+    "lockfiles",
     "Maven",
     "mvnw",
     "npm",
@@ -29,7 +30,8 @@
     "temurin",
     "TSX",
     "Vite",
-    "Vitest"
+    "Vitest",
+    "worktree"
   ],
   "ignorePaths": [
     ".git",

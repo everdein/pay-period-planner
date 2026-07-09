@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Verify End-to-End App'
+  short_description: 'Run complete local checks and coverage'
+  default_prompt: 'Use $verify-end-to-end-app to run the complete local verification suite and summarize any failures.'

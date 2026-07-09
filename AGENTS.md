@@ -20,6 +20,50 @@ profile stores local JSON. The `postgres` profile stores that aggregate in
 `financial_snapshot_document.snapshot_json`. The V1 normalized tables are
 schema groundwork and are not the active persistence path.
 
+## Directory Ownership
+
+- `frontend/src/features/financials/`: UI, draft editing, projections, and
+  client-side financial presentation.
+- `frontend/src/api/`: HTTP client behavior and endpoint integration.
+- `backend/src/main/java/.../api/` and `dto/`: HTTP boundaries and snapshot
+  contract.
+- `backend/src/main/java/.../service/`: validation, calculations, and domain
+  orchestration.
+- `backend/src/main/java/.../repository/`: JSON and PostgreSQL persistence.
+- `backend/src/main/resources/db/migration/`: additive schema history.
+- `scripts/`: deterministic local setup, inspection, security, and verification.
+- `.github/workflows/`: hosted checks, security scans, and deploy placeholders.
+- `docs/` and root/subproject READMEs: architecture decisions and operator
+  documentation; update them when behavior or commands change.
+
+Use `docs/architecture-map.md` for runtime boundaries, data flow, and
+change-routing guidance. Use `docs/domain-glossary.md` for project-specific
+financial, application-state, and persistence terminology. Use
+`docs/api-contract.md` for HTTP methods, payloads, derived fields, and errors.
+Use `docs/database-storage-guide.md` for profile storage, database roles,
+migrations, inspection, backup, and recovery boundaries.
+Use `docs/verification-matrix.md` to choose targeted and completion checks by
+change surface.
+Use `docs/known-limitations.md` before changing an intentional simplification;
+update its status and add an ADR when a limitation is resolved architecturally.
+Use `docs/troubleshooting-decision-tree.md` for non-destructive, symptom-driven
+diagnosis and escalation evidence.
+
+## PostgreSQL Profiles and Setup
+
+- The default Spring profile is `json`; it requires no database and writes to
+  ignored `backend/data/financials.local.json`.
+- The `postgres` profile uses `DATABASE_URL`, `DATABASE_USERNAME`, and
+  `DATABASE_PASSWORD`, with local defaults documented in `backend/README.md`.
+- Initialize local PostgreSQL with
+  `.\scripts\bootstrap-local.ps1 -IncludePostgres` or
+  `.\scripts\setup-local-postgres.ps1`, then start it with
+  `.\scripts\start-backend-postgres.ps1`.
+- Flyway owns runtime migration order. Keep migrations additive and never edit
+  an applied migration.
+- Investigation is read-only. Setup and migration scripts are mutations and
+  require an explicit setup task or user approval.
+
 ## Working Rules
 
 - Preserve the API snapshot contract unless the task explicitly changes it.
@@ -31,6 +75,18 @@ schema groundwork and are not the active persistence path.
 - Add focused tests for changed behavior and regression tests for bug fixes.
 - Do not silently normalize or discard persisted financial records.
 
+## Coding Conventions
+
+- Follow `.editorconfig`, Prettier, ESLint, TypeScript strict checks, Spotless,
+  and SortPom; run formatters only on files in scope.
+- Keep React components focused, immutable Redux updates explicit, and
+  financial/date calculations in named helpers with tests.
+- Keep controllers thin, DTOs at the API boundary, business rules in services,
+  and storage details behind repository interfaces.
+- Prefer existing naming and package patterns. Avoid broad cleanup mixed with a
+  behavioral change.
+- Never log secrets or full personal financial snapshots.
+
 ## Commands
 
 From the repository root:
@@ -38,13 +94,53 @@ From the repository root:
 ```powershell
 .\scripts\check-environment.ps1
 .\scripts\bootstrap-local.ps1
-.\scripts\verify.ps1
-.\scripts\verify.ps1 -IncludePostgres
+.\scripts\verify-local.ps1
+.\scripts\verify-local.ps1 -IncludePostgres
+.\scripts\run-security-checks.ps1
 .\scripts\inspect-postgres.ps1
 ```
 
+Run `.\scripts\run-security-checks.ps1` only when authenticated tooling and
+network access are available. CI is authoritative for GitHub-hosted behavior.
+All required CI jobs must pass; do not bypass checks. Treat high-severity Snyk
+findings as blocking unless the repository owner explicitly accepts and records
+the risk. A missing `SNYK_TOKEN`, unavailable service, or unauthenticated scan
+is not a pass.
+
+## Financial Data Policy
+
+- `backend/data/financials.example.json` is synthetic mock data and is the only
+  financial dataset intended for source control, fixtures, screenshots, and
+  shared bug reports.
+- `backend/data/financials.local.json`, PostgreSQL contents, exports, logs, and
+  screenshots may contain personal data. Do not commit, paste, summarize, or
+  send them to external services.
+- Prefer metadata, counts, keys, and redacted/minimal reproductions when
+  diagnosing personal data. Ask before reading full local records.
+- Never replace personal local data with mock data, seed over it, or migrate it
+  implicitly. Backups and destructive operations require explicit approval.
+
+## Intentional Limitations
+
+- There is no authentication, authorization, production deployment
+  infrastructure, external API integration, or multi-user conflict handling.
+- Saves replace one complete snapshot; concurrency is last-write-wins.
+- PostgreSQL persists one JSONB snapshot. V1 normalized tables are inactive
+  groundwork and may remain empty.
+- JSON is the default local profile. PostgreSQL setup and integration tests are
+  opt-in.
+- The deploy workflow is a manual placeholder, not a production release path.
+
 ## Repository Skills
 
+- `$bootstrap-end-to-end-app`: check prerequisites, install dependencies, and
+  optionally initialize PostgreSQL.
+- `$verify-end-to-end-app`: run the complete local verification suite and
+  optional isolated PostgreSQL smoke test.
+- `$audit-end-to-end-docs`: compare documentation claims with executable
+  repository behavior and report drift.
+- `$prepare-end-to-end-pr`: verify, document, commit, push, and prepare a draft
+  pull request when those publishing actions are requested.
 - `$maintain-end-to-end-app`: implement and verify application changes.
 - `$review-end-to-end-app`: conduct a findings-first code review.
 - `$inspect-financial-postgres`: inspect local PostgreSQL state read-only.
