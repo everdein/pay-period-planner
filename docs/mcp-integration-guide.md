@@ -74,6 +74,8 @@ For a new machine or Codex surface:
 | Hosted status inspection        | Allowed when relevant      | Inspect check runs, Snyk status, GitGuardian status, annotations |
 | Local publication               | User request required      | Commit, push, delete local branches                              |
 | External GitHub writes          | User request required      | Create/update draft PRs, comments, labels, reviews, issues       |
+| Issue-to-implementation reads   | Allowed when relevant      | Read scoped issue body, labels, comments, links, and status      |
+| Issue mutation                  | User request required      | Comment, label, assign, close, convert, transfer, or milestone   |
 | Branch cleanup on GitHub        | Explicit user request only | Delete merged remote branches after checking PR/merge state      |
 | Workflow or check mutation      | Explicit user request only | Rerun jobs, cancel runs, request reviewers                       |
 | Repository administration       | Separate explicit approval | Secrets, branch protection, environments, webhooks, permissions  |
@@ -97,9 +99,10 @@ When the user asks to publish changes:
 7. Inspect initial checks after creation. Report hosted checks as pending,
    failed, skipped, or passed only from the actual GitHub state.
 
-Do not request Copilot reviews, human reviewers, labels, merge, close, change
-the base branch, or mark ready-for-review unless the user asks for that
-specific action.
+Do not manually request Copilot reviews, human reviewers, labels, merge, close,
+change the base branch, or mark ready-for-review unless the user asks for that
+specific action. Repository automation may request Copilot review according to
+`docs/github-ai-workflows.md`.
 
 ### CI and Snyk Triage
 

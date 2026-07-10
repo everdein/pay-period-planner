@@ -51,6 +51,11 @@ diagnosis and escalation evidence.
 Use `docs/mcp-integration-guide.md` for GitHub MCP, external connector,
 hosted-action, PostgreSQL MCP, browser/Playwright, Snyk MCP/API,
 branch-cleanup, and future integration boundaries.
+Use `docs/github-ai-workflows.md` for hosted Copilot review request behavior,
+severity-categorized AI review comments, PR/failure summary packets, and AI
+review boundaries.
+Use `docs/issue-to-implementation-workflow.md` when turning a GitHub issue into
+a branch, implementation, verification report, or draft PR.
 
 ## PostgreSQL Profiles and Setup
 
@@ -109,6 +114,9 @@ From the repository root:
 .\scripts\inspect-postgres.ps1
 .\scripts\setup-postgres-readonly-role.ps1
 .\scripts\run-browser-checks.ps1
+.\scripts\check-documentation-drift.ps1
+.\scripts\triage-dependency-updates.ps1
+.\scripts\generate-engineering-status.ps1
 ```
 
 Run `.\scripts\run-security-checks.ps1` only when authenticated tooling and
@@ -117,6 +125,18 @@ All required CI jobs must pass; do not bypass checks. Treat high-severity Snyk
 findings as blocking unless the repository owner explicitly accepts and records
 the risk. A missing `SNYK_TOKEN`, unavailable service, or unauthenticated scan
 is not a pass.
+Copilot review requests are assistive and non-blocking. Copilot comments must
+be validated against code, tests, docs, and data-safety rules before action.
+PR and CI failure summary packets are context only; they do not prove hosted
+checks passed or identify root cause without log/code verification.
+GitHub issues define implementation scope only when objective, acceptance
+criteria, affected area, verification, and data-safety state are clear. Ask for
+clarification before coding if those are missing.
+Documentation-drift packets are deterministic hints. Verify drift against the
+source map and executable sources before changing docs or posting findings.
+Dependency triage and weekly engineering-status packets are advisory. Do not
+auto-merge dependency updates or mutate GitHub issues, labels, runs, settings,
+or security policy from a packet alone.
 
 ## Financial Data Policy
 

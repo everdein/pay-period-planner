@@ -1,0 +1,66 @@
+name: PR Summary Packet
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  summarize-pr:
+    name: Generate PR summary packet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write summary packet
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set +e
+
+          {
+            echo "## PR summary packet"
+            echo ""
+            echo "- PR: #${PR_NUMBER} ${PR_TITLE}"
+            echo "- URL: ${PR_URL}"
+            echo "- Base: \`${BASE_REF}\` at \`${BASE_SHA}\`"
+            echo "- Head: \`${HEAD_REF}\` at \`${HEAD_SHA}\`"
+            echo ""
+            echo "### Changed files"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          gh api --paginate "/repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" \
+            --jq '.[] | "- `\(.status)\t\(.filename)` (+\(.additions)/-\(.deletions))"' \
+            > changed-files.md
+          status=$?
+
+          if [ "${status}" -eq 0 ] && [ -s changed-files.md ]; then
+            cat changed-files.md >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "- Unable to read changed-file metadata with GitHub CLI." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+          {
+            echo ""
+            echo "### AI summary checklist"
+            echo ""
+            echo "Use this packet plus the PR diff to summarize:"
+            echo ""
+            echo "- what changed and why;"
+            echo "- user/developer impact;"
+            echo "- verification evidence and skipped checks;"
+            echo "- data/security posture;"
+            echo "- follow-up risk, stacked PR context, or known limitations."
+            echo ""
+            echo "Do not infer passing CI, Snyk, PostgreSQL, browser, or production"
+            echo "readiness from this packet. Check the actual run status."
+          } >> "${GITHUB_STEP_SUMMARY}"

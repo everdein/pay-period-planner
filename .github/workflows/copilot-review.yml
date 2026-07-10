@@ -1,0 +1,43 @@
+name: Copilot Review Request
+
+on:
+  pull_request_target:
+    types: [opened, ready_for_review, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  request-copilot-review:
+    name: Request Copilot review
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.draft == false }}
+    steps:
+      - name: Request Copilot as reviewer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set +e
+          response="$(gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
+            -f 'reviewers[]=copilot-pull-request-reviewer[bot]' 2>&1)"
+          status=$?
+
+          if [ "${status}" -eq 0 ]; then
+            echo "Copilot review requested."
+            exit 0
+          fi
+
+          echo "Copilot review was not requested."
+          echo "This workflow is assistive-only and does not block CI."
+          echo "Common causes: Copilot review is disabled, unavailable for this"
+          echo "repository, already requested, budget-limited, or blocked by"
+          echo "GitHub permissions/policies."
+          echo "${response}"
+          exit 0

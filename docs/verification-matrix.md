@@ -40,6 +40,12 @@ skipped; never silently omit a relevant row.
 | PowerShell scripts          | PowerShell parser plus safest applicable execution    | Full local verification when orchestration changed        | Exit codes, working directory, cleanup, mutation scope            |
 | Dependency/lockfile         | Clean install and affected build/tests                | Full local verification and authenticated security checks | Direct/transitive path, compatibility, both lock files            |
 | GitHub workflow             | Run exact local equivalents                           | Hosted PR run required                                    | Events, permissions, job dependencies, cache paths, secrets       |
+| Hosted AI workflow          | Review workflow YAML and docs                         | Hosted PR run required                                    | Copilot policy, billing, permissions, non-blocking behavior       |
+| PR/failure summary workflow | Review workflow YAML, template, and docs              | Hosted PR/run evidence required                           | Summary packets are context, not pass/fail evidence               |
+| Issue workflow              | Review issue forms and implementation guide           | Hosted issue form rendering                               | Scope, data-safety, acceptance criteria, write boundaries         |
+| Documentation drift         | `scripts/check-documentation-drift.ps1`               | Hosted documentation-drift workflow                       | Drift packets are hints; verify source claims before acting       |
+| Dependency triage           | `scripts/triage-dependency-updates.ps1`               | Dependabot PR plus hosted triage workflow                 | Release notes, lockfiles, security status, compatibility risk     |
+| Scheduled maintenance       | `scripts/generate-engineering-status.ps1`             | Weekly maintenance workflow                               | Packets are advisory; external writes require user intent         |
 | Security configuration      | Focused configuration inspection                      | Authenticated Snyk scan                                   | Tool/auth state, severity threshold, fixed versions               |
 | Accessibility               | JSX accessibility lint plus focused interaction tests | Full local verification                                   | Manual/browser keyboard and focus review when behavior changed    |
 | Browser workflow            | `scripts/run-browser-checks.ps1`                      | Full local verification plus browser smoke when relevant  | Synthetic data, screenshots/traces only when intentionally shared |
@@ -155,10 +161,14 @@ without exposing token values.
 npm run spell
 git diff --check
 git status --short
+.\scripts\check-documentation-drift.ps1
+.\scripts\triage-dependency-updates.ps1
+.\scripts\generate-engineering-status.ps1
 ```
 
 Also validate that documented paths exist and commands match their owning
-scripts/configuration.
+scripts/configuration. Documentation-drift packets are advisory; resolve them
+against the source map and executable sources before posting or changing docs.
 
 ## Mutation and External-Dependency Matrix
 
@@ -171,6 +181,9 @@ scripts/configuration.
 | `inspect-postgres.ps1`              | None                                                                      | Explicit read-only transactions                    | Local database credentials                   |
 | `run-browser-checks.ps1`            | Playwright reports/traces in ignored paths                                | None                                               | May install browser binaries with flag       |
 | `run-security-checks.ps1`           | Tool caches/reporting side effects                                        | None                                               | Network and Snyk token                       |
+| `check-documentation-drift.ps1`     | Optional GitHub job summary output                                        | None                                               | None                                         |
+| `triage-dependency-updates.ps1`     | Optional GitHub job summary output                                        | None                                               | None                                         |
+| `generate-engineering-status.ps1`   | Optional GitHub job summary output                                        | None                                               | None                                         |
 | `setup-local-postgres.ps1`          | None                                                                      | Creates/updates role, database, and schema         | PostgreSQL administrator credential          |
 | `setup-postgres-readonly-role.ps1`  | None                                                                      | Creates/updates read-only role and grants          | PostgreSQL administrator credential          |
 | `start-backend-postgres.ps1`        | Logs/runtime output                                                       | Seeds active snapshot when empty; later app writes | Application database credential              |
@@ -189,6 +202,13 @@ complete. Explain why they were required and what target they used.
 | Build & Test Backend | Formatting plus Maven `clean verify` | Linux/JDK action/cache                   |
 | Build Frontend       | Frontend build                       | Linux/Node action/cache                  |
 | Scans                | Security script                      | Repository secret and hosted Snyk access |
+| Copilot Review       | No local equivalent                  | Copilot policy, budget, and reviewer API |
+| PR Summary Packet    | No local equivalent                  | Pull request event and job summary       |
+| CI Failure Summary   | No local equivalent                  | Workflow-run event and Actions metadata  |
+| Issue Forms          | No local equivalent                  | GitHub issue form rendering              |
+| Documentation Drift  | Documentation drift script           | Pull request diff and job summary        |
+| Dependency Triage    | Dependency triage script             | Dependabot and pull request metadata     |
+| Weekly Maintenance   | Engineering status script            | Schedule actor, audits, recent CI runs   |
 | Deploy               | No real local equivalent             | Manual placeholder only                  |
 
 Current CI does not run the opt-in PostgreSQL integration test. Local

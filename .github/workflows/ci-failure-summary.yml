@@ -1,0 +1,81 @@
+name: CI Failure Summary Packet
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  summarize-ci-failure:
+    name: Summarize CI failure metadata
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion != 'success' }}
+    steps:
+      - name: Write failure summary packet
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set +e
+          gh run view "${RUN_ID}" \
+            --repo "${REPOSITORY}" \
+            --json name,conclusion,event,headBranch,headSha,url,jobs \
+            > run-details.json
+          status=$?
+
+          {
+            echo "## CI failure summary packet"
+            echo ""
+            echo "- Repository: \`${REPOSITORY}\`"
+            echo "- Run: ${RUN_URL}"
+            echo "- Attempt: ${RUN_ATTEMPT}"
+            echo "- Event: \`${RUN_EVENT}\`"
+            echo "- Conclusion: \`${RUN_CONCLUSION}\`"
+            echo "- Branch: \`${HEAD_BRANCH}\`"
+            echo "- SHA: \`${HEAD_SHA}\`"
+            echo ""
+            echo "### Failed, cancelled, or incomplete jobs"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          if [ "${status}" -eq 0 ]; then
+            jq -r '
+              .jobs[]
+              | select((.conclusion // .status) != "success")
+              | "- `" + .name + "` — `" + ((.conclusion // .status) // "unknown") + "` — " + (.url // "no job URL")
+            ' run-details.json >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "- Unable to read job metadata with GitHub CLI." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+          {
+            echo ""
+            echo "### AI failure summary checklist"
+            echo ""
+            echo "Use this packet plus the relevant log window to summarize:"
+            echo ""
+            echo "- first actionable failing job and step;"
+            echo "- root-cause category: code/test, runner/tooling,"
+            echo "  workflow/configuration, permissions/secrets,"
+            echo "  dependency/security, or external service;"
+            echo "- smallest relevant log excerpt, with secrets and personal"
+            echo "  financial data omitted;"
+            echo "- likely local reproduction command;"
+            echo "- proposed fix and verification still required."
+            echo ""
+            echo "Do not paste full logs, tokens, local financial data, database rows,"
+            echo "or Snyk token values into AI prompts, PR comments, issues, or job"
+            echo "summaries."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          exit 0

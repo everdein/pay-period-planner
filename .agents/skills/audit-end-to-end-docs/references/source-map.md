@@ -20,6 +20,14 @@ summarize these sources but must not override them.
 | Schema state                      | Ordered migration files                     | Read-only inspector output       |
 | PostgreSQL MCP/read-only role     | `scripts/setup-postgres-readonly-role.ps1`  | Storage guide, MCP guide         |
 | CI jobs and dependencies          | `.github/workflows/*.yml`                   | Local verification scripts       |
+| Hosted AI review workflow         | `.github/workflows/copilot-review.yml`      | GitHub AI workflow guide         |
+| Copilot review instructions       | `.github/copilot-instructions.md`           | GitHub AI workflow guide         |
+| PR summary structure              | `.github/PULL_REQUEST_TEMPLATE.md`          | GitHub AI workflow guide         |
+| PR/failure summary packets        | `.github/workflows/*summary*.yml`           | GitHub AI workflow guide         |
+| Issue forms and implementation    | `.github/ISSUE_TEMPLATE/*.yml`              | Issue-to-implementation guide    |
+| Documentation drift workflow      | `scripts/check-documentation-drift.ps1`     | Workflow and source map          |
+| Dependency update triage          | `.github/dependabot.yml`                    | Dependency triage guide          |
+| Weekly maintenance/status         | `scripts/generate-engineering-status.ps1`   | Maintenance workflow guide       |
 | Coverage thresholds               | Vite config and JaCoCo configuration        | CI commands                      |
 | Security gates                    | CI scan step and security script            | Snyk output when authenticated   |
 | Snyk MCP/API feasibility          | `docs/snyk-integration-assessment.md`       | MCP guide, official Snyk docs    |

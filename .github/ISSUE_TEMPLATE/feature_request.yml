@@ -1,0 +1,88 @@
+name: Feature request
+description: Propose user-facing behavior or a developer capability.
+title: '[feature]: '
+labels: ['enhancement', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the outcome, not just the implementation. If the request
+        touches financial data, use synthetic examples and state whether JSON,
+        PostgreSQL, or both profiles are affected.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What user/developer need is not currently met?
+      placeholder: Users cannot verify that a saved synthetic planning change survives a browser refresh.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_outcome
+    attributes:
+      label: Proposed outcome
+      description: What should be true after this is implemented?
+      placeholder: Add a browser smoke check that edits synthetic data and verifies the save payload.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected_area
+    attributes:
+      label: Affected area
+      multiple: true
+      options:
+        - Frontend UI
+        - Frontend state/API client
+        - Backend API/DTO
+        - Backend service/domain logic
+        - JSON persistence
+        - PostgreSQL persistence
+        - Migrations/schema
+        - CI/security
+        - Documentation
+        - Agent/AI workflow
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List the checks or observable behavior that define done.
+      placeholder: |
+        - The workflow uses synthetic data only.
+        - The relevant docs explain when to run it.
+        - Local verification commands are documented and pass.
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints and non-goals
+      description: What should not change as part of this request?
+      placeholder: Do not change the public API contract or read personal local data.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: data_safety
+    attributes:
+      label: Data-safety confirmation
+      options:
+        - label: This request can be described with synthetic/mock data or metadata only.
+          required: true
+        - label: I did not include secrets, credentials, Snyk tokens, personal financial values, full local JSON snapshots, PostgreSQL rows, or private screenshots.
+          required: true
+
+  - type: checkboxes
+    id: implementation_scope
+    attributes:
+      label: Implementation workflow
+      options:
+        - label: This issue is specific enough for an implementation branch or PR.
+        - label: This issue needs design discussion before implementation.

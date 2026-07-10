@@ -643,6 +643,29 @@ role password. Do not commit or paste those credentials. Use
 `financial_app_reader` for external inspection tools, not the write-capable
 application role.
 
+Generate a deterministic documentation-drift packet:
+
+```powershell
+.\scripts\check-documentation-drift.ps1
+```
+
+The script compares the local working tree with `HEAD`, checks source-map path
+references, and reports source changes that may need documentation owners. In
+GitHub Actions, `.github/workflows/documentation-drift.yml` writes the same
+packet to the job summary for pull requests and manual runs.
+
+Generate dependency and weekly maintenance packets:
+
+```powershell
+.\scripts\triage-dependency-updates.ps1
+.\scripts\generate-engineering-status.ps1
+```
+
+Dependabot is configured in `.github/dependabot.yml`. The dependency triage
+workflow writes review context for dependency-related PRs, and
+`.github/workflows/weekly-maintenance.yml` runs scheduled dependency, CI,
+documentation, security, and repository-health review packets.
+
 ---
 
 ## AI-assisted workflows
@@ -663,6 +686,19 @@ Use `docs/mcp-integration-guide.md` for GitHub MCP, connector, PR, CI,
 PostgreSQL MCP, browser/Playwright, Snyk MCP/API, and branch-cleanup
 boundaries. Use `docs/snyk-integration-assessment.md` for the Snyk MCP/API
 feasibility decision and token-handling rules.
+
+Use `docs/github-ai-workflows.md` for hosted GitHub AI assistance. The
+repository includes a non-blocking Copilot review request workflow and
+repository-level Copilot instructions for severity-categorized review comments.
+Use `docs/issue-to-implementation-workflow.md` and the GitHub issue forms for
+turning bugs, features, and implementation tasks into scoped branches and draft
+PRs without guessing requirements.
+Use `.\scripts\check-documentation-drift.ps1` and the documentation-drift
+workflow to spot likely documentation updates after source, script, workflow,
+or agent changes.
+Use `docs/dependency-update-triage.md` for Dependabot PRs and
+`docs/maintenance-review-workflow.md` for scheduled maintenance and weekly
+engineering-status reports.
 
 ---
 

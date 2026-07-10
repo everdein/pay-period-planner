@@ -57,14 +57,14 @@ access.
 
 ## P4: Hosted Assistance and Maintenance
 
-- [ ] GitHub Copilot review requests and categorized review comments
-- [ ] PR summaries and failure-log summaries
-- [ ] Issue-to-implementation workflow
-- [ ] Documentation-drift workflow
-- [ ] Dependency-update triage
-- [ ] Scheduled dependency, CI, documentation, security, and repository-health
+- [x] GitHub Copilot review requests and categorized review comments
+- [x] PR summaries and failure-log summaries
+- [x] Issue-to-implementation workflow
+- [x] Documentation-drift workflow
+- [x] Dependency-update triage
+- [x] Scheduled dependency, CI, documentation, security, and repository-health
       reviews
-- [ ] Weekly engineering-status report
+- [x] Weekly engineering-status report
 
 Hosted AI assists review; it never bypasses required CI, security, or human
 approval gates.

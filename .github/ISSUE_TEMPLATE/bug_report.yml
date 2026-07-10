@@ -1,0 +1,92 @@
+name: Bug report
+description: Report a reproducible defect with expected and actual behavior.
+title: '[bug]: '
+labels: ['bug', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Use synthetic examples whenever possible.
+        Do not paste secrets, personal financial values, full local JSON
+        snapshots, PostgreSQL rows, logs with credentials, or screenshots that
+        expose private data.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is broken, and what should happen instead?
+      placeholder: The save button reports success, but the refreshed snapshot still shows the previous value.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected_area
+    attributes:
+      label: Affected area
+      multiple: true
+      options:
+        - Frontend UI
+        - Frontend state/API client
+        - Backend API/DTO
+        - Backend service/domain logic
+        - JSON persistence
+        - PostgreSQL persistence
+        - Migrations/schema
+        - CI/security
+        - Documentation
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Use mock data or a redacted minimal example.
+      placeholder: |
+        1. Start the backend with the default JSON profile.
+        2. Open the frontend.
+        3. Edit a synthetic monthly withdrawal.
+        4. Save and refresh.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Include short error messages, failing test names, or redacted log snippets.
+      placeholder: Paste only the smallest relevant excerpt. Redact secrets and personal financial data.
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: What observable behavior proves this is fixed?
+      placeholder: |
+        - Saving an edited synthetic withdrawal persists after refresh.
+        - A regression test covers the failed path.
+        - Documentation is updated if behavior changed.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: data_safety
+    attributes:
+      label: Data-safety confirmation
+      options:
+        - label: This issue uses synthetic/mock data or redacted examples only.
+          required: true
+        - label: I did not include secrets, credentials, Snyk tokens, personal financial values, full local JSON snapshots, PostgreSQL rows, or private screenshots.
+          required: true
+
+  - type: checkboxes
+    id: implementation_scope
+    attributes:
+      label: Implementation workflow
+      options:
+        - label: This issue is specific enough for an implementation branch or PR.
+        - label: I want a maintainer/agent to ask clarifying questions before implementation.

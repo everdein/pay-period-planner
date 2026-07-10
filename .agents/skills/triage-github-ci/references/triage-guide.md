@@ -65,3 +65,9 @@ reachability context. One cannot stand in for the other.
 - Proposed or applied change and compatibility risk
 - Local checks passed, failed, or skipped
 - Hosted checks still required
+
+Use the hosted CI failure summary packet, when present, as orientation only. It
+lists run metadata and failed job links, but it does not replace inspecting the
+smallest relevant log window around the first actionable failure. Do not paste
+full logs, tokens, Snyk token values, local financial data, or database rows
+into AI prompts, PR comments, or issue bodies.

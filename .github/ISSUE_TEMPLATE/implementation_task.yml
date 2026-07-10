@@ -1,0 +1,96 @@
+name: Implementation task
+description: Define a scoped engineering task that can be turned into a branch and PR.
+title: '[task]: '
+labels: ['implementation', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when the desired change is already understood. The goal is to
+        give a maintainer or coding agent enough context to create a branch,
+        implement the change, verify it, and open a PR without guessing.
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What should be changed?
+      placeholder: Add a deterministic documentation-drift workflow that compares docs with scripts and workflows.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: In scope
+      description: Files, behaviors, docs, or workflows that should be touched.
+      placeholder: |
+        - Add or update docs under docs/
+        - Add a GitHub workflow if needed
+        - Update the roadmap checkbox
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: What should not be changed?
+      placeholder: Do not change runtime app behavior or database migrations.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected_area
+    attributes:
+      label: Affected area
+      multiple: true
+      options:
+        - Frontend UI
+        - Frontend state/API client
+        - Backend API/DTO
+        - Backend service/domain logic
+        - JSON persistence
+        - PostgreSQL persistence
+        - Migrations/schema
+        - CI/security
+        - Documentation
+        - Agent/AI workflow
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Concrete done criteria for the implementation PR.
+      placeholder: |
+        - New workflow or guide exists and is linked from README/AGENTS.
+        - `npm run spell` and `git diff --check` pass.
+        - Hosted-only checks are documented as pending if not run.
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Expected verification
+      description: Which checks should the implementer run?
+      placeholder: |
+        - npm run spell
+        - git diff --check
+        - .\scripts\verify-local.ps1, if runtime code changes
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: approvals
+    attributes:
+      label: Approval and safety boundaries
+      options:
+        - label: This task does not require reading or exposing personal financial data.
+          required: true
+        - label: This task does not require changing GitHub secrets, repository permissions, Snyk policy, database roles, or destructive data behavior unless explicitly stated above.
+          required: true
+        - label: An implementation agent may create a branch and draft PR after confirming scope.

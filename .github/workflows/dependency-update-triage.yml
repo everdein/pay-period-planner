@@ -1,0 +1,68 @@
+name: Dependency Update Triage
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'frontend/package.json'
+      - 'frontend/package-lock.json'
+      - 'backend/pom.xml'
+      - '.github/dependabot.yml'
+      - '.github/workflows/**'
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  dependency-update-triage:
+    name: Dependency update triage packet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate dependency triage packet
+        shell: pwsh
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $arguments = @()
+
+          if (-not [string]::IsNullOrWhiteSpace($env:BASE_SHA) -and
+              -not [string]::IsNullOrWhiteSpace($env:HEAD_SHA)) {
+            $arguments += @("-BaseRef", $env:BASE_SHA, "-HeadRef", $env:HEAD_SHA)
+          }
+
+          try {
+            & ./scripts/triage-dependency-updates.ps1 @arguments
+          }
+          catch {
+            $message = $_.Exception.Message
+            Write-Host "::warning title=Dependency update triage packet unavailable::Packet generation failed; see step summary."
+
+            $summary = @(
+              "# Dependency update triage packet",
+              "",
+              "Packet generation failed, so this advisory workflow is reporting a warning instead of blocking the PR.",
+              "",
+              "Error:",
+              "",
+              '```',
+              $message,
+              '```'
+            ) -join [Environment]::NewLine
+
+            if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
+              Set-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value $summary -Encoding UTF8
+            }
+
+            Write-Host $summary
+            exit 0
+          }

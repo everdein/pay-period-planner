@@ -1,0 +1,69 @@
+name: Weekly Maintenance Review
+
+on:
+  schedule:
+    - cron: '15 7 * * 1'
+      timezone: 'America/Los_Angeles'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  weekly-maintenance:
+    name: Weekly maintenance packet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Generate weekly engineering status
+        shell: pwsh
+        run: ./scripts/generate-engineering-status.ps1
+
+      - name: Generate dependency triage packet
+        shell: pwsh
+        run: ./scripts/triage-dependency-updates.ps1
+
+      - name: Generate documentation drift packet
+        shell: pwsh
+        run: ./scripts/check-documentation-drift.ps1
+
+      - name: Spell check
+        run: npm run spell
+
+      - name: Root dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Frontend dependency audit
+        run: npm --prefix frontend audit --audit-level=high
+
+      - name: Recent CI runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          {
+            echo "## Recent CI runs"
+            echo ""
+            gh run list --repo "${REPOSITORY}" --workflow "CI" --limit 5
+          } >> "${GITHUB_STEP_SUMMARY}"
