@@ -13,7 +13,7 @@
     "lint": "npm run code-quality",
     "code-quality": "npm --prefix frontend run lint",
     "code-quality:fix": "npm --prefix frontend run lint:fix",
-    "spell": "cspell \"**/*.{md,ts,tsx,js,jsx,json,css,yml,yaml}\" \".agents/**/*.md\""
+    "spell": "cspell \"**/*.{md,ts,tsx,js,jsx,json,css,yml,yaml}\" \".agents/**/*.md\" \".codex/**/*.{md,toml}\""
   },
   "lint-staged": {
     "frontend/**/*.{ts,tsx,js,jsx}": [

@@ -31,15 +31,15 @@ against the requested workflow and validated before it is marked complete.
 
 ## P2: Role-Oriented Review
 
-- [ ] Frontend reviewer
-- [ ] Backend/API reviewer
-- [ ] PostgreSQL reviewer
-- [ ] Security/dependency reviewer
-- [ ] Accessibility reviewer
-- [ ] Test-coverage reviewer
-- [ ] Documentation reviewer
-- [ ] Architecture reviewer
-- [ ] Coordinating review workflow with deduplication and severity ranking
+- [x] Frontend reviewer
+- [x] Backend/API reviewer
+- [x] PostgreSQL reviewer
+- [x] Security/dependency reviewer
+- [x] Accessibility reviewer
+- [x] Test-coverage reviewer
+- [x] Documentation reviewer
+- [x] Architecture reviewer
+- [x] Coordinating review workflow with deduplication and severity ranking
 
 Implement these as narrowly scoped agent definitions only where they add value
 beyond the repository skills and review checklist.

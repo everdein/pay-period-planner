@@ -146,6 +146,27 @@ is not a pass.
 - `$inspect-financial-postgres`: inspect local PostgreSQL state read-only.
 - `$triage-github-ci`: diagnose GitHub Actions and Snyk failures.
 
+## Project Agents
+
+- `frontend-reviewer`: read-only React, TypeScript, Redux, API integration,
+  financial/date behavior, and frontend test review.
+- `backend-api-reviewer`: read-only Spring controller, DTO, validation,
+  service-rule, aggregate-semantics, and backend test review.
+- `postgresql-reviewer`: read-only migration, JSONB storage, seed/version,
+  privilege, transaction, parity, and integration-test review.
+- `security-dependency-reviewer`: read-only dependency, lockfile,
+  GitHub Actions, Snyk/audit, secrets, and supply-chain review.
+- `accessibility-reviewer`: read-only semantic HTML, labels, keyboard, focus,
+  modal, announcement, visual-state, and accessibility-test review.
+- `test-coverage-reviewer`: read-only test depth, assertion quality, branch
+  execution, coverage threshold, and CI-equivalence review.
+- `documentation-reviewer`: read-only documentation drift, command accuracy,
+  source-of-truth, data-safety, links, and ADR-alignment review.
+- `architecture-reviewer`: read-only architectural boundary, aggregate
+  ownership, cross-layer contract, profile, ADR, and limitation review.
+- `review-coordinator`: read-only consolidation of specialist findings,
+  duplicate removal, severity normalization, ownership, and review gaps.
+
 ## Completion
 
 Report changed files, checks run, skipped checks, and remaining risk. Do not
