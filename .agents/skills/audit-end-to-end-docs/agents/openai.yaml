@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Audit End-to-End Docs'
+  short_description: 'Find drift between documentation and code'
+  default_prompt: 'Use $audit-end-to-end-docs to compare repository documentation with executable behavior and report drift.'

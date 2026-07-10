@@ -1,3 +1,7 @@
+param(
+    [switch]$IncludePostgres
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
@@ -35,6 +39,24 @@ Test-Command -Name "javac" -VersionArguments @("-version")
 Test-Command -Name "node" -VersionArguments @("--version")
 Test-Command -Name "npm" -VersionArguments @("--version")
 
+if ($IncludePostgres) {
+    $psql = Get-Command "psql.exe" -ErrorAction SilentlyContinue
+    if ($null -eq $psql) {
+        $psql = Get-ChildItem "C:\Program Files\PostgreSQL\*\bin\psql.exe" `
+            -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+    }
+
+    if ($null -eq $psql) {
+        $failures.Add("PostgreSQL psql.exe is not installed or available on PATH.")
+    }
+    else {
+        $psqlVersion = & $psql.FullName --version 2>&1 | Select-Object -First 1
+        Write-Host ("{0,-12} {1}" -f "psql.exe", $psqlVersion)
+    }
+}
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $mavenWrapper = Join-Path $repoRoot "backend\mvnw.cmd"
 if (-not (Test-Path $mavenWrapper)) {
@@ -58,6 +80,31 @@ else {
     Write-Host ("{0,-12} {1}" -f "JAVA_HOME", $env:JAVA_HOME)
 }
 
+if ($IncludePostgres) {
+    $databaseUrl = if ([string]::IsNullOrWhiteSpace($env:DATABASE_URL)) {
+        "jdbc:postgresql://localhost:5432/financial_app (default)"
+    }
+    else {
+        $env:DATABASE_URL
+    }
+    $databaseUser = if ([string]::IsNullOrWhiteSpace($env:DATABASE_USERNAME)) {
+        "financial_app_user (default)"
+    }
+    else {
+        $env:DATABASE_USERNAME
+    }
+    $passwordState = if ([string]::IsNullOrWhiteSpace($env:DATABASE_PASSWORD)) {
+        "using local default"
+    }
+    else {
+        "set (value hidden)"
+    }
+
+    Write-Host ("{0,-12} {1}" -f "DATABASE_URL", $databaseUrl)
+    Write-Host ("{0,-12} {1}" -f "DB username", $databaseUser)
+    Write-Host ("{0,-12} {1}" -f "DB password", $passwordState)
+}
+
 if ($failures.Count -gt 0) {
     Write-Host ""
     $failures | ForEach-Object { Write-Host "ERROR: $_" -ForegroundColor Red }
@@ -66,3 +113,4 @@ if ($failures.Count -gt 0) {
 
 Write-Host ""
 Write-Host "Environment check passed." -ForegroundColor Green
+exit 0

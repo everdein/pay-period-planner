@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Prepare End-to-End PR'
+  short_description: 'Verify, document, and publish a draft PR'
+  default_prompt: 'Use $prepare-end-to-end-pr to prepare these changes for a draft pull request.'

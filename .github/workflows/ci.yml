@@ -79,7 +79,7 @@ jobs:
         run: npm ci
 
       - name: Run cspell
-        run: npx cspell --config .cspell.json "**/*.{md,ts,tsx,js,jsx,json,css,yml,yaml}"
+        run: npm run spell
 
   type-check:
     name: Type Check

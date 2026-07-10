@@ -1,0 +1,187 @@
+# Verification Matrix
+
+## Default Completion Gate
+
+From the repository root:
+
+```powershell
+.\scripts\verify-local.ps1
+```
+
+This runs:
+
+1. Environment checks
+2. Spell checking
+3. Frontend TypeScript checking
+4. Frontend linting
+5. Frontend tests with coverage thresholds
+6. Frontend production build
+7. Backend formatting and POM ordering checks
+8. Backend clean build, tests, JaCoCo coverage, and packaging
+
+Use targeted commands while iterating, then run the aggregate gate before
+declaring implementation work complete. Report checks as passed, failed, or
+skipped; never silently omit a relevant row.
+
+## Change-to-Check Matrix
+
+| Change surface              | Targeted iteration checks                             | Completion checks                                         | Additional evidence                                               |
+| --------------------------- | ----------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------- |
+| Markdown/docs               | `npm run spell`                                       | Spell check plus referenced paths/commands                | State whether runtime claims were executed or statically verified |
+| Repository skill            | YAML metadata and linked-reference validation         | `npm run spell`, `git diff --check`                       | Confirm UI metadata names the skill                               |
+| Frontend helper/calculation | Relevant Vitest file                                  | Full local verification                                   | Boundary/date/financial cases and coverage                        |
+| React component/workflow    | Relevant Testing Library tests, typecheck, lint       | Full local verification                                   | Keyboard, labels, focus, error/empty/loading states               |
+| Redux/API client            | Relevant frontend tests, typecheck                    | Full local verification                                   | Rejected requests, stale state, save/load behavior                |
+| Backend service/domain      | Focused Maven test                                    | Full local verification                                   | Validation, boundaries, regression test                           |
+| Controller/DTO/API          | Controller/service tests plus frontend typecheck      | Full local verification                                   | Request/response compatibility and Problem Detail behavior        |
+| JSON store                  | Store/repository tests                                | Full local verification                                   | Seed, backup, atomic replacement, malformed data                  |
+| PostgreSQL store/config     | Focused integration test                              | `verify-local.ps1 -IncludePostgres`                       | Read-only metadata inspection afterward                           |
+| Migration SQL               | Review ordered migration and constraints              | Full verification with PostgreSQL                         | Fresh and upgraded isolated schema; Flyway history behavior       |
+| PowerShell scripts          | PowerShell parser plus safest applicable execution    | Full local verification when orchestration changed        | Exit codes, working directory, cleanup, mutation scope            |
+| Dependency/lockfile         | Clean install and affected build/tests                | Full local verification and authenticated security checks | Direct/transitive path, compatibility, both lock files            |
+| GitHub workflow             | Run exact local equivalents                           | Hosted PR run required                                    | Events, permissions, job dependencies, cache paths, secrets       |
+| Security configuration      | Focused configuration inspection                      | Authenticated Snyk scan                                   | Tool/auth state, severity threshold, fixed versions               |
+| Accessibility               | JSX accessibility lint plus focused interaction tests | Full local verification                                   | Manual/browser keyboard and focus review when behavior changed    |
+| Cross-layer feature         | Narrow checks in every affected layer                 | Full local verification; add PostgreSQL if applicable     | End-to-end contract and persistence parity                        |
+
+## Canonical Commands
+
+### Environment and setup
+
+```powershell
+.\scripts\check-environment.ps1
+.\scripts\check-environment.ps1 -IncludePostgres
+.\scripts\bootstrap-local.ps1
+.\scripts\bootstrap-local.ps1 -IncludePostgres
+```
+
+Bootstrap installs dependencies. The PostgreSQL option also creates or updates
+a local role, database, and schema; it is setup, not verification.
+
+### Frontend
+
+```powershell
+npm --prefix frontend run type-check
+npm --prefix frontend run lint
+npm --prefix frontend run test
+npm --prefix frontend run test -- --coverage
+npm --prefix frontend run build
+```
+
+Frontend coverage thresholds:
+
+| Counter    | Minimum |
+| ---------- | ------: |
+| Statements |     45% |
+| Branches   |     45% |
+| Functions  |     35% |
+| Lines      |     46% |
+
+The HTML report is generated under `frontend/coverage/`. Treat it as generated
+output unless a task explicitly updates tracked coverage artifacts.
+
+### Backend
+
+From `backend/`:
+
+```powershell
+.\mvnw.cmd -B spotless:check sortpom:verify
+.\mvnw.cmd -B test "-Dtest=ClassName"
+.\mvnw.cmd -B clean verify
+```
+
+`clean verify` compiles, tests, packages, checks formatting, creates the JaCoCo
+report, and enforces at least 80% bundle line coverage.
+
+### PostgreSQL
+
+```powershell
+.\scripts\verify-local.ps1 -IncludePostgres
+.\scripts\inspect-postgres.ps1
+```
+
+The verification option runs `PostgresFinancialsSnapshotStoreIT` against the
+fixed isolated schema `financial_snapshot_store_test`, truncates its test table,
+and drops that schema afterward. Do not use it where that schema name belongs
+to another application. Inspection is read-only and reports metadata rather
+than financial values.
+
+PostgreSQL verification is required for changes to:
+
+- Migrations
+- PostgreSQL configuration or profile selection
+- SQL or JDBC behavior
+- Snapshot serialization/deserialization
+- Seed behavior
+- Database role assumptions
+- JSON/PostgreSQL parity
+
+### Security
+
+```powershell
+.\scripts\run-security-checks.ps1
+```
+
+This requires network access, the Snyk CLI, and `SNYK_TOKEN`. It runs root and
+frontend npm audits plus authenticated Snyk discovery across all projects.
+Missing tooling/authentication or an unavailable service is a skipped/failed
+check, not a pass.
+
+### Documentation and diff hygiene
+
+```powershell
+npm run spell
+git diff --check
+git status --short
+```
+
+Also validate that documented paths exist and commands match their owning
+scripts/configuration.
+
+## Mutation and External-Dependency Matrix
+
+| Command                             | Local writes                                                              | Database writes                                    | Network/credentials                          |
+| ----------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------- |
+| `check-environment.ps1`             | None                                                                      | None                                               | None                                         |
+| `bootstrap-local.ps1`               | Dependency directories/hooks                                              | Only with `-IncludePostgres`                       | Package installation may need network        |
+| `verify-local.ps1`                  | Build, test, and coverage output; may create ignored local JSON if absent | None by default                                    | Maven metadata/dependencies may need network |
+| `verify-local.ps1 -IncludePostgres` | Same as above                                                             | Creates/truncates/drops isolated test schema       | Local database credentials                   |
+| `inspect-postgres.ps1`              | None                                                                      | Explicit read-only transactions                    | Local database credentials                   |
+| `run-security-checks.ps1`           | Tool caches/reporting side effects                                        | None                                               | Network and Snyk token                       |
+| `setup-local-postgres.ps1`          | None                                                                      | Creates/updates role, database, and schema         | PostgreSQL administrator credential          |
+| `start-backend-postgres.ps1`        | Logs/runtime output                                                       | Seeds active snapshot when empty; later app writes | Application database credential              |
+
+Do not run mutating or credentialed checks solely to make a checklist look
+complete. Explain why they were required and what target they used.
+
+## CI Mapping
+
+| GitHub job           | Local equivalent                     | Hosted-only concern                      |
+| -------------------- | ------------------------------------ | ---------------------------------------- |
+| Code Coverage        | Frontend test with `--coverage`      | Artifact upload                          |
+| Code Quality         | Frontend lint                        | Linux runner behavior                    |
+| Spell Check          | Root spell command                   | Clean checkout/install                   |
+| Type Check           | Frontend typecheck                   | Clean checkout/install                   |
+| Build & Test Backend | Formatting plus Maven `clean verify` | Linux/JDK action/cache                   |
+| Build Frontend       | Frontend build                       | Linux/Node action/cache                  |
+| Scans                | Security script                      | Repository secret and hosted Snyk access |
+| Deploy               | No real local equivalent             | Manual placeholder only                  |
+
+Current CI does not run the opt-in PostgreSQL integration test. Local
+PostgreSQL evidence must therefore be reported separately for persistence
+changes.
+
+## Verification Evidence
+
+A completion report must include:
+
+- Exact commands run
+- Pass/fail result
+- Relevant test counts and coverage gate result
+- PostgreSQL target/scope without credentials or financial values
+- Security authentication status without secret values
+- Checks skipped and why
+- Remaining hosted, manual, visual, or production-only risk
+
+“Tests passed” is insufficient when lint, builds, coverage, PostgreSQL, or
+security checks were also required.

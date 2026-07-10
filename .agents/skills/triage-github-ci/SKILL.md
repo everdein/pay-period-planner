@@ -1,27 +1,34 @@
 ---
 name: triage-github-ci
-description: Diagnose and fix GitHub Actions failures for end-to-end-app, including frontend checks, Maven checks, workflow permissions, repository secrets, and authenticated Snyk scans. Use when a pull request or main-branch pipeline is failing, stuck, skipped, or producing security findings.
+description: Inspect and diagnose GitHub Actions and Snyk failures for end-to-end-app, classify root causes, reproduce relevant checks locally, explain dependency paths and fixed versions, and propose or implement scoped fixes. Use when pull-request or main-branch checks fail, hang, skip unexpectedly, lack authentication, or report dependency vulnerabilities.
 ---
 
 # Triage GitHub CI
 
-1. Read `.github/workflows/ci.yml` and inspect the exact run, job, and failing
-   step through the GitHub MCP server or `gh`.
-2. Separate failures into code/test, runner/tooling, permissions/secrets,
-   dependency/security, and external-service categories.
-3. Reproduce code failures locally with the command from the workflow. Use
-   `.\scripts\verify.ps1` for the complete non-security check set.
-4. For Snyk:
-   - confirm the workflow references only `SNYK_TOKEN`;
-   - never print or retrieve the secret value;
-   - distinguish missing authentication from actual findings;
-   - capture project, package, introduced-through path, severity, and fixed
-     version from the authenticated result;
-   - avoid equating `npm audit` with Snyk coverage.
-5. Apply the smallest code or workflow fix that addresses the verified cause.
-6. Rerun local checks, then inspect the new GitHub Actions result.
-7. Report the root cause, evidence, fix, and any check that still requires the
-   hosted pipeline.
+1. Read `AGENTS.md`, `.github/workflows/ci.yml`, and
+   [references/triage-guide.md](references/triage-guide.md).
+2. Identify the exact repository, commit SHA, workflow run, attempt, event,
+   failing job, and first actionable failing step through the GitHub connector
+   or `gh`. Do not diagnose from a PR badge or summary alone.
+3. Inspect annotations and the relevant log window. Separate the primary
+   failure from cancellation, dependency-skipped jobs, and cleanup noise.
+4. Classify the root cause as code/test, runner/tooling, workflow/configuration,
+   permissions/secrets, dependency/security, or external service.
+5. Reproduce code-owned failures with the exact workflow command. Use
+   `.\scripts\verify-local.ps1` for the complete non-security suite and
+   `.\scripts\run-security-checks.ps1` only with authenticated Snyk access.
+6. For Snyk, record the scanned project/manifest, vulnerable package, installed
+   version, introduced-through path, severity, advisory identifier, exploit
+   maturity when available, fixed version, and whether the fix is direct,
+   transitive, breaking, or unavailable. Never retrieve or print secret values.
+7. Propose the smallest safe fix. For upgrades, check both lockfiles, runtime
+   compatibility, release notes, and whether an override merely masks an
+   incompatible dependency. Implement only when the user requested a fix.
+8. Rerun the relevant local checks. If changes are pushed, inspect the new run
+   rather than assuming hosted success.
+9. Report root cause, evidence, affected checks, proposed or applied fix,
+   verification, and checks that remain hosted-only.
 
 Keep workflow `permissions` at least privilege. Pin security tooling versions
-when changing installation steps so scans remain reproducible.
+when changing installation steps so scans remain reproducible. Never classify
+missing `SNYK_TOKEN`, rate limits, outages, or an unauthenticated scan as clean.
