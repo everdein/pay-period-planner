@@ -64,4 +64,5 @@ jobs:
             }
 
             Write-Host $summary
+            exit 0
           }
