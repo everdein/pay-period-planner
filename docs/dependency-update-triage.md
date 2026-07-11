@@ -64,7 +64,10 @@ repeatable triage context.
    ```
 
 7. Report skipped checks and why. Missing Snyk access, missing network, or
-   unavailable registry evidence is not a pass.
+   unavailable registry evidence is not a pass. Dependabot-triggered Actions
+   runs may skip the internal Snyk CLI step when repository secrets are
+   unavailable; use the external Snyk PR check or an owner-approved manual
+   rerun as the security evidence.
 
 ## Boundaries
 

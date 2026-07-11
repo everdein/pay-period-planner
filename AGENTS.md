@@ -124,7 +124,10 @@ network access are available. CI is authoritative for GitHub-hosted behavior.
 All required CI jobs must pass; do not bypass checks. Treat high-severity Snyk
 findings as blocking unless the repository owner explicitly accepts and records
 the risk. A missing `SNYK_TOKEN`, unavailable service, or unauthenticated scan
-is not a pass.
+is not a pass. For Dependabot-triggered workflows, GitHub Actions may withhold
+repository secrets; in that case, treat the internal Snyk CLI step as skipped
+and rely on the external Snyk PR check or an owner-approved manual rerun for
+security evidence.
 Copilot review requests are assistive and non-blocking. Copilot comments must
 be validated against code, tests, docs, and data-safety rules before action.
 PR and CI failure summary packets are context only; they do not prove hosted

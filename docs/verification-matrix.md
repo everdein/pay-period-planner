@@ -149,6 +149,12 @@ frontend npm audits plus authenticated Snyk discovery across all projects.
 Missing tooling/authentication or an unavailable service is a skipped/failed
 check, not a pass.
 
+Dependabot-triggered GitHub Actions runs may not receive repository secrets.
+For those runs, the hosted CI scan job skips the internal Snyk CLI step with a
+warning when `SNYK_TOKEN` is unavailable. Treat that as skipped CLI evidence,
+not a pass; use the external Snyk PR check or an owner-approved manual rerun
+when dependency risk requires authenticated CLI confirmation.
+
 Snyk MCP/API usage is supporting triage only. It can explain findings or
 propose upgrades, but it does not replace the security script or hosted CI
 gate. When MCP/API is used, report the Snyk tool, profile, auth state, scanned
@@ -193,23 +199,23 @@ complete. Explain why they were required and what target they used.
 
 ## CI Mapping
 
-| GitHub job           | Local equivalent                     | Hosted-only concern                      |
-| -------------------- | ------------------------------------ | ---------------------------------------- |
-| Code Coverage        | Frontend test with `--coverage`      | Artifact upload                          |
-| Code Quality         | Frontend lint                        | Linux runner behavior                    |
-| Spell Check          | Root spell command                   | Clean checkout/install                   |
-| Type Check           | Frontend typecheck                   | Clean checkout/install                   |
-| Build & Test Backend | Formatting plus Maven `clean verify` | Linux/JDK action/cache                   |
-| Build Frontend       | Frontend build                       | Linux/Node action/cache                  |
-| Scans                | Security script                      | Repository secret and hosted Snyk access |
-| Copilot Review       | No local equivalent                  | Copilot policy, budget, and reviewer API |
-| PR Summary Packet    | No local equivalent                  | Pull request event and job summary       |
-| CI Failure Summary   | No local equivalent                  | Workflow-run event and Actions metadata  |
-| Issue Forms          | No local equivalent                  | GitHub issue form rendering              |
-| Documentation Drift  | Documentation drift script           | Pull request diff and job summary        |
-| Dependency Triage    | Dependency triage script             | Dependabot and pull request metadata     |
-| Weekly Maintenance   | Engineering status script            | Schedule actor, audits, recent CI runs   |
-| Deploy               | No real local equivalent             | Manual placeholder only                  |
+| GitHub job           | Local equivalent                     | Hosted-only concern                                                       |
+| -------------------- | ------------------------------------ | ------------------------------------------------------------------------- |
+| Code Coverage        | Frontend test with `--coverage`      | Artifact upload                                                           |
+| Code Quality         | Frontend lint                        | Linux runner behavior                                                     |
+| Spell Check          | Root spell command                   | Clean checkout/install                                                    |
+| Type Check           | Frontend typecheck                   | Clean checkout/install                                                    |
+| Build & Test Backend | Formatting plus Maven `clean verify` | Linux/JDK action/cache                                                    |
+| Build Frontend       | Frontend build                       | Linux/Node action/cache                                                   |
+| Scans                | Security script                      | Repository secret, Dependabot secret restrictions, and hosted Snyk access |
+| Copilot Review       | No local equivalent                  | Copilot policy, budget, and reviewer API                                  |
+| PR Summary Packet    | No local equivalent                  | Pull request event and job summary                                        |
+| CI Failure Summary   | No local equivalent                  | Workflow-run event and Actions metadata                                   |
+| Issue Forms          | No local equivalent                  | GitHub issue form rendering                                               |
+| Documentation Drift  | Documentation drift script           | Pull request diff and job summary                                         |
+| Dependency Triage    | Dependency triage script             | Dependabot and pull request metadata                                      |
+| Weekly Maintenance   | Engineering status script            | Schedule actor, audits, recent CI runs                                    |
+| Deploy               | No real local equivalent             | Manual placeholder only                                                   |
 
 Current CI does not run the opt-in PostgreSQL integration test. Local
 PostgreSQL evidence must therefore be reported separately for persistence

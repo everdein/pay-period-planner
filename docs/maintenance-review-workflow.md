@@ -61,6 +61,11 @@ network access are available.
 Missing `SNYK_TOKEN`, unavailable Snyk access, skipped npm audit, or an
 unavailable external service is not a pass.
 
+Dependabot-triggered GitHub Actions runs may not receive repository secrets.
+When the internal Snyk CLI scan is skipped for that reason, report it as
+skipped evidence and verify the external Snyk PR check or rerun the security
+check manually with owner-approved credentials.
+
 ## Repository Health Review
 
 Weekly repository health review should look for:

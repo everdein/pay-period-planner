@@ -11,7 +11,7 @@ personal MCP configuration, or project-scoped Codex MCP settings for Snyk.
 
 The canonical repository gates remain:
 
-- CI `Snyk test`
+- CI `Snyk test` when repository secrets are available
 - `scripts/run-security-checks.ps1`
 
 Snyk MCP can help an agent run or explain scans on a developer machine. Snyk
@@ -89,6 +89,9 @@ team-managed setup rather than in this repository's source tree.
   issues, PRs, comments, artifacts, or reports.
 - Claiming Snyk passed when authentication, network access, Snyk service
   access, or project discovery was unavailable.
+- Claiming the internal Snyk CLI passed on Dependabot-triggered Actions runs
+  where GitHub withheld repository secrets; use the external Snyk PR check or
+  an owner-approved manual rerun for evidence.
 - Treating API-inferred dependency evidence as stronger than local CLI/CI scan
   evidence when the CLI can inspect the actual project.
 
