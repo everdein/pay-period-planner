@@ -24,8 +24,11 @@
              runtime. Revisit this when the project needs newer Java language
              features and coverage tooling supports the selected class version. -->
         <maven.compiler.release>21</maven.compiler.release>
+        <logback.version>1.5.36</logback.version>
+        <postgresql.version>42.7.12</postgresql.version>
         <sortpom.version>4.0.0</sortpom.version>
         <spotless.version>3.8.0</spotless.version>
+        <tomcat.version>11.0.23</tomcat.version>
         <jacoco.version>0.8.15</jacoco.version>
     </properties>
 
