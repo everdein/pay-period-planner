@@ -812,8 +812,12 @@ GitHub Actions currently validates:
 - backend builds
 - Snyk dependency/security scans
 
-The scan job expects the repository secret `SNYK_TOKEN`. `NVD_API_KEY` is not
-used by the current workflow.
+The scan job expects `SNYK_TOKEN` to be configured for both Actions and
+Dependabot secrets. `NVD_API_KEY` is not used by the current workflow. If a
+restricted event or misconfiguration prevents the workflow from receiving
+`SNYK_TOKEN`, Dependabot-triggered runs skip the internal Snyk CLI step with a
+warning and should be evaluated against the external Snyk PR check or a manual
+rerun.
 
 ---
 

@@ -166,10 +166,32 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Check Snyk CLI token availability
+        id: snyk-token
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -n "${SNYK_TOKEN}" ]; then
+            echo "available=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          echo "available=false" >> "${GITHUB_OUTPUT}"
+
+          if [ "${GITHUB_ACTOR}" = "dependabot[bot]" ]; then
+            echo "::warning title=Snyk CLI scan skipped::SNYK_TOKEN is unavailable to Dependabot-triggered workflows. Review the repository Snyk PR check and rerun the CI workflow manually if CLI confirmation is required."
+            exit 0
+          fi
+
+          echo "::error title=Snyk CLI scan unavailable::SNYK_TOKEN is not configured for this workflow run."
+          exit 1
+
       - name: Install Snyk CLI
+        if: steps.snyk-token.outputs.available == 'true'
         run: npm install -g snyk
 
       - name: Snyk test
+        if: steps.snyk-token.outputs.available == 'true'
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: snyk test --all-projects --severity-threshold=high
