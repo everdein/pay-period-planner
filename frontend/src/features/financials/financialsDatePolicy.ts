@@ -77,6 +77,10 @@ export function todayIso() {
   return toIsoDate(new Date());
 }
 
+export function addDaysIso(value: string, days: number) {
+  return toIsoDate(addDays(localDate(value), days));
+}
+
 function localDate(value: string) {
   return new Date(`${value}T00:00:00`);
 }

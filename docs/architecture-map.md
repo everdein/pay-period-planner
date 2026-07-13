@@ -6,6 +6,8 @@ The application is a single-user financial planning workspace. The browser
 loads one aggregate snapshot, edits a local draft, and saves the complete
 snapshot through a Spring Boot API. The backend selects one persistence adapter
 at startup: local JSON by default or PostgreSQL under the `postgres` profile.
+Persisted writes append coarse audit events with version movement and aggregate
+projection summaries.
 
 ```mermaid
 flowchart LR
@@ -20,8 +22,10 @@ flowchart LR
     Example -. "fallback seed" .-> PG
 ```
 
-There is no authentication, multi-user isolation, production deployment, or
-conflict detection. Saves are whole-snapshot, last-write-wins operations.
+Financial APIs require one local Basic-auth application user, but there is no
+multi-user isolation or production deployment yet. Full-snapshot saves use
+optimistic version checks; granular record and pay-period routes still mutate
+the single aggregate immediately.
 
 ## Frontend
 
@@ -41,9 +45,10 @@ conflict detection. Saves are whole-snapshot, last-write-wins operations.
 The Redux slice owns the last server snapshot and request status.
 `FinancialsPage` expands that snapshot into component-local draft collections.
 Unsaved edits stay in the browser until `buildExpenseSnapshotRequest` produces
-the full `PUT /api/v1/financials` payload. A successful save replaces the Redux
-snapshot with the server response; a failed save preserves the draft and
-surfaces the error.
+the full `PUT /api/v1/financials` payload, including the snapshot `version`
+last returned by the backend. A successful save replaces the Redux snapshot
+with the server response; a failed save preserves the draft and surfaces the
+error.
 
 Local development uses Vite on port `3000`; `/api` is proxied to the backend on
 port `8080`.
@@ -55,42 +60,53 @@ flowchart TD
     Controller["api/FinancialsController"] --> DTO["dto/financials request and response records"]
     Controller --> Service["service/FinancialsService"]
     Service --> DatePolicy["service/PayPeriodDatePolicy"]
+    Service --> Domain["domain/financials aggregate + records"]
     Service --> Repository["repository/FinancialsRepository"]
-    Repository --> Models["repository domain records"]
+    Repository --> Domain
     Repository --> Interface["FinancialsSnapshotStore"]
+    Repository -. "future runtime path" .-> RecordAdapter["PostgresFinancialRecordSnapshotAdapter"]
     Interface --> JsonStore["JsonFinancialsSnapshotStore<br/>@Profile(json)"]
     Interface --> PostgresStore["PostgresFinancialsSnapshotStore<br/>@Profile(postgres)"]
+    RecordAdapter --> RecordTables["financial_record_* tables<br/>inactive runtime path"]
 ```
 
-| Layer                             | Responsibilities                                                        | Must not own                          |
-| --------------------------------- | ----------------------------------------------------------------------- | ------------------------------------- |
-| `api/`                            | Routes, validation entry points, HTTP status mapping                    | Persistence or financial calculations |
-| `dto/financials/`                 | External request/response contract                                      | Storage implementation                |
-| `service/`                        | Validation, date policy, totals, normalization, orchestration           | File or SQL access                    |
-| `repository/FinancialsRepository` | In-memory aggregate, IDs, synchronized mutation, persistence delegation | HTTP behavior                         |
-| `repository/*SnapshotStore`       | Load/save serialization for one storage mode                            | API response derivation               |
-| `config/`                         | Bound persistence configuration                                         | Domain behavior                       |
+| Layer                                    | Responsibilities                                                                  | Must not own                          |
+| ---------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------- |
+| `api/`                                   | Routes, validation entry points, HTTP status mapping                              | Persistence or financial calculations |
+| `dto/financials/`                        | External request/response contract                                                | Storage implementation                |
+| `domain/financials/`                     | Backend financial record types, saved snapshot aggregate, audit/projection types  | HTTP or storage implementation        |
+| `service/`                               | Validation, date policy, totals, normalization, orchestration                     | File or SQL access                    |
+| `repository/FinancialsRepository`        | In-memory aggregate, IDs, audit event capture, synchronized mutation, persistence | HTTP behavior                         |
+| `repository/*SnapshotStore`              | Load/save serialization for one storage mode                                      | API response derivation               |
+| `PostgresFinancialRecordSnapshotAdapter` | Tested V3/V4 relational save/load and granular CRUD path for the domain aggregate | Active runtime persistence            |
+| `config/`                                | Bound persistence configuration                                                   | Domain behavior                       |
 
-The granular bill and pay-period routes use the same repository aggregate as
+The granular record and pay-period routes use the same repository aggregate as
 the full snapshot route. The current UI uses the full snapshot as its primary
 save boundary.
 
 ## Persistence Profiles
 
-| Concern            | JSON profile                                        | PostgreSQL profile                                      |
-| ------------------ | --------------------------------------------------- | ------------------------------------------------------- |
-| Activation         | Default profile                                     | `SPRING_PROFILES_ACTIVE=postgres`                       |
-| Adapter            | `JsonFinancialsSnapshotStore`                       | `PostgresFinancialsSnapshotStore`                       |
-| Active data        | `backend/data/financials.local.json`                | `financial_snapshot_document.snapshot_json`             |
-| Seed source        | `financials.example.json` when local file is absent | Local JSON, then example JSON when no active row exists |
-| Schema             | None                                                | Flyway migrations under `db/migration/`                 |
-| Local verification | Standard backend tests                              | Opt-in isolated-schema integration test                 |
+| Concern            | JSON profile                                        | PostgreSQL profile                                       |
+| ------------------ | --------------------------------------------------- | -------------------------------------------------------- |
+| Activation         | Default profile                                     | `SPRING_PROFILES_ACTIVE=postgres`                        |
+| Adapter            | `JsonFinancialsSnapshotStore`                       | `PostgresFinancialsSnapshotStore`                        |
+| Active data        | `backend/data/financials.local.json` with version and audit history | `financial_snapshot_document.snapshot_json` plus version and audit history |
+| Seed source        | `financials.example.json` when local file is absent | Local JSON, then example JSON when no active row exists  |
+| Schema             | None                                                | Flyway migrations under `db/migration/`                  |
+| Local verification | Standard backend tests                              | Opt-in isolated-schema integration test                  |
 
-`V1__create_financials_schema.sql` defines normalized tables as future
-groundwork. They are not read or written by the active adapter and may remain
-empty. `V2__create_financial_snapshot_document.sql` defines the active JSONB
-document store. The application role is write-capable; inspection integrations
-should use a separate read-only role.
+`V1__create_financials_schema.sql` defines normalized tables that remain
+inactive historical groundwork. ADR 0009 decides they should not become the
+active relational persistence path as-is, and they may remain empty.
+`V2__create_financial_snapshot_document.sql` defines the active JSONB document
+store. `V3__create_financial_record_snapshot_schema.sql` defines the
+`financial_record_*` relational table family from ADR 0010, and
+`V4__add_financial_record_app_id_constraints.sql` adds the app-record
+uniqueness needed by the granular CRUD adapter from ADR 0011. The runtime
+service is not wired to that relational adapter yet.
+The application role is write-capable; inspection integrations should use a
+separate read-only role.
 
 ## Snapshot Request Flow
 
@@ -110,22 +126,34 @@ sequenceDiagram
     API->>Domain: getSnapshot()
     Domain->>Repo: read aggregate collections
     Repo-->>Domain: stored records
-    Domain-->>Page: calculated response through API/Redux
+    Domain-->>Page: calculated response with version through API/Redux
     Page->>Page: create and edit local draft
-    Page->>Redux: dispatch saveExpenseSnapshot(full request)
+    Page->>Redux: dispatch saveExpenseSnapshot(full request + version)
     Redux->>Client: PUT /api/v1/financials
     Client->>API: validated snapshot request
     API->>Domain: saveSnapshot()
-    Domain->>Repo: replaceSnapshot(...)
-    Repo->>Store: save(FinancialsData)
-    Store-->>Repo: persistence complete
-    Domain-->>Page: recalculated response through API/Redux
+    Domain->>Repo: replaceSnapshot(expectedVersion, FinancialSnapshot)
+    alt version is stale
+        Repo-->>Domain: SnapshotVersionConflictException
+        Domain-->>Page: 409 Conflict through API/Redux
+    else version matches
+        Repo->>Repo: append audit event with projection summary
+        Repo->>Store: save(FinancialsData with incremented version + audit history)
+        Store-->>Repo: persistence complete
+        Domain-->>Page: recalculated response with next version through API/Redux
+    end
 ```
 
 Derived totals are returned by the backend and are not accepted as persisted
 request fields. Some frontend summary and projection values are also derived
 for presentation. Contract changes must be traced across frontend types,
 request construction, backend DTOs, service mapping, both stores, and tests.
+
+CSV and XLSX import/export are API-boundary codecs around the same source
+snapshot shape. `FinancialSnapshotTabularCodec` converts between the
+full-snapshot request DTO and a fixed-column tabular format; imports still call
+the version-checked full-snapshot save path and do not introduce a separate
+storage model.
 
 ## Verification and Delivery
 
@@ -136,21 +164,26 @@ flowchart LR
     Local --> Backend["Formatting + tests<br/>JaCoCo + package"]
     Local -->|"optional"| PGTest["Isolated PostgreSQL smoke test"]
     Change -->|"authenticated"| Security["run-security-checks.ps1"]
+    Change --> HostedSecurity["CodeQL + dependency review"]
     Frontend --> CI["GitHub Actions"]
     Backend --> CI
     Security --> CI
+    HostedSecurity --> CI
     CI --> Draft["Draft PR review"]
 ```
 
 GitHub Actions repeats frontend quality gates, frontend and backend builds,
-coverage, and an authenticated high-severity Snyk scan. The deploy job is a
-manual placeholder, not production infrastructure.
+coverage, and an authenticated high-severity Snyk scan. Separate hosted
+workflows run CodeQL for Java and JavaScript/TypeScript and review pull-request
+dependency changes for newly introduced high- or critical-severity
+vulnerabilities. The deploy job is a manual placeholder, not production
+infrastructure.
 
 ## Data Boundaries
 
 - `financials.example.json` is synthetic and shareable.
-- `financials.local.json`, PostgreSQL rows, exports, logs, and screenshots may
-  contain personal financial data.
+- `financials.local.json`, PostgreSQL rows, exports, audit history, logs, and
+  screenshots may contain personal financial data.
 - Investigation should prefer schemas, keys, counts, versions, and timestamps.
 - Personal values must not enter commits, test fixtures, documentation, PR
   descriptions, CI artifacts, or external tools.
@@ -158,15 +191,17 @@ manual placeholder, not production infrastructure.
 
 ## Change Routing
 
-| Change                           | Start here                                 | Also inspect                                              |
-| -------------------------------- | ------------------------------------------ | --------------------------------------------------------- |
-| UI interaction or draft behavior | `frontend/src/features/financials/`        | Slice, API types, accessibility, tests                    |
-| HTTP contract                    | Controller and DTOs                        | Frontend endpoint types, service, contract tests, docs    |
-| Financial/date rule              | Backend service or focused frontend helper | Both presentation and persistence assumptions             |
-| JSON behavior                    | `JsonFinancialsSnapshotStore`              | PostgreSQL parity and seed policy                         |
-| PostgreSQL behavior              | Store plus additive migration              | JSON parity, isolated integration test, storage docs      |
-| CI/security                      | `.github/workflows/ci.yml`                 | Local scripts, lock files, permissions, Snyk expectations |
-| Architecture decision            | Owning code plus new ADR                   | Architecture map, limitations, affected READMEs           |
+| Change                           | Start here                                 | Also inspect                                                     |
+| -------------------------------- | ------------------------------------------ | ---------------------------------------------------------------- |
+| UI interaction or draft behavior | `frontend/src/features/financials/`        | Slice, API types, accessibility, tests                           |
+| HTTP contract                    | Controller and DTOs                        | Frontend endpoint types, service, contract tests, docs           |
+| CSV/XLSX import/export           | `FinancialSnapshotTabularCodec`            | Controller/service tests, API docs, data-safety rules            |
+| Financial/date rule              | Backend service or focused frontend helper | Both presentation and persistence assumptions                    |
+| JSON behavior                    | `JsonFinancialsSnapshotStore`              | PostgreSQL parity and seed policy                                |
+| PostgreSQL behavior              | Store plus additive migration              | JSON parity, isolated integration test, storage docs             |
+| Audit/history behavior           | `FinancialsRepository` and audit DTOs      | API docs, storage guide, data-safety rules                       |
+| CI/security                      | `.github/workflows/*.yml`                  | Local scripts, lock files, permissions, hosted scan expectations |
+| Architecture decision            | Owning code plus new ADR                   | Architecture map, limitations, affected READMEs                  |
 
 ## Authoritative References
 

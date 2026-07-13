@@ -7,13 +7,20 @@ changes in a new ADR.
 
 ## Identity, Security, and Privacy
 
-### LIM-001 — No application authentication or authorization
+### LIM-001 — Single local Basic-auth application user
 
-- **Status:** Accepted for isolated local development
-- **Impact:** Anyone who can reach the backend can read or replace the complete
-  financial snapshot.
-- **Current mitigation:** Bind and use the application only in a trusted local
-  environment; do not expose port `8080`.
+- **Status:** Partially resolved for isolated local development
+- **Impact:** Financial APIs require HTTP Basic credentials, but the application
+  still has one global user, one global workspace, no tenant ownership, no
+  password rotation workflow, and no production session management. Basic auth
+  credentials are only appropriate for trusted local development unless served
+  over a hardened TLS deployment.
+- **Current mitigation:** Protect every `/api/v1/financials/**` endpoint with
+  the `FINANCIALS` role, keep the backend local, override default credentials
+  with `FINANCIALS_API_USERNAME` and `FINANCIALS_API_PASSWORD` when needed, and
+  do not expose port `8080`. Failed API authentication intentionally omits the
+  browser Basic-auth challenge so the frontend sign-in form can handle errors
+  without opening a native browser prompt.
 - **Revisit when:** Any shared, remote, hosted, or multi-user access is planned.
 
 ### LIM-002 — No user or tenant isolation
@@ -32,20 +39,24 @@ changes in a new ADR.
   abuse, secret scanning, dynamic testing, infrastructure, or manual threat
   modeling.
 - **Current mitigation:** Least-privilege CI permissions, review checklists,
-  high-severity Snyk gate, and local data-handling rules.
+  high-severity Snyk and dependency-review gates, hosted CodeQL analysis, and
+  local data-handling rules.
 - **Revisit when:** Preparing any deployment or handling data beyond the local
   developer.
 
 ## API and Concurrency
 
-### LIM-004 — Last-write-wins snapshot saves
+### LIM-004 — Granular endpoints do not carry snapshot versions
 
-- **Status:** Accepted for one active editor
-- **Impact:** Concurrent tabs or clients can overwrite newer changes without a
-  conflict warning.
-- **Current mitigation:** Single-user workflow and visible save state.
-- **Revisit when:** Multiple tabs/users, remote access, background writes, or
-  synchronization are supported. Add a version/ETag contract before then.
+- **Status:** Partially resolved for full-snapshot saves
+- **Impact:** `PUT /api/v1/financials` rejects stale versions with `409`, but
+  granular record and pay-period endpoints still mutate immediately without a
+  client-supplied aggregate version.
+- **Current mitigation:** The current browser workspace primarily uses the
+  versioned full-snapshot save boundary; ADR 0012 records that granular
+  endpoints remain direct API utilities.
+- **Revisit when:** Multiple tabs/users, remote access, background writes,
+  synchronization, or broader granular editing are supported.
 
 ### LIM-005 — Full-snapshot replacement can delete omitted collections
 
@@ -127,28 +138,33 @@ changes in a new ADR.
 ### LIM-012 — PostgreSQL stores one JSONB document
 
 - **Status:** Accepted transitional design
-- **Impact:** Individual records cannot be queried, constrained, audited, or
-  updated relationally. Every save rewrites the aggregate.
+- **Impact:** The active runtime path still rewrites the aggregate JSONB
+  document. Relational per-record writes are implemented in the inactive V3/V4
+  adapter path but are not used by the service yet.
 - **Current mitigation:** One active document, version metadata, serialization
-  parity tests, and simple load/save behavior.
+  parity tests, simple load/save behavior, and a tested but inactive V3/V4
+  relational adapter path with granular CRUD operations.
 - **Revisit when:** Reporting, granular concurrency, audit history, relational
-  integrity, or large snapshots are needed.
+  integrity, or large snapshots are needed. Use ADR 0010 and ADR 0011's
+  V3/V4 relational path, not the inactive V1 tables as-is.
 
 ### LIM-013 — Normalized V1 tables are inactive
 
-- **Status:** Intentional groundwork
+- **Status:** Intentional historical groundwork; path decided in ADR 0009
 - **Impact:** Their presence can mislead operators into expecting data; they may
   remain empty while the application is healthy.
 - **Current mitigation:** Storage guide, inspector, and architecture map
-  identify `financial_snapshot_document` as authoritative.
-- **Revisit when:** Choosing between removing the groundwork and implementing a
-  relational adapter.
+  identify `financial_snapshot_document` as authoritative, identify V3/V4 as
+  the future runtime relational path, and prohibit dual-write/backfill through
+  V1.
+- **Revisit when:** Planning a production schema cleanup or activating the
+  V3/V4 adapter in the runtime service.
 
 ### LIM-014 — Local setup and runtime have dual migration paths
 
 - **Status:** Known development limitation
-- **Impact:** The setup script applies V1/V2 SQL directly, while the runtime
-  enables Flyway. A database can contain tables without
+- **Impact:** The setup script applies V1/V2/V3/V4 SQL directly, while the
+  runtime enables Flyway. A database can contain schema objects without
   `flyway_schema_history`, weakening migration-state evidence.
 - **Current mitigation:** Inspect both object presence and Flyway history; keep
   migrations additive.
@@ -164,13 +180,17 @@ changes in a new ADR.
   read-only role for MCP/reporting.
 - **Revisit when:** Configuring any shared or production database.
 
-### LIM-016 — No automated backup, restore, or profile migration
+### LIM-016 — No automated backup schedule or profile migration
 
-- **Status:** Known gap
-- **Impact:** JSON has only one local backup copy; PostgreSQL backup/restore and
-  JSON-to-PostgreSQL movement are manual and unverified as a product workflow.
-- **Current mitigation:** Operator backups before risky changes and
-  metadata-only verification afterward.
+- **Status:** Partially mitigated
+- **Impact:** The app can export the saved snapshot as JSON, CSV, or XLSX and
+  can restore from the CSV/XLSX tabular format, but there is still no automated
+  backup schedule, PostgreSQL dump flow, or verified cross-profile migration
+  workflow.
+- **Current mitigation:** Manual `GET /api/v1/financials/export*` downloads,
+  explicit `POST /api/v1/financials/import/{csv,xlsx}` restores, PowerShell
+  helpers that avoid printing financial contents, operator backups before risky
+  changes, and metadata-only verification afterward.
 - **Revisit when:** Personal data becomes irreplaceable, migrations recur, or a
   deployment is planned.
 
@@ -183,9 +203,24 @@ changes in a new ADR.
   local-only data custody.
 - **Revisit when:** Databases are shared, automated, or remotely provisioned.
 
+### LIM-018 — Audit history is coarse and storage-envelope scoped
+
+- **Status:** Accepted first audit/history slice
+- **Impact:** The backend records saved-change audit events with action,
+  resource type/ID, version movement, timestamp, and aggregate projection
+  summaries. It does not store field-level before/after diffs, authenticated
+  user identity, request origin, or a separately normalized audit table. Manual
+  JSON/CSV/XLSX source-shaped exports do not currently include audit history.
+- **Current mitigation:** Use `GET /api/v1/financials/history` for recent
+  history, keep the persisted storage envelope and local `.bak` copy together
+  for recovery, and treat audit history as personal financial data.
+- **Revisit when:** Multi-user support, compliance-grade audit needs,
+  exportable history, or runtime activation of a relational audit table is
+  planned.
+
 ## Testing and Delivery
 
-### LIM-018 — PostgreSQL smoke tests are not in hosted CI
+### LIM-019 — PostgreSQL smoke tests are not in hosted CI
 
 - **Status:** Known gap
 - **Impact:** CI can pass while PostgreSQL-specific integration behavior is
@@ -195,20 +230,21 @@ changes in a new ADR.
 - **Revisit when:** CI receives an ephemeral PostgreSQL service or Testcontainers
   strategy.
 
-### LIM-019 — Browser workflow coverage is smoke-level
+### LIM-020 — Browser workflow coverage is smoke-level
 
-- **Status:** Known gap
-- **Impact:** The Playwright smoke test proves Vite startup, browser
-  navigation, mocked API loading, draft editing, and save payload construction,
-  but it does not prove the Vite proxy, live backend, PostgreSQL profile, or
-  full save/reload workflow together.
-- **Current mitigation:** Testing Library coverage, API/service tests,
-  `scripts/run-browser-checks.ps1`, and manual browser verification for UI
-  changes.
-- **Revisit when:** Live-backend browser tests are added or release frequency
-  grows.
+- **Status:** Partially mitigated
+- **Impact:** The Playwright smoke test now proves Vite startup, proxying to a
+  live JSON-profile backend, browser navigation, draft editing, full-snapshot
+  save, refresh persistence, delete confirmation, and post-delete persistence.
+  It still does not cover every tab, PostgreSQL-backed browser workflows,
+  visual regression, authentication, or assistive-technology behavior.
+- **Current mitigation:** Live-backend `scripts/run-browser-checks.ps1`,
+  Testing Library coverage, API/service tests, and manual browser verification
+  for UI changes.
+- **Revisit when:** PostgreSQL browser parity, visual regression, or broader
+  release confidence is required.
 
-### LIM-020 — Accessibility automation is partial
+### LIM-021 — Accessibility automation is partial
 
 - **Status:** Known gap
 - **Impact:** JSX accessibility linting is limited and some rules are warnings;
@@ -218,17 +254,17 @@ changes in a new ADR.
 - **Revisit when:** Browser testing is added or the application is prepared for
   broader use.
 
-### LIM-021 — Snyk CLI version is not pinned in CI
+### LIM-022 — Snyk CLI version drift
 
-- **Status:** Known reproducibility gap
-- **Impact:** A new global CLI release can change project discovery, output, or
-  failure behavior without a repository change.
-- **Current mitigation:** Hosted high-severity gate, CI triage workflow, local
-  security script, and documented Snyk MCP/API boundaries.
-- **Revisit when:** The scan job is next modified or a Snyk API automation is
-  added; pin or otherwise standardize the scanner.
+- **Status:** Resolved on 2026-07-13
+- **Resolution:** `.snyk-cli-version` is the repository source of truth. CI
+  installs and verifies that exact npm package version, and the local security
+  script rejects a different installed CLI before scanning.
+- **Upgrade rule:** Change the pin intentionally, install the matching local
+  CLI or direct binary, run the authenticated local security checks, and
+  verify the hosted pull-request scan.
 
-### LIM-022 — Deployment is a placeholder
+### LIM-023 — Deployment is a placeholder
 
 - **Status:** Intentional
 - **Impact:** `workflow_dispatch` proves job orchestration only; it does not
@@ -236,7 +272,7 @@ changes in a new ADR.
 - **Current mitigation:** Do not describe the workflow as a release path.
 - **Revisit when:** A concrete hosting target and operational owner exist.
 
-### LIM-023 — No production observability or incident workflow
+### LIM-024 — No production observability or incident workflow
 
 - **Status:** Intentional until deployment exists
 - **Impact:** There are no centralized logs, metrics, traces, alerts,
@@ -244,6 +280,16 @@ changes in a new ADR.
 - **Current mitigation:** Local logs, test output, and a minimal actuator
   surface.
 - **Revisit when:** A persistent shared environment is introduced.
+
+### LIM-025 — Request-size guard depends on declared content length
+
+- **Status:** Accepted operational guardrail
+- **Impact:** The backend rejects requests above `FINANCIALS_MAX_REQUEST_BYTES`
+  when `Content-Length` is known. Streaming/chunked requests without a declared
+  length should still be limited by a production reverse proxy or gateway.
+- **Current mitigation:** Local request-size filter, API tests, and documented
+  production edge requirement.
+- **Revisit when:** A concrete production hosting target is selected.
 
 ## Maintaining This Register
 

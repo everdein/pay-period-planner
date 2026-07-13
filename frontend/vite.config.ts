@@ -6,6 +6,7 @@ import { defineConfig } from 'vitest/config';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const backendTarget = process.env.VITE_BACKEND_TARGET ?? 'http://localhost:8080';
 
 export default defineConfig({
   plugins: [react()],
@@ -23,7 +24,7 @@ export default defineConfig({
 
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: backendTarget,
         changeOrigin: true,
       },
     },
@@ -43,7 +44,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
 
-      reporter: ['text', 'html'],
+      reporter: ['text', 'html', 'json-summary'],
 
       reportsDirectory: './coverage',
 

@@ -109,6 +109,26 @@ This provides:
 - no hard-coded backend URLs
 - no local CORS configuration required
 
+The backend protects every `/api/v1/financials/**` endpoint with HTTP Basic
+authentication. The frontend sign-in form stores the Basic token in browser
+session storage for the current tab/session only after an authenticated
+snapshot request succeeds. If the backend is not running, the sign-in form stays
+visible and reports a backend connection error instead of entering the app and
+showing the financials screen with a proxy failure.
+
+Local API sign-in defaults:
+
+```text
+Username: financial_app
+Password: financial_app_local_password
+```
+
+These are application API credentials. They are intentionally different from
+the PostgreSQL database role `financial_app_user`.
+
+Override these by setting `FINANCIALS_API_USERNAME` and
+`FINANCIALS_API_PASSWORD` before starting the backend.
+
 ---
 
 ## Financials UI
@@ -155,9 +175,13 @@ current pay period is shown only as supporting context. The Overview shows the
 projection headline numbers.
 
 Annual Withdrawals tracks recurring yearly charges with native calendar inputs
-while storing month/day recurrence data. Income Summary tracks net and
-disposable income assumptions by interval. Income Calendar tracks paydays and
-one-time income events, with derived received/current/upcoming statuses.
+while storing month/day recurrence data. Income Summary tracks editable source
+rows by category, interval, and amount, plus derived net/disposable income
+values. Income Calendar tracks paydays and one-time income events, with derived
+received/current/upcoming statuses. It can generate bi-weekly paycheck rows for
+a selected year from the first payday and starting check number; by default the
+generator replaces existing numbered income rows for that year while preserving
+one-time income events.
 
 The asset and debt tabs support editable account rows. Asset categories show
 category totals and an overall tracked-assets total. Debt contributes to total
@@ -174,8 +198,17 @@ The frontend uses a draft/save pattern:
 1. `fetchMonthlyExpenses` loads one snapshot from the backend.
 2. The user edits local React component state.
 3. Redux tracks loading, saving, and error state.
-4. `saveExpenseSnapshot` sends the full edited snapshot to the backend.
+4. `saveExpenseSnapshot` sends the full edited snapshot with the loaded
+   snapshot version to the backend.
 5. The backend response becomes the new committed Redux snapshot.
+
+If the backend returns `409 Conflict`, another save committed first. The local
+draft remains in place and the Redux error state surfaces the conflict so the
+user can reload/reconcile before saving again.
+
+The header also includes an authenticated export button that downloads
+`GET /api/v1/financials/export` as a JSON backup. Unsaved draft edits are not
+included until they are saved.
 
 This keeps form editing responsive while still demonstrating production-style
 API boundaries.
@@ -220,9 +253,11 @@ On a new machine, install the local Playwright Chromium browser first:
 npm run test:e2e:install
 ```
 
-The current smoke test starts the Vite dev server, mocks
-`/api/v1/financials` with synthetic data, edits a monthly withdrawal, and
-verifies the save payload. It does not require the Spring Boot backend.
+The current smoke test starts both Spring Boot and Vite. Spring Boot runs with
+the `json` profile and a disposable data path under `test-results/`, seeded from
+the committed synthetic example data. The browser loads the app through Vite,
+edits and saves a monthly withdrawal, reloads to verify persistence, confirms a
+delete modal, saves again, and reloads to verify the removal.
 
 ### Run tests in watch mode
 
@@ -483,7 +518,8 @@ request.
 Intentional simplifications:
 
 - no routing
-- no authentication
+- single local Basic-auth sign-in; no multi-user identity or tenant ownership
+  model yet
 - no component library
 - no advanced caching/state normalization
 - no deployment infrastructure

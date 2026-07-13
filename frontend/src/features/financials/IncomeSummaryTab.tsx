@@ -1,23 +1,42 @@
 import type { FormEvent } from 'react';
 
+import { EditButton } from './EditButton';
+import { isPrimaryPaycheck } from './financialsAnchors';
 import { currency } from './financialsFormatters';
 import type { DraftIncomeSummaryItem, IncomeSummaryFormState } from './financialsTypes';
+import { RemoveButton } from './RemoveButton';
 
 export function IncomeSummaryTab({
+  cancelIncomeSummaryItemEdit,
+  derivedIncomeSummaryItems,
+  editingIncomeSummaryItemId,
   incomeSummaryForm,
-  incomeSummaryItems,
+  requestRemoveIncomeSummaryItem,
+  sourceIncomeSummaryItems,
+  startIncomeSummaryItemEdit,
   submitIncomeSummaryItem,
   updateIncomeSummaryForm,
 }: {
+  cancelIncomeSummaryItemEdit: () => void;
+  derivedIncomeSummaryItems: DraftIncomeSummaryItem[];
+  editingIncomeSummaryItemId: number | null;
   incomeSummaryForm: IncomeSummaryFormState;
-  incomeSummaryItems: DraftIncomeSummaryItem[];
+  requestRemoveIncomeSummaryItem: (item: DraftIncomeSummaryItem) => void;
+  sourceIncomeSummaryItems: DraftIncomeSummaryItem[];
+  startIncomeSummaryItemEdit: (item: DraftIncomeSummaryItem) => void;
   submitIncomeSummaryItem: (event: FormEvent<HTMLFormElement>) => void;
   updateIncomeSummaryForm: <K extends keyof IncomeSummaryFormState>(
     key: K,
     value: IncomeSummaryFormState[K]
   ) => void;
 }) {
-  const categories = Array.from(new Set(incomeSummaryItems.map((item) => item.category)));
+  const derivedCategories = Array.from(
+    new Set(derivedIncomeSummaryItems.map((item) => item.category))
+  );
+  const editingSource = sourceIncomeSummaryItems.find(
+    (item) => item.id === editingIncomeSummaryItemId
+  );
+  const isEditingPrimaryPaycheck = editingSource ? isPrimaryPaycheck(editingSource) : false;
 
   return (
     <>
@@ -25,15 +44,54 @@ export function IncomeSummaryTab({
         <div>
           <h2>Income Summary</h2>
           <p>
-            Enter bi-weekly net income once. Annual, monthly, weekly, and disposable income values
-            are calculated automatically.
+            Edit saved income source rows and review the calculated net/disposable income summary.
           </p>
         </div>
       </section>
 
       <section className="expenses-layout">
         <div className="stacked-tables">
-          {categories.map((category) => (
+          <div className="table-wrap">
+            <table className="income-source-table">
+              <colgroup>
+                <col className="name-column" />
+                <col className="type-column" />
+                <col className="amount-column" />
+                <col className="actions-column" />
+              </colgroup>
+              <caption>Saved income source rows.</caption>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Interval</th>
+                  <th>Amount</th>
+                  <th aria-label="Actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {sourceIncomeSummaryItems.map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.category}</td>
+                    <td>{item.interval}</td>
+                    <td className="amount">{currency.format(item.amount)}</td>
+                    <td className="actions">
+                      <EditButton
+                        label={`Edit ${item.category} ${item.interval}`}
+                        onClick={() => startIncomeSummaryItemEdit(item)}
+                      />
+                      <RemoveButton
+                        disabled={isPrimaryPaycheck(item)}
+                        label={`Remove ${item.category} ${item.interval}`}
+                        onClick={() => requestRemoveIncomeSummaryItem(item)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {derivedCategories.map((category) => (
             <div className="table-wrap" key={category}>
               <table className="income-summary-table">
                 <colgroup>
@@ -48,7 +106,7 @@ export function IncomeSummaryTab({
                   </tr>
                 </thead>
                 <tbody>
-                  {incomeSummaryItems
+                  {derivedIncomeSummaryItems
                     .filter((item) => item.category === category)
                     .map((item) => (
                       <tr key={item.id}>
@@ -63,10 +121,29 @@ export function IncomeSummaryTab({
         </div>
 
         <form className="bill-form" onSubmit={submitIncomeSummaryItem}>
-          <h2>Income Source</h2>
-          <p className="helper-text">Source field: Net Income / Bi-Weekly.</p>
+          <h2>
+            {editingIncomeSummaryItemId === null ? 'Add Income Source' : 'Edit Income Source'}
+          </h2>
           <label>
-            Bi-weekly net income
+            Category
+            <input
+              disabled={isEditingPrimaryPaycheck}
+              onChange={(event) => updateIncomeSummaryForm('category', event.target.value)}
+              required
+              value={incomeSummaryForm.category}
+            />
+          </label>
+          <label>
+            Interval
+            <input
+              disabled={isEditingPrimaryPaycheck}
+              onChange={(event) => updateIncomeSummaryForm('interval', event.target.value)}
+              required
+              value={incomeSummaryForm.interval}
+            />
+          </label>
+          <label>
+            Amount
             <input
               min={0}
               onChange={(event) => updateIncomeSummaryForm('amount', event.target.value)}
@@ -76,11 +153,26 @@ export function IncomeSummaryTab({
               value={incomeSummaryForm.amount}
             />
           </label>
+          {isEditingPrimaryPaycheck && (
+            <p className="helper-text">
+              Net Income / Bi-Weekly is required for projections. You can edit the amount, but the
+              category and interval stay fixed.
+            </p>
+          )}
           <p className="helper-text">
-            Disposable income is calculated from monthly net income minus monthly withdrawals.
+            Disposable income is calculated from primary monthly net income minus monthly
+            withdrawals. Additional source rows are saved for planning, but they do not yet change
+            projection math.
           </p>
           <div className="form-actions">
-            <button type="submit">Update Draft</button>
+            <button type="submit">
+              {editingIncomeSummaryItemId === null ? 'Add to Draft' : 'Update Draft'}
+            </button>
+            {editingIncomeSummaryItemId !== null && (
+              <button className="ghost" onClick={cancelIncomeSummaryItemEdit} type="button">
+                Cancel
+              </button>
+            )}
           </div>
         </form>
       </section>

@@ -1,9 +1,12 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDispatch = vi.fn();
+const mockGetMonthlyExpenses = vi.hoisted(() => vi.fn());
+const AUTH_TOKEN_STORAGE_KEY = 'end-to-end-app.auth.basicToken';
 const mockFinancialsState = {
   snapshot: {
+    version: 1,
     payPeriodStart: '2026-06-12',
     payPeriodEnd: '2026-06-26',
     totalMonthlyExpenses: 4890.92,
@@ -76,6 +79,12 @@ const mockFinancialsState = {
         interval: 'Bi-Weekly',
         amount: 1901.58,
       },
+      {
+        id: 4,
+        category: 'Side Income',
+        interval: 'Month',
+        amount: 125,
+      },
     ],
     incomeEvents: [
       {
@@ -133,17 +142,73 @@ vi.mock('./app/hooks', () => ({
   useAppSelector: vi.fn(() => mockFinancialsState),
 }));
 
+vi.mock('./api/endpoints/financials', () => ({
+  financialsService: {
+    getMonthlyExpenses: mockGetMonthlyExpenses,
+  },
+}));
+
 import App from './App';
 
 describe('App', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-22T12:00:00'));
+    window.sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, 'Basic dGVzdDp0ZXN0');
+    mockGetMonthlyExpenses.mockResolvedValue(mockFinancialsState.snapshot);
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    window.sessionStorage.clear();
     mockDispatch.mockClear();
+    mockGetMonthlyExpenses.mockReset();
+  });
+
+  it('renders sign in before credentials are stored', () => {
+    window.sessionStorage.clear();
+
+    render(<App />);
+
+    expect(screen.getByRole('heading', { name: /sign in to financials/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+  });
+
+  it('verifies credentials before entering the financials screen', async () => {
+    vi.useRealTimers();
+    window.sessionStorage.clear();
+
+    render(<App />);
+
+    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: 'financial_app' } });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'financial_app_local_password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => expect(mockGetMonthlyExpenses).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByRole('heading', { name: /financials/i })).toBeInTheDocument();
+    expect(window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY)).toMatch(/^Basic /);
+  });
+
+  it('keeps the sign-in form visible when the backend proxy is unavailable', async () => {
+    vi.useRealTimers();
+    window.sessionStorage.clear();
+    mockGetMonthlyExpenses.mockRejectedValue(new Error('HTTP 502 Bad Gateway'));
+
+    render(<App />);
+
+    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: 'financial_app' } });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'financial_app_local_password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/could not reach the backend/i);
+    expect(screen.getByRole('heading', { name: /sign in to financials/i })).toBeInTheDocument();
+    expect(window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY)).toBeNull();
   });
 
   it('renders the monthly expenses feature', () => {
@@ -159,6 +224,10 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /important dates/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^reset$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /export saved financial snapshot backup/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument();
     expect(screen.getByText(/^Tracked assets$/i)).toBeInTheDocument();
     expect(screen.getByText(/^Total debt$/i)).toBeInTheDocument();
     expect(screen.getByText(/^Net worth$/i)).toBeInTheDocument();
@@ -202,6 +271,20 @@ describe('App', () => {
     expect(screen.getByText(/^Next$/i)).toBeInTheDocument();
   });
 
+  it('generates recurring payday rows in the income calendar draft', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /income calendar/i }));
+    fireEvent.change(screen.getByLabelText(/^first payday$/i), {
+      target: { value: '2026-01-09' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /generate paydays/i }));
+
+    expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '26' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '12/25/2026' })).toBeInTheDocument();
+  });
+
   it('renders annual withdrawals tab', () => {
     render(<App />);
 
@@ -238,6 +321,25 @@ describe('App', () => {
     expect(screen.getAllByRole('cell', { name: /bi-weekly/i })).not.toHaveLength(0);
     expect(screen.getByDisplayValue('3396.25')).toBeInTheDocument();
     expect(screen.getByText('$4,192.50')).toBeInTheDocument();
+  });
+
+  it('renders and edits persisted non-primary income summary source rows', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /income summary/i }));
+
+    const sourceTable = screen.getByRole('table', { name: /saved income source rows/i });
+
+    expect(within(sourceTable).getByRole('cell', { name: /side income/i })).toBeInTheDocument();
+    expect(within(sourceTable).getByRole('cell', { name: /^month$/i })).toBeInTheDocument();
+    expect(within(sourceTable).getByRole('cell', { name: '$125.00' })).toBeInTheDocument();
+
+    fireEvent.click(within(sourceTable).getByRole('button', { name: /edit side income month/i }));
+    fireEvent.change(screen.getByLabelText(/^amount$/i), { target: { value: '200' } });
+    fireEvent.click(screen.getByRole('button', { name: /update draft/i }));
+
+    expect(within(sourceTable).getByRole('cell', { name: '$200.00' })).toBeInTheDocument();
+    expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
   });
 
   it('renders debt tab', () => {

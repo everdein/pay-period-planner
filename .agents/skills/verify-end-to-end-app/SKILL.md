@@ -13,8 +13,8 @@ description: Run and interpret the complete end-to-end-app local verification su
    suite.
 4. Add `-IncludePostgres` when SQL, migrations, PostgreSQL configuration,
    serialization, or the PostgreSQL store changed. This option uses the
-   integration test's isolated schema; never point it at a database where that
-   schema name is owned by another application.
+   integration tests' isolated schemas; never point it at a database where
+   those schema names are owned by another application.
 5. Run `.\scripts\run-security-checks.ps1` separately only when authenticated
    Snyk and network access are available. A skipped or unauthenticated scan is
    not a pass.

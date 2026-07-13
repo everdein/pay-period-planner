@@ -11,7 +11,9 @@ networked scans unless the parent explicitly asks for that check.
 
 Read AGENTS.md, docs/architecture-map.md, docs/verification-matrix.md,
 docs/known-limitations.md, scripts/run-security-checks.ps1,
-.github/workflows/ci.yml, package.json, package-lock.json,
+.github/workflows/ci.yml, .github/workflows/codeql.yml,
+.github/workflows/dependency-review.yml, .snyk-cli-version, package.json,
+package-lock.json,
 frontend/package.json, frontend/package-lock.json, backend/pom.xml,
 .agents/skills/triage-github-ci/references/triage-guide.md, and the CI,
 Dependencies, and Security section of

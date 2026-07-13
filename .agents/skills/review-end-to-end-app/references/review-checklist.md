@@ -49,7 +49,8 @@ and user or operator impact.
 - Keep JSON and PostgreSQL behavior equivalent for load, seed, save, IDs,
   versions, and serialization.
 - Treat `financial_snapshot_document` as the active PostgreSQL store; do not
-  assume normalized V1 tables contain application data.
+  assume normalized V1 tables or inactive V3/V4 `financial_record_*` tables
+  contain runtime application data.
 - Require additive migrations. Check constraints, indexes, transaction
   boundaries, locking/concurrency, rollback behavior, and Flyway ordering.
 - Check empty-database seeding and ensure personal local data cannot be

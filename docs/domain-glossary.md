@@ -68,11 +68,19 @@ A dated calendar event with a label, type, and optional check number. The
 frontend derives monthly paycheck counts and `received`, `current`, or
 `upcoming` status. Those derived values are not persisted.
 
+### Numbered income row
+
+An income event with a non-null check number. The Income Calendar generator can
+replace numbered rows in a selected year when creating a bi-weekly payday
+calendar. One-time income events without check numbers are preserved by that
+replacement.
+
 ### Income summary item
 
 A category/interval/amount source record. The distinguished source item is
 `Net Income` / `Bi-Weekly`; projections use it as paycheck income. Additional
-summary rows may be derived for presentation from that source.
+source rows are editable and persisted for planning. Additional summary rows may
+be derived for presentation from the primary source.
 
 ### Net worth
 
@@ -120,8 +128,8 @@ as `null`; the backend assigns positive IDs.
 ### Dirty state
 
 Frontend state indicating that the local draft differs through an edit the UI
-tracks. It controls save/cancel actions. It is not a server version or a
-complete conflict-detection mechanism.
+tracks. It controls save/cancel actions. It is separate from the server
+snapshot `version` used for optimistic concurrency.
 
 ### Snapshot
 
@@ -140,8 +148,9 @@ pay-period anchors in one request. The backend validates, normalizes, replaces
 its in-memory aggregate, persists it through the selected store, and returns a
 fresh calculated response.
 
-The operation is last-write-wins; there is no browser-visible optimistic
-concurrency token.
+The request must include the current snapshot `version`. If the server has a
+newer version, the operation fails with `409 Conflict` instead of overwriting
+the newer snapshot.
 
 ### Granular endpoints
 
@@ -155,6 +164,14 @@ A response or presentation value calculated from persisted source fields.
 Examples include totals, due dates, `inPayPeriod`, category totals,
 `checksInMonth`, event statuses, and projection values. Derived fields must not
 silently become new persistence inputs.
+
+### Audit history
+
+Append-only saved-change metadata available from
+`GET /api/v1/financials/history`. Each audit event records action, resource
+type/ID, timestamp, snapshot version movement, and a compact aggregate
+projection summary after the write. Audit history is not a field-level ledger
+or compliance audit log.
 
 ## Persistence Terms
 
@@ -173,18 +190,19 @@ JSONB. Flyway applies schema migrations.
 ### Active snapshot document
 
 The row in `financial_snapshot_document` where `active = true`. Its
-`snapshot_json` contains the persisted aggregate. Saves update that row,
-increment its version, and update its timestamp; an empty database receives
-version 1 when seeded.
+`snapshot_json` contains the persisted aggregate and audit history. Saves
+update that row, write the next repository-assigned version, and update its
+timestamp; an empty database receives version 1 when seeded.
 
-The version is storage metadata, not an API concurrency token.
+The version is mirrored into the API snapshot response and acts as the
+full-snapshot optimistic-concurrency token.
 
 ### Normalized V1 tables
 
 The relational tables introduced by
-`V1__create_financials_schema.sql`. They are schema groundwork and are not the
-active persistence path. Zero rows in these tables is expected while the JSONB
-snapshot document contains data.
+`V1__create_financials_schema.sql`. They are inactive historical groundwork,
+not the active or planned runtime relational persistence path as-is. Zero rows
+in these tables is expected while the JSONB snapshot document contains data.
 
 ### Snapshot store
 
@@ -208,8 +226,9 @@ mock dataset.
 ### Personal financial data
 
 Any real balances, income, bills, dates, account/company combinations, local
-JSON, PostgreSQL rows, exports, logs, or screenshots. Keep it local and out of
-commits, prompts to external services, CI artifacts, and documentation.
+JSON, PostgreSQL rows, exports, audit history, logs, or screenshots. Keep it
+local and out of commits, prompts to external services, CI artifacts, and
+documentation.
 
 ### Metadata-only inspection
 

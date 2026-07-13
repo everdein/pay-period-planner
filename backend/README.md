@@ -98,7 +98,40 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ## Running the backend
 
-The backend has two local storage modes.
+The backend has two local storage modes. Choose one backend startup path, then
+run the frontend separately.
+
+| Path | Storage                   | Best for                            |
+| ---- | ------------------------- | ----------------------------------- |
+| A    | Local JSON file           | Fastest startup without PostgreSQL  |
+| B    | PostgreSQL JSONB snapshot | Testing database-backed persistence |
+
+A running backend should keep its terminal open. If the command returns to the
+PowerShell prompt, the backend stopped during startup; check the last Spring Boot
+log lines before `BUILD SUCCESS` or `BUILD FAILURE`.
+
+Local API sign-in defaults:
+
+```text
+Username: financial_app
+Password: financial_app_local_password
+```
+
+Override these with `FINANCIALS_API_USERNAME` and `FINANCIALS_API_PASSWORD`
+before starting the backend. These credentials protect every
+`/api/v1/financials/**` endpoint during local development; do not reuse them for
+real deployment.
+
+Runtime guardrails:
+
+- only `/actuator/health` and `/actuator/info` are exposed by default
+- backend error responses do not include stack traces or binding internals
+- request bodies above `FINANCIALS_MAX_REQUEST_BYTES` are rejected with `413`
+  before controller handling; default is `1048576`
+- cross-origin browser calls are denied unless `FINANCIALS_ALLOWED_ORIGINS`
+  names exact allowed origins
+- activating `prod` requires the `postgres` profile, non-default API
+  credentials, and no wildcard CORS origin
 
 ---
 
@@ -160,14 +193,19 @@ DATABASE_PASSWORD=financial_app_password
 From the repository root, prepare PostgreSQL with:
 
 ```powershell
+cd C:\Users\<you>\dev\end-to-end-app
 .\scripts\setup-local-postgres.ps1
 ```
 
-Then start the PostgreSQL-backed backend with:
+Then start the PostgreSQL-backed backend from the repository root with:
 
 ```powershell
 .\scripts\start-backend-postgres.ps1
 ```
+
+The script starts Spring Boot with the `postgres` profile and the dedicated
+database user `financial_app_user`; it does not run the application as the
+PostgreSQL admin user.
 
 Or run manually from the `backend` directory:
 
@@ -234,11 +272,14 @@ It also applies the local migration SQL files from:
 ```text
 backend/src/main/resources/db/migration/V1__create_financials_schema.sql
 backend/src/main/resources/db/migration/V2__create_financial_snapshot_document.sql
+backend/src/main/resources/db/migration/V3__create_financial_record_snapshot_schema.sql
+backend/src/main/resources/db/migration/V4__add_financial_record_app_id_constraints.sql
 ```
 
 The script is idempotent and can be safely rerun. If the database already
 exists, it skips database creation. If the target tables already exist, it skips
-the SQL file application and verifies the `financial_snapshot_document` table.
+the SQL file application and verifies the `financial_snapshot_document` and
+`financial_record_snapshot` tables.
 
 After setup completes, start the PostgreSQL-backed backend from the repository
 root:
@@ -358,6 +399,8 @@ The initial schema is managed in:
 ```text
 src/main/resources/db/migration/V1__create_financials_schema.sql
 src/main/resources/db/migration/V2__create_financial_snapshot_document.sql
+src/main/resources/db/migration/V3__create_financial_record_snapshot_schema.sql
+src/main/resources/db/migration/V4__add_financial_record_app_id_constraints.sql
 ```
 
 The preferred path is still:
@@ -372,6 +415,10 @@ If `psql` is available on the PATH, run from the repository root:
 psql -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V1__create_financials_schema.sql
 
 psql -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V2__create_financial_snapshot_document.sql
+
+psql -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V3__create_financial_record_snapshot_schema.sql
+
+psql -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V4__add_financial_record_app_id_constraints.sql
 ```
 
 If `psql` is not recognized on Windows, use the full path:
@@ -380,6 +427,10 @@ If `psql` is not recognized on Windows, use the full path:
 & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V1__create_financials_schema.sql
 
 & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V2__create_financial_snapshot_document.sql
+
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V3__create_financial_record_snapshot_schema.sql
+
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V4__add_financial_record_app_id_constraints.sql
 ```
 
 When prompted for the password, use:
@@ -399,6 +450,7 @@ Inside `psql`:
 ```sql
 \dt
 SELECT count(*) FROM financial_snapshot_document;
+SELECT count(*) FROM financial_record_snapshot;
 \q
 ```
 
@@ -410,6 +462,14 @@ asset_account
 debt_account
 financial_snapshot
 financial_snapshot_document
+financial_record_annual_withdrawal
+financial_record_asset_account
+financial_record_debt_account
+financial_record_important_date
+financial_record_income_event
+financial_record_income_summary_item
+financial_record_monthly_bill
+financial_record_snapshot
 important_date
 income_event
 income_summary_item
@@ -426,6 +486,14 @@ UNION ALL SELECT 'asset_account', count(*) FROM asset_account
 UNION ALL SELECT 'debt_account', count(*) FROM debt_account
 UNION ALL SELECT 'financial_snapshot', count(*) FROM financial_snapshot
 UNION ALL SELECT 'financial_snapshot_document', count(*) FROM financial_snapshot_document
+UNION ALL SELECT 'financial_record_annual_withdrawal', count(*) FROM financial_record_annual_withdrawal
+UNION ALL SELECT 'financial_record_asset_account', count(*) FROM financial_record_asset_account
+UNION ALL SELECT 'financial_record_debt_account', count(*) FROM financial_record_debt_account
+UNION ALL SELECT 'financial_record_important_date', count(*) FROM financial_record_important_date
+UNION ALL SELECT 'financial_record_income_event', count(*) FROM financial_record_income_event
+UNION ALL SELECT 'financial_record_income_summary_item', count(*) FROM financial_record_income_summary_item
+UNION ALL SELECT 'financial_record_monthly_bill', count(*) FROM financial_record_monthly_bill
+UNION ALL SELECT 'financial_record_snapshot', count(*) FROM financial_record_snapshot
 UNION ALL SELECT 'important_date', count(*) FROM important_date
 UNION ALL SELECT 'income_event', count(*) FROM income_event
 UNION ALL SELECT 'income_summary_item', count(*) FROM income_summary_item
@@ -433,9 +501,10 @@ UNION ALL SELECT 'monthly_withdrawal', count(*) FROM monthly_withdrawal
 ORDER BY table_name;
 ```
 
-Expected for the current JSONB-backed implementation: the normalized tables can
-have `0` rows while `financial_snapshot_document` has `0` rows before first
-startup or `1` active row after the backend seeds/saves a snapshot.
+Expected for the current JSONB-backed runtime implementation: the inactive V1
+tables and inactive V3/V4 `financial_record_*` tables can have `0` rows while
+`financial_snapshot_document` has `0` rows before first startup or `1` active
+row after the backend seeds/saves a snapshot.
 
 ---
 
@@ -481,8 +550,18 @@ The active repository implementation reads and writes only
 `financial_snapshot_document`. The normalized V1 tables
 (`financial_snapshot`, `monthly_withdrawal`, `annual_withdrawal`,
 `asset_account`, `debt_account`, `income_summary_item`, `income_event`, and
-`important_date`) are present as relational schema groundwork for a later
-granular persistence path. They may remain empty in a healthy local database.
+`important_date`) are inactive historical groundwork. They are not the planned
+runtime relational adapter path as-is and may remain empty in a healthy local
+database.
+
+V3 adds a clean relational path through the `financial_record_*` table family
+and `PostgresFinancialRecordSnapshotAdapter`. V4 adds per-snapshot
+`app_record_id` uniqueness indexes for granular updates and deletes. That
+adapter can save/load the backend `FinancialSnapshot` domain aggregate in
+relational form and perform record-level CRUD operations. It is covered by the
+opt-in PostgreSQL integration test. It is not wired into the active runtime
+service yet, so `financial_record_*` tables may also remain empty in a healthy
+database until the service is intentionally wired to the relational adapter.
 
 The local `financial_app_user` account is intentionally write-capable because
 it is the backend application user. For read-only inspection, use `SELECT`
@@ -518,6 +597,18 @@ Returns the current pay period, withdrawals, income summaries, income calendar
 events, asset category totals, debt balances, important dates, and calculated
 overview totals.
 
+### Get audit history
+
+```http
+GET /api/v1/financials/history?limit=50
+```
+
+Returns recent saved-change audit events newest first. Each event includes the
+action, coarse resource type/ID, version movement, timestamp, and aggregate
+projection summary after the committed write. Audit history is personal
+financial data; it intentionally does not include request bodies or field-level
+before/after diffs.
+
 ### Save financial snapshot
 
 ```http
@@ -525,18 +616,71 @@ PUT /api/v1/financials
 ```
 
 Persists the full edited financial snapshot in one request. This is the main
-endpoint used by the frontend draft/save workflow.
+endpoint used by the frontend draft/save workflow. The request must include the
+current `version` returned by `GET /api/v1/financials`; stale versions return
+`409 Conflict`.
 
-### Granular bill endpoints
+### Export saved snapshot backup
+
+```http
+GET /api/v1/financials/export
+GET /api/v1/financials/export/csv
+GET /api/v1/financials/export/xlsx
+```
+
+Downloads the saved source snapshot with `Cache-Control: no-store`. The JSON
+response includes `format`, `exportedAt`, and a `snapshot` object that mirrors
+the full-snapshot save request shape. CSV and XLSX downloads use the same
+fixed-column tabular format for records and can be restored through the import
+endpoints. Source-shaped exports do not currently include audit history.
+
+```http
+POST /api/v1/financials/import/csv
+POST /api/v1/financials/import/xlsx
+```
+
+Imports replace the complete snapshot and use the imported `version` as the
+same optimistic concurrency token required by `PUT /api/v1/financials`. A stale
+file returns `409 Conflict`; a successful import increments the version and
+returns the calculated snapshot response. Treat JSON, CSV, and XLSX files as
+personal financial data.
+
+Local operators can use the repository scripts without printing financial
+contents:
+
+```powershell
+.\scripts\export-financial-snapshot.ps1 -Format xlsx -OutputPath "$HOME\Downloads\financial-snapshot.xlsx"
+.\scripts\import-financial-snapshot.ps1 -InputPath "$HOME\Downloads\financial-snapshot.xlsx" -ConfirmRestore
+```
+
+### Granular record endpoints
 
 ```http
 POST /api/v1/financials/bills
 PUT /api/v1/financials/bills/{id}
 DELETE /api/v1/financials/bills/{id}
+POST /api/v1/financials/annual-withdrawals
+PUT /api/v1/financials/annual-withdrawals/{id}
+DELETE /api/v1/financials/annual-withdrawals/{id}
+POST /api/v1/financials/asset-accounts
+PUT /api/v1/financials/asset-accounts/{id}
+DELETE /api/v1/financials/asset-accounts/{id}
+POST /api/v1/financials/debt-accounts
+PUT /api/v1/financials/debt-accounts/{id}
+DELETE /api/v1/financials/debt-accounts/{id}
+POST /api/v1/financials/income-summary-items
+PUT /api/v1/financials/income-summary-items/{id}
+DELETE /api/v1/financials/income-summary-items/{id}
+POST /api/v1/financials/income-events
+PUT /api/v1/financials/income-events/{id}
+DELETE /api/v1/financials/income-events/{id}
+POST /api/v1/financials/important-dates
+PUT /api/v1/financials/important-dates/{id}
+DELETE /api/v1/financials/important-dates/{id}
 PUT /api/v1/financials/pay-period
 ```
 
-These endpoints remain available for direct bill and pay period updates, even
+These endpoints remain available for direct record and pay period updates, even
 though the current UI saves the full snapshot as the source of truth.
 
 ---
@@ -570,6 +714,8 @@ backend/
 |   `-- financials.local.json        # ignored by Git
 |-- src/main/java/
 |   |-- com/example/backend/api/
+|   |-- com/example/backend/domain/
+|   |   `-- financials/
 |   |-- com/example/backend/dto/
 |   |   `-- financials/
 |   |-- com/example/backend/repository/
@@ -578,7 +724,9 @@ backend/
 |-- src/main/resources/
 |   `-- db/migration/
 |       |-- V1__create_financials_schema.sql
-|       `-- V2__create_financial_snapshot_document.sql
+|       |-- V2__create_financial_snapshot_document.sql
+|       |-- V3__create_financial_record_snapshot_schema.sql
+|       `-- V4__add_financial_record_app_id_constraints.sql
 |-- src/test/java/
 |-- pom.xml
 `-- README.md
@@ -609,6 +757,16 @@ Responsibilities:
 - response payloads
 - API contract typing
 
+### `domain/financials/`
+
+Backend financial domain records.
+
+Responsibilities:
+
+- saved financial snapshot aggregate
+- financial record types shared by service and repository code
+- package boundary between API DTOs and storage adapters
+
 ### `repository/`
 
 Persistence-facing data models and storage adapters.
@@ -619,8 +777,10 @@ Responsibilities:
 - writing local JSON data
 - loading PostgreSQL-backed snapshot data
 - writing PostgreSQL-backed snapshot data
+- saving/loading and granular CRUD in the V3/V4 relational record adapter path
 - assigning IDs for new local rows
 - keeping persistence concerns out of controllers
+- translating the storage envelope to and from the backend domain aggregate
 
 ### `service/`
 
@@ -665,13 +825,14 @@ projects them into the active pay period year so they can be displayed as
 `MM/DD/YYYY` and included in pay period planning.
 
 The persisted snapshot currently includes monthly bills, annual withdrawals,
-asset accounts, debt accounts, the bi-weekly net income source item, income
-calendar events, and important dates. Derived income summary rows are calculated
-by the frontend.
+asset accounts, debt accounts, income summary source items, income calendar
+events, and important dates. Derived income summary rows are calculated by the
+frontend.
 
 The default mode stores this aggregate in a local JSON file. The `postgres`
-profile stores the same aggregate as a PostgreSQL `jsonb` document until the
-project needs more granular relational CRUD.
+profile stores the same aggregate as a PostgreSQL `jsonb` document. A tested
+V3/V4 relational adapter supports internal granular CRUD, but the runtime
+service is not wired to it yet.
 
 ---
 
@@ -749,9 +910,10 @@ $env:SPRING_PROFILES_ACTIVE="postgres"
 
 ## PostgreSQL integration test
 
-The PostgreSQL snapshot store has an opt-in integration test so normal builds do
-not require a local database. The test creates and drops its own schema named
-`financial_snapshot_store_test` inside the configured database.
+The PostgreSQL snapshot store and V3/V4 relational record adapter have opt-in
+integration tests so normal builds do not require a local database. The tests
+create and drop isolated schemas named `financial_snapshot_store_test` and
+`financial_record_snapshot_adapter_test` inside the configured database.
 
 PowerShell:
 
@@ -761,7 +923,7 @@ $env:DATABASE_URL="jdbc:postgresql://localhost:5432/financial_app"
 $env:DATABASE_USERNAME="financial_app_user"
 $env:DATABASE_PASSWORD="financial_app_password"
 
-.\mvnw.cmd test "-Dtest=PostgresFinancialsSnapshotStoreIT" "-Djacoco.skip=true"
+.\mvnw.cmd test "-Dtest=PostgresFinancialsSnapshotStoreIT,PostgresFinancialRecordSnapshotAdapterIT" "-Djacoco.skip=true"
 ```
 
 The `jacoco.skip` flag keeps this local database smoke test focused and avoids
@@ -821,6 +983,10 @@ Manual fallback:
 & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V1__create_financials_schema.sql
 
 & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V2__create_financial_snapshot_document.sql
+
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V3__create_financial_record_snapshot_schema.sql
+
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V4__add_financial_record_app_id_constraints.sql
 ```
 
 ---
@@ -881,10 +1047,11 @@ The backend participates in repository CI pipelines for:
 Intentional simplifications:
 
 - JSON remains the default local fallback
-- PostgreSQL stores the full snapshot as `jsonb`; granular database-backed CRUD
-  is not implemented yet
-- no authentication
-- no authorization
+- PostgreSQL stores the active runtime snapshot as `jsonb`; granular
+  database-backed CRUD is implemented in the V3/V4 relational adapter path, but
+  the runtime service is not wired to it yet
+- single local Basic-auth application user; no multi-user identity or tenant
+  ownership model yet
 - no external APIs
 - no production deployment infrastructure
 

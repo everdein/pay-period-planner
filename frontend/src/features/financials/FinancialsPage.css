@@ -21,6 +21,55 @@
   margin-bottom: 16px;
 }
 
+.header-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.auth-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+}
+
+.auth-card {
+  border: 1px solid #d7e0eb;
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgb(23 32 51 / 10%);
+  max-width: 420px;
+  padding: 28px;
+  width: 100%;
+}
+
+.auth-card p:not(.eyebrow) {
+  color: #536179;
+}
+
+.auth-hint {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.auth-error {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 8px;
+  color: #be123c;
+  margin: 0;
+  padding: 10px 12px;
+}
+
 .eyebrow {
   color: #536179;
   font-size: 0.8rem;
@@ -149,12 +198,25 @@ button {
   padding: 9px 12px;
 }
 
+.button-link {
+  background: #17365d;
+  border: 1px solid #17365d;
+  border-radius: 6px;
+  color: #ffffff;
+  display: inline-block;
+  font: inherit;
+  font-weight: 700;
+  padding: 9px 12px;
+  text-decoration: none;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }
 
-button.ghost {
+button.ghost,
+.button-link.ghost {
   background: #ffffff;
   color: #17365d;
 }
@@ -286,6 +348,11 @@ button.danger {
   display: grid;
   gap: 20px;
   grid-template-columns: minmax(0, 1fr) 300px;
+}
+
+.side-forms {
+  display: grid;
+  gap: 20px;
 }
 
 .debt-progress-card,
@@ -613,6 +680,7 @@ tr.projection-row.neutral td {
 .withdrawals-table th:nth-child(3),
 .account-table th:nth-child(3),
 .income-summary-table th:nth-child(2),
+.income-source-table th:nth-child(3),
 .overview-table th:nth-child(3),
 .projection-detail-table th:nth-child(2) {
   text-align: right;

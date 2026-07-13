@@ -18,7 +18,9 @@ description: Inspect and diagnose the local financial_app PostgreSQL database wi
    history, exact row counts, active snapshot version/timestamps and collection
    counts, plus database/schema/table privileges.
 6. Treat empty normalized V1 tables as healthy when
-   `financial_snapshot_document` contains the active JSONB snapshot.
+   `financial_snapshot_document` contains the active JSONB snapshot. Treat empty
+   V3/V4 `financial_record_*` tables as healthy until the runtime service is
+   explicitly wired to the relational adapter.
 7. Inspect aggregate metadata and JSON keys by default. Never print complete
    financial snapshots unless the user explicitly authorizes that scope.
 8. Compare observations with both the `postgres` profile and JSON fallback

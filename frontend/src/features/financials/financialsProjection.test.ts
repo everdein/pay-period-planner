@@ -9,10 +9,17 @@ import {
   buildDerivedIncomeSummaryItems,
   buildExpenseSnapshotRequest,
   createFinancialsDraft,
+  generateRecurringPaydays,
+  isNumberedIncomeEventInYear,
   toSnapshotIncomeSummaryItems,
 } from './financialsDraft';
 import { buildProjectionPeriod, buildProjectionSummary } from './financialsProjection';
-import type { DraftAnnualWithdrawal, DraftAssetCategory, DraftBill } from './financialsTypes';
+import type {
+  DraftAnnualWithdrawal,
+  DraftAssetCategory,
+  DraftBill,
+  DraftIncomeEvent,
+} from './financialsTypes';
 
 function bill(overrides: Partial<DraftBill>): DraftBill {
   return {
@@ -255,6 +262,65 @@ describe('financialsProjection', () => {
     });
   });
 
+  it('generates bi-weekly paydays for the selected year', () => {
+    const paydays = generateRecurringPaydays(
+      {
+        firstPayDate: '2026-01-09',
+        label: 'Paycheck',
+        replaceExistingYear: true,
+        startingCheckNumber: '1',
+        type: 'Paycheck',
+        year: '2026',
+      },
+      -1
+    );
+
+    expect(paydays).toHaveLength(26);
+    expect(paydays[0]).toMatchObject({
+      checkNumber: 1,
+      checksInMonth: 2,
+      date: '2026-01-09',
+      id: -1,
+      label: 'Paycheck',
+      type: 'Paycheck',
+    });
+    expect(paydays[1]).toMatchObject({
+      checkNumber: 2,
+      checksInMonth: 2,
+      date: '2026-01-23',
+      id: -2,
+    });
+    expect(paydays.at(-1)).toMatchObject({
+      checkNumber: 26,
+      checksInMonth: 2,
+      date: '2026-12-25',
+      id: -26,
+    });
+  });
+
+  it('identifies numbered income events in a year without matching one-time income', () => {
+    const paycheck: DraftIncomeEvent = {
+      checkNumber: 1,
+      checksInMonth: 0,
+      date: '2026-01-09',
+      id: 1,
+      label: 'Paycheck',
+      type: 'Paycheck',
+    };
+    const taxReturn: DraftIncomeEvent = {
+      checkNumber: null,
+      checksInMonth: 0,
+      date: '2026-02-11',
+      id: 2,
+      label: 'Tax Return',
+      type: 'Tax Return',
+    };
+
+    expect(isNumberedIncomeEventInYear(paycheck, '2026')).toBe(true);
+    expect(isNumberedIncomeEventInYear(taxReturn, '2026')).toBe(false);
+    expect(isNumberedIncomeEventInYear(paycheck, '2027')).toBe(false);
+  });
+
   it('builds a snapshot save payload from draft state', () => {
     const payload = buildExpenseSnapshotRequest({
       annualWithdrawals: [],
@@ -273,9 +339,11 @@ describe('financialsProjection', () => {
       importantDates: [],
       payPeriodEnd: '2026-06-26',
       payPeriodStart: '2026-06-12',
+      version: 7,
     });
 
     expect(payload).toMatchObject({
+      version: 7,
       payPeriodEnd: '2026-06-26',
       payPeriodStart: '2026-06-12',
       bills: [{ amount: 25, bill: 'Internet', id: null }],
@@ -292,6 +360,7 @@ describe('financialsProjection', () => {
 
   it('creates draft state from a loaded snapshot', () => {
     const draft = createFinancialsDraft({
+      version: 1,
       annualPayPeriodTotal: 0,
       annualWithdrawals: [],
       assetCategories: [

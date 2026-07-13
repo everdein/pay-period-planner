@@ -131,9 +131,11 @@ code failure.
 2. Check whether the response is validation (`400`), missing granular ID
    (`404`), or persistence (`500`).
 3. Compare request field names with `docs/api-contract.md`.
-4. Remember that a full snapshot save replaces every collection.
-5. If another tab/client may have saved, treat it as a last-write-wins conflict;
-   there is no concurrency token.
+4. Remember that a full snapshot save replaces every collection after its
+   version check passes.
+5. If the response is `409`, another tab/client saved first. Reload the
+   snapshot, review the local draft against the newer server state, and save
+   again only after deciding the overwrite is intentional.
 
 ## 3. Backend Startup or API Failure
 
@@ -227,7 +229,8 @@ Do not run setup against an unknown/shared server.
 
 ### Tables exist but Flyway history is absent
 
-This can result from the current local setup script applying V1/V2 directly.
+This can result from the current local setup script applying V1/V2/V3/V4
+directly.
 It is registered as `LIM-014`.
 
 1. Do not fabricate history rows.
@@ -241,10 +244,18 @@ This is expected before first PostgreSQL-backed startup. Starting the backend
 will seed it from personal local JSON when present, then mock example data, then
 an empty snapshot. Confirm and back up the intended source before startup.
 
-### Normalized tables are empty
+### Normalized V1 tables are empty
 
-Expected. They are inactive V1 groundwork. The active data is the JSONB
-document row. Do not backfill normalized tables as a troubleshooting step.
+Expected. They are inactive V1 historical groundwork. The active data is the
+JSONB document row. Do not backfill normalized tables as a troubleshooting
+step; ADR 0009 keeps them out of the runtime relational path.
+
+### V3/V4 `financial_record_*` tables are empty
+
+Expected until the runtime service is intentionally wired to the relational
+adapter. ADR 0010 adds the V3 migration and adapter path, ADR 0011 adds
+granular adapter CRUD and V4 app-record indexes, but the runtime service still
+uses `financial_snapshot_document`.
 
 ### More than one active document or unexpected version changes
 

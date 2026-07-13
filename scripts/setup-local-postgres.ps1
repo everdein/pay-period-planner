@@ -82,6 +82,8 @@ if (-not (Test-Path $psqlPath)) {
 
 $v1Migration = Join-Path $repoRoot "backend\src\main\resources\db\migration\V1__create_financials_schema.sql"
 $v2Migration = Join-Path $repoRoot "backend\src\main\resources\db\migration\V2__create_financial_snapshot_document.sql"
+$v3Migration = Join-Path $repoRoot "backend\src\main\resources\db\migration\V3__create_financial_record_snapshot_schema.sql"
+$v4Migration = Join-Path $repoRoot "backend\src\main\resources\db\migration\V4__add_financial_record_app_id_constraints.sql"
 
 if (-not (Test-Path $v1Migration)) {
     throw "Missing migration file: $v1Migration"
@@ -89,6 +91,14 @@ if (-not (Test-Path $v1Migration)) {
 
 if (-not (Test-Path $v2Migration)) {
     throw "Missing migration file: $v2Migration"
+}
+
+if (-not (Test-Path $v3Migration)) {
+    throw "Missing migration file: $v3Migration"
+}
+
+if (-not (Test-Path $v4Migration)) {
+    throw "Missing migration file: $v4Migration"
 }
 
 Write-Host "Using psql:" -ForegroundColor Gray
@@ -232,8 +242,58 @@ END
         )
     }
 
+    $recordSnapshotExists = Invoke-PsqlScalar -Arguments @(
+        "-h", $HostName,
+        "-p", $Port,
+        "-U", $AppUser,
+        "-d", $AppDatabase,
+        "-t",
+        "-A",
+        "-v", "ON_ERROR_STOP=1",
+        "-c", "SELECT CASE WHEN to_regclass('public.financial_record_snapshot') IS NULL THEN '0' ELSE '1' END;"
+    )
+
+    if ($recordSnapshotExists -eq "1") {
+        Write-Host "financial_record_snapshot already exists. Skipping V3 migration." -ForegroundColor Gray
+    }
+    else {
+        Invoke-Psql -Arguments @(
+            "-h", $HostName,
+            "-p", $Port,
+            "-U", $AppUser,
+            "-d", $AppDatabase,
+            "-v", "ON_ERROR_STOP=1",
+            "-f", $v3Migration
+        )
+    }
+
+    $recordAppIdIndexesExist = Invoke-PsqlScalar -Arguments @(
+        "-h", $HostName,
+        "-p", $Port,
+        "-U", $AppUser,
+        "-d", $AppDatabase,
+        "-t",
+        "-A",
+        "-v", "ON_ERROR_STOP=1",
+        "-c", "SELECT CASE WHEN to_regclass('public.uq_financial_record_monthly_bill_snapshot_app_record') IS NULL THEN '0' ELSE '1' END;"
+    )
+
+    if ($recordAppIdIndexesExist -eq "1") {
+        Write-Host "financial_record app-record indexes already exist. Skipping V4 migration." -ForegroundColor Gray
+    }
+    else {
+        Invoke-Psql -Arguments @(
+            "-h", $HostName,
+            "-p", $Port,
+            "-U", $AppUser,
+            "-d", $AppDatabase,
+            "-v", "ON_ERROR_STOP=1",
+            "-f", $v4Migration
+        )
+    }
+
     Write-Host ""
-    Write-Host "Step 5: Verifying financial snapshot table..." -ForegroundColor Yellow
+    Write-Host "Step 5: Verifying financial snapshot tables..." -ForegroundColor Yellow
 
     Invoke-Psql -Arguments @(
         "-h", $HostName,
@@ -242,6 +302,15 @@ END
         "-d", $AppDatabase,
         "-v", "ON_ERROR_STOP=1",
         "-c", "SELECT count(*) AS financial_snapshot_document_rows FROM financial_snapshot_document;"
+    )
+
+    Invoke-Psql -Arguments @(
+        "-h", $HostName,
+        "-p", $Port,
+        "-U", $AppUser,
+        "-d", $AppDatabase,
+        "-v", "ON_ERROR_STOP=1",
+        "-c", "SELECT count(*) AS financial_record_snapshot_rows FROM financial_record_snapshot;"
     )
 
     Write-Host ""

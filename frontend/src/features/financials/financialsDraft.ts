@@ -18,6 +18,7 @@ import {
   PRIMARY_PAYCHECK_INTERVAL,
 } from './financialsAnchors';
 import {
+  addDaysIso,
   annualDateLabel,
   annualDueDateForPeriod,
   annualInputDate,
@@ -41,6 +42,7 @@ import type {
   IncomeEventFormState,
   IncomeSummaryFormState,
   PendingRemoval,
+  RecurringPaydayFormState,
 } from './financialsTypes';
 
 type BuildExpenseSnapshotInput = {
@@ -53,6 +55,7 @@ type BuildExpenseSnapshotInput = {
   payPeriodEnd: string;
   payPeriodStart: string;
   bills: DraftBill[];
+  version: number;
 };
 
 export type FinancialsDraftState = {
@@ -94,6 +97,16 @@ export const emptyIncomeEventForm: IncomeEventFormState = {
   type: 'Paycheck',
   checkNumber: '',
 };
+export function defaultRecurringPaydayForm(today = todayIso()): RecurringPaydayFormState {
+  return {
+    firstPayDate: '',
+    label: 'Paycheck',
+    replaceExistingYear: true,
+    startingCheckNumber: '1',
+    type: 'Paycheck',
+    year: today.slice(0, 4),
+  };
+}
 export const emptyIncomeSummaryForm: IncomeSummaryFormState = {
   category: 'Net Income',
   interval: 'Bi-Weekly',
@@ -144,8 +157,10 @@ export function buildExpenseSnapshotRequest({
   importantDates,
   payPeriodEnd,
   payPeriodStart,
+  version,
 }: BuildExpenseSnapshotInput): ExpenseSnapshotRequest {
   return {
+    version,
     payPeriodStart,
     payPeriodEnd,
     bills: bills.map(toSnapshotBill),
@@ -499,6 +514,46 @@ export function withIncomeMonthlyCounts(events: DraftIncomeEvent[]): DraftIncome
   return events
     .map((event) => ({ ...event, checksInMonth: paycheckCounts[event.date.slice(0, 7)] ?? 0 }))
     .sort((left, right) => left.date.localeCompare(right.date));
+}
+
+export function generateRecurringPaydays(
+  form: RecurringPaydayFormState,
+  nextDraftId: number
+): DraftIncomeEvent[] {
+  const year = Number(form.year);
+  const firstPayYear = Number(form.firstPayDate.slice(0, 4));
+  if (!Number.isInteger(year) || year < 1900 || firstPayYear !== year) {
+    return [];
+  }
+
+  const label = form.label.trim() || 'Paycheck';
+  const type = form.type.trim() || 'Paycheck';
+  const startingCheckNumber = Math.max(1, Number(form.startingCheckNumber) || 1);
+  const lastDate = `${year}-12-31`;
+  const paydays: DraftIncomeEvent[] = [];
+  let nextDate = form.firstPayDate;
+  let nextId = nextDraftId;
+  let checkNumber = startingCheckNumber;
+
+  while (nextDate <= lastDate) {
+    paydays.push({
+      checkNumber,
+      checksInMonth: 0,
+      date: nextDate,
+      id: nextId,
+      label,
+      type,
+    });
+    nextDate = addDaysIso(nextDate, 14);
+    nextId -= 1;
+    checkNumber += 1;
+  }
+
+  return withIncomeMonthlyCounts(paydays);
+}
+
+export function isNumberedIncomeEventInYear(event: DraftIncomeEvent, year: string) {
+  return event.checkNumber !== null && event.date.startsWith(`${year}-`);
 }
 
 export function getTodayIso() {

@@ -13,6 +13,8 @@ description: Implement, refactor, debug, or verify changes in the end-to-end-app
    - React presentation and draft logic in `frontend/src/features/financials/`.
    - HTTP integration in `frontend/src/api/`.
    - API boundaries in the backend `api/` package and DTOs.
+   - financial record and aggregate types in the backend `domain/financials/`
+     package.
    - business rules in the backend `service/` package.
    - storage behavior in the backend `repository/` package.
 5. Add focused regression tests for defects and contract tests for boundary

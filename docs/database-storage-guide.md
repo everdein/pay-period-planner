@@ -2,9 +2,9 @@
 
 ## Storage Model
 
-The backend owns one `FinancialsData` aggregate. A profile-specific
-`FinancialsSnapshotStore` serializes that aggregate to one of two local storage
-targets:
+The backend owns one `domain/financials/FinancialSnapshot` aggregate. A
+profile-specific `FinancialsSnapshotStore` serializes the repository
+`FinancialsData` storage envelope to one of two local storage targets:
 
 ```mermaid
 flowchart TD
@@ -26,19 +26,25 @@ The two adapters store the same source fields:
 - Income summary source items
 - Income events
 - Important dates
+- Audit events for committed changes, including version movement and coarse
+  aggregate projection summaries
 
-Derived API totals, due dates, period flags, monthly check counts, UI statuses,
-and projection values are not stored.
+Current API response totals, due dates, period flags, monthly check counts, and
+UI statuses are derived on read and are not stored as current snapshot fields.
+Historical audit events do store compact aggregate projection summaries for
+the version created by each committed write.
 
 ## Ownership
 
 | Concern                             | Owner                                           |
 | ----------------------------------- | ----------------------------------------------- |
-| Aggregate shape                     | `repository/FinancialsData.java`                |
+| Domain aggregate and records        | `domain/financials/`                            |
+| Storage envelope                    | `repository/FinancialsData.java`                |
 | In-memory records and ID assignment | `repository/FinancialsRepository.java`          |
 | Adapter contract                    | `repository/FinancialsSnapshotStore.java`       |
 | JSON load/save/recovery copy        | `JsonFinancialsSnapshotStore.java`              |
 | PostgreSQL load/save/version update | `PostgresFinancialsSnapshotStore.java`          |
+| Relational record adapter path      | `PostgresFinancialRecordSnapshotAdapter.java`   |
 | Profile selection                   | `application*.properties` and Spring `@Profile` |
 | Schema history                      | Ordered files under `db/migration/`             |
 | Local role/database creation        | `scripts/setup-local-postgres.ps1`              |
@@ -92,19 +98,20 @@ environment.
 
 `financial_snapshot_document` is the active persistence table:
 
-| Column          | Meaning                                      |
-| --------------- | -------------------------------------------- |
-| `id`            | Database identity                            |
-| `active`        | Marks the current document                   |
-| `version`       | Increments on every successful update        |
-| `snapshot_json` | Complete `FinancialsData` aggregate as JSONB |
-| `created_at`    | Row creation timestamp                       |
-| `updated_at`    | Latest update timestamp                      |
+| Column          | Meaning                                             |
+| --------------- | --------------------------------------------------- |
+| `id`            | Database identity                                   |
+| `active`        | Marks the current document                          |
+| `version`       | Current optimistic-concurrency version              |
+| `snapshot_json` | Complete `FinancialsData` storage envelope as JSONB, including audit history |
+| `created_at`    | Row creation timestamp                              |
+| `updated_at`    | Latest update timestamp                             |
 
 A partial unique index allows at most one row where `active = true`. The store
-loads the first active row, updates every active row in one statement, and
-inserts version 1 when no active row exists. Version is storage metadata and is
-not exposed as an optimistic-concurrency token.
+loads the first active row, mirrors the row version into `FinancialsData`, maps
+that envelope into the backend `FinancialSnapshot`, and writes the
+repository-assigned next version on save. The API exposes that version as the
+optimistic-concurrency token for full-snapshot saves.
 
 ### Empty-database seed order
 
@@ -131,10 +138,42 @@ V1 creates:
 - `income_event`
 - `important_date`
 
-These tables are inactive relational groundwork. The current application does
-not read or write them, so zero rows is expected even when the document table
-contains an active snapshot. Do not dual-write or backfill them without a new
-architectural decision, migration plan, and parity tests.
+These tables are inactive historical groundwork. ADR 0009 decides they should
+not become the active relational persistence path as-is. The current
+application does not read or write them, so zero rows is expected even when the
+document table contains an active snapshot.
+
+Do not dual-write, backfill, query, or repair through the V1 tables.
+
+### V3/V4 relational record path
+
+V3 creates the `financial_record_*` table family:
+
+- `financial_record_snapshot`
+- `financial_record_monthly_bill`
+- `financial_record_annual_withdrawal`
+- `financial_record_asset_account`
+- `financial_record_debt_account`
+- `financial_record_income_summary_item`
+- `financial_record_income_event`
+- `financial_record_important_date`
+
+These tables are the clean relational path from ADR 0010. They store the
+backend `FinancialSnapshot` domain aggregate as relational records while
+preserving the application record IDs as `app_record_id`.
+
+V4 adds unique `(snapshot_id, app_record_id)` indexes to each record table so
+granular updates and deletes can target one domain record unambiguously within
+the active relational snapshot.
+
+`PostgresFinancialRecordSnapshotAdapter` can save and load one active
+relational snapshot, mark previous relational snapshots inactive, and perform
+record-level find/create/update/delete operations for each financial-record
+table. It is covered by the opt-in PostgreSQL integration test. The runtime
+`PostgresFinancialsSnapshotStore` still reads and writes
+`financial_snapshot_document`, so V3/V4 tables may remain empty in a healthy
+database until the runtime service is intentionally wired to the relational
+adapter.
 
 ## PostgreSQL Roles
 
@@ -216,26 +255,27 @@ schema setup.
 - Never edit a migration that may have been applied.
 - Keep migration SQL deterministic and compatible with the supported
   PostgreSQL version.
-- Add constraints and indexes with the table change they protect.
+- Add constraints and indexes with the table change they protect, or as a
+  separate additive migration when the table may already exist.
 - Test migrations on an isolated database/schema before using personal data.
 - Document data transformations, recovery, and compatibility with both stores.
 
 The `postgres` runtime enables Flyway. The current local setup script also
-applies V1/V2 SQL directly when representative tables are absent. Direct setup
-does not create Flyway history, so `flyway_schema_history` may be absent in a
-locally initialized database. This dual path is a known development limitation;
-do not infer migration history solely from table presence, and establish one
-migration authority before production use.
+applies V1/V2/V3/V4 SQL directly when representative objects are absent. Direct
+setup does not create Flyway history, so `flyway_schema_history` may be absent
+in a locally initialized database. This dual path is a known development
+limitation; do not infer migration history solely from table presence, and
+establish one migration authority before production use.
 
 ## Safe Operations
 
-| Operation                       | Mutates data?                  | Preferred command                                |
-| ------------------------------- | ------------------------------ | ------------------------------------------------ |
-| Check tools/configuration       | No                             | `scripts/check-environment.ps1 -IncludePostgres` |
-| Inspect schema/counts/metadata  | No                             | `scripts/inspect-postgres.ps1`                   |
-| Create role/database/schema     | Yes                            | `scripts/setup-local-postgres.ps1`               |
-| Start PostgreSQL-backed backend | Potentially; seeds if empty    | `scripts/start-backend-postgres.ps1`             |
-| Run isolated store smoke test   | Yes, isolated test schema only | `scripts/verify-local.ps1 -IncludePostgres`      |
+| Operation                           | Mutates data?                   | Preferred command                                |
+| ----------------------------------- | ------------------------------- | ------------------------------------------------ |
+| Check tools/configuration           | No                              | `scripts/check-environment.ps1 -IncludePostgres` |
+| Inspect schema/counts/metadata      | No                              | `scripts/inspect-postgres.ps1`                   |
+| Create role/database/schema         | Yes                             | `scripts/setup-local-postgres.ps1`               |
+| Start PostgreSQL-backed backend     | Potentially; seeds if empty     | `scripts/start-backend-postgres.ps1`             |
+| Run isolated PostgreSQL smoke tests | Yes, isolated test schemas only | `scripts/verify-local.ps1 -IncludePostgres`      |
 
 Investigation uses explicit read-only transactions. Do not run setup,
 migrations, `ANALYZE`, DDL, DML, or destructive recovery merely to diagnose a
@@ -243,13 +283,44 @@ problem.
 
 ## Backup, Restore, and Migration
 
-There is no automated PostgreSQL backup or cross-profile migration command.
+The application exposes a manual snapshot export:
+
+```http
+GET /api/v1/financials/export
+GET /api/v1/financials/export/csv
+GET /api/v1/financials/export/xlsx
+```
+
+The export is a JSON attachment whose `snapshot` field mirrors the
+full-snapshot save request shape. It is useful as a portable, source-shaped
+copy of the currently saved aggregate. CSV and XLSX exports use a fixed-column
+tabular representation of the same source records. These source-shaped exports
+do not currently include audit history; the storage envelope and JSON `.bak`
+copy do.
+
+The backend also exposes explicit full-snapshot tabular restore endpoints:
+
+```http
+POST /api/v1/financials/import/csv
+POST /api/v1/financials/import/xlsx
+```
+
+Those imports are restore operations, not merges. They replace the complete
+aggregate through the same version-checked path as `PUT /api/v1/financials`.
+They are useful for deliberate local recovery from a trusted export, but they
+are not an automated backup schedule, PostgreSQL dump, or cross-profile
+migration strategy.
 
 - Before risky JSON changes, copy both `.local.json` and `.bak` to a protected
   location outside the repository.
 - Before PostgreSQL changes, use administrator-approved database-native backup
   tooling and verify restoration on a separate target.
-- Treat backups and exports as personal financial data.
+- Treat backups, exports, and import files as personal financial data.
+- Treat audit history as personal financial data because aggregate totals and
+  timestamps can reveal financial behavior.
+- Do not commit downloaded exports or store them in repository folders. The
+  export script refuses repository output paths unless explicitly overridden for
+  synthetic/mock data.
 - Do not overwrite either profile implicitly to “synchronize” them.
 - When deliberately moving JSON data into an empty PostgreSQL database, verify
   the source file, take backups, start the profile once, and inspect only
@@ -267,6 +338,8 @@ There is no automated PostgreSQL backup or cross-profile migration command.
   administrator-led recovery after a backup.
 - An empty document table is healthy before first PostgreSQL-backed startup.
 - Empty normalized V1 tables are healthy under the current adapter.
+- Empty V3/V4 `financial_record_*` tables are healthy until the runtime service
+  is intentionally wired to the relational adapter.
 
 See `docs/api-contract.md` for request replacement semantics and
 `docs/domain-glossary.md` for storage terminology.

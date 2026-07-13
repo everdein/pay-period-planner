@@ -32,8 +32,9 @@ The first step is intentionally narrow:
 
 As implemented, the `postgres` profile reads and writes the active snapshot via
 `financial_snapshot_document.snapshot_json`. The normalized relational tables
-from the first migration remain schema groundwork for later granular CRUD and
-may be empty in a healthy database.
+from the first migration may be empty in a healthy database. ADR 0009 later
+decided that those V1 tables should remain inactive rather than becoming the
+runtime relational persistence path.
 
 ## Consequences
 
@@ -42,7 +43,9 @@ local workflow. The tradeoff is that the codebase temporarily has two
 persistence stories: JSON as the default local implementation and PostgreSQL
 JSONB as the database-backed implementation.
 
-Follow-up work should add relational database-backed repositories, CRUD APIs for
-financial records, broader integration tests around migrations and persistence
-behavior, and eventually snapshot versioning so concurrent writes cannot
-silently overwrite each other.
+Follow-up work should add export/backup support, then design a cleaner
+relational persistence path with new additive migrations, database-backed
+repositories, CRUD APIs for financial records, and broader integration tests
+around migrations and persistence behavior. Snapshot versioning for
+full-snapshot saves was later handled by ADR 0008; the V1 relational-table path
+was later clarified by ADR 0009.

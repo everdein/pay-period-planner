@@ -2,6 +2,7 @@ package com.example.backend.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.example.backend.domain.financials.ExpenseBill;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -26,8 +27,8 @@ class PostgresFinancialsSnapshotStoreIT {
   void setUp() {
     DriverManagerDataSource dataSource = new DriverManagerDataSource();
     dataSource.setUrl(withCurrentSchema(databaseUrl(), TEST_SCHEMA));
-    dataSource.setUsername(environmentOrDefault("DATABASE_USERNAME", "financial_app_user"));
-    dataSource.setPassword(environmentOrDefault("DATABASE_PASSWORD", "financial_app_password"));
+    dataSource.setUsername(requiredEnvironment("DATABASE_USERNAME"));
+    dataSource.setPassword(requiredEnvironment("DATABASE_PASSWORD"));
 
     jdbcTemplate = new JdbcTemplate(dataSource);
     jdbcTemplate.execute("create schema if not exists " + TEST_SCHEMA);
@@ -74,15 +75,16 @@ class PostgresFinancialsSnapshotStoreIT {
             "select count(*) from financial_snapshot_document where active = true", Integer.class);
 
     assertThat(loaded.bills()).isEmpty();
+    assertThat(loaded.version()).isEqualTo(1L);
     assertThat(rowCount).isEqualTo(1);
   }
 
   @Test
   void savesLoadsAndIncrementsVersion() {
-    store.load();
+    FinancialsData seed = store.load();
 
-    store.save(snapshotWithBill("Water", "31.25"));
-    store.save(snapshotWithBill("Electricity", "42.50"));
+    store.save(snapshotWithBill("Water", "31.25").withVersion(seed.version() + 1));
+    store.save(snapshotWithBill("Electricity", "42.50").withVersion(seed.version() + 2));
 
     FinancialsData loaded = store.load();
     Long version =
@@ -90,6 +92,7 @@ class PostgresFinancialsSnapshotStoreIT {
             "select version from financial_snapshot_document where active = true", Long.class);
 
     assertThat(loaded.bills()).hasSize(1);
+    assertThat(loaded.version()).isEqualTo(3L);
     assertThat(loaded.bills().getFirst().bill()).isEqualTo("Electricity");
     assertThat(loaded.bills().getFirst().amount()).isEqualByComparingTo("42.50");
     assertThat(version).isEqualTo(3);
@@ -120,5 +123,13 @@ class PostgresFinancialsSnapshotStoreIT {
   private String environmentOrDefault(String name, String defaultValue) {
     String value = System.getenv(name);
     return value == null || value.isBlank() ? defaultValue : value;
+  }
+
+  private String requiredEnvironment(String name) {
+    String value = System.getenv(name);
+    if (value == null || value.isBlank()) {
+      throw new IllegalStateException(name + " must be set for PostgreSQL integration tests");
+    }
+    return value;
   }
 }

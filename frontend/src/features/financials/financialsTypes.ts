@@ -50,6 +50,15 @@ export type IncomeEventFormState = {
   checkNumber: string;
 };
 
+export type RecurringPaydayFormState = {
+  firstPayDate: string;
+  label: string;
+  replaceExistingYear: boolean;
+  startingCheckNumber: string;
+  type: string;
+  year: string;
+};
+
 export type ImportantDateFormState = {
   date: string;
   event: string;

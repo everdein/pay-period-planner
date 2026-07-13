@@ -14,7 +14,7 @@ public class PostgresFinancialsSnapshotStore implements FinancialsSnapshotStore 
 
   private static final String LOAD_ACTIVE_SNAPSHOT =
       """
-      select snapshot_json::text
+      select version, snapshot_json::text
       from financial_snapshot_document
       where active = true
       order by id
@@ -24,14 +24,14 @@ public class PostgresFinancialsSnapshotStore implements FinancialsSnapshotStore 
       """
       update financial_snapshot_document
       set snapshot_json = ?::jsonb,
-          version = version + 1,
+          version = ?,
           updated_at = now()
       where active = true
       """;
   private static final String INSERT_ACTIVE_SNAPSHOT =
       """
       insert into financial_snapshot_document (active, version, snapshot_json)
-      values (true, 1, ?::jsonb)
+      values (true, ?, ?::jsonb)
       """;
 
   private final JdbcTemplate jdbcTemplate;
@@ -52,18 +52,24 @@ public class PostgresFinancialsSnapshotStore implements FinancialsSnapshotStore 
 
   @Override
   public FinancialsData load() {
-    String snapshotJson =
+    StoredSnapshot storedSnapshot =
         jdbcTemplate.query(
-            LOAD_ACTIVE_SNAPSHOT, (resultSet) -> resultSet.next() ? resultSet.getString(1) : null);
+            LOAD_ACTIVE_SNAPSHOT,
+            (resultSet) ->
+                resultSet.next()
+                    ? new StoredSnapshot(resultSet.getLong(1), resultSet.getString(2))
+                    : null);
 
-    if (snapshotJson == null) {
-      FinancialsData seedData = seedData();
+    if (storedSnapshot == null) {
+      FinancialsData seedData = seedData().withVersion(1);
       save(seedData);
       return seedData;
     }
 
     try {
-      return objectMapper.readValue(snapshotJson, FinancialsData.class);
+      return objectMapper
+          .readValue(storedSnapshot.snapshotJson(), FinancialsData.class)
+          .withVersion(storedSnapshot.version());
     } catch (RuntimeException exception) {
       throw new IllegalStateException(
           "Unable to read financial snapshot from PostgreSQL", exception);
@@ -73,12 +79,14 @@ public class PostgresFinancialsSnapshotStore implements FinancialsSnapshotStore 
   @Override
   public void save(FinancialsData data) {
     String snapshotJson = snapshotJson(data);
-    int updated = jdbcTemplate.update(UPDATE_ACTIVE_SNAPSHOT, snapshotJson);
+    int updated = jdbcTemplate.update(UPDATE_ACTIVE_SNAPSHOT, snapshotJson, data.version());
 
     if (updated == 0) {
-      jdbcTemplate.update(INSERT_ACTIVE_SNAPSHOT, snapshotJson);
+      jdbcTemplate.update(INSERT_ACTIVE_SNAPSHOT, data.version(), snapshotJson);
     }
   }
+
+  private record StoredSnapshot(long version, String snapshotJson) {}
 
   private String snapshotJson(FinancialsData data) {
     try {

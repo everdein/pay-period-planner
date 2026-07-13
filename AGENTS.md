@@ -10,15 +10,23 @@ subproject README before changing frontend, backend, database, or CI behavior.
 - `frontend/`: React 19, TypeScript, Redux Toolkit, Vite, and Vitest.
 - `backend/`: Java 21, Spring Boot 4, Maven, Spring JDBC, and JaCoCo.
 - `backend/data/financials.example.json`: committed mock seed data.
-- `backend/data/financials.local.json`: ignored local data; never commit it.
+- `backend/data/financials.local.json` plus `.bak`/`.tmp` siblings: ignored
+  local data; never commit them.
 - `backend/src/main/resources/db/migration/`: PostgreSQL schema migrations.
-- `.github/workflows/ci.yml`: GitHub Actions and Snyk pipeline.
+- `.github/workflows/ci.yml`: build, test, coverage, and Snyk pipeline.
+- `.github/workflows/codeql.yml`: hosted Java and JavaScript/TypeScript code
+  scanning.
+- `.github/workflows/dependency-review.yml`: pull-request dependency-diff
+  vulnerability gate.
 - `scripts/`: repeatable local setup, verification, and inspection commands.
 
 The application edits and saves one financial snapshot aggregate. The default
 profile stores local JSON. The `postgres` profile stores that aggregate in
 `financial_snapshot_document.snapshot_json`. The V1 normalized tables are
-schema groundwork and are not the active persistence path.
+inactive historical groundwork and are not the active or planned runtime
+persistence path as-is. The V3/V4 `financial_record_*` tables and adapter are
+the tested future relational path, including internal granular CRUD support,
+but runtime persistence still uses the JSONB document store.
 
 ## Directory Ownership
 
@@ -27,6 +35,8 @@ schema groundwork and are not the active persistence path.
 - `frontend/src/api/`: HTTP client behavior and endpoint integration.
 - `backend/src/main/java/.../api/` and `dto/`: HTTP boundaries and snapshot
   contract.
+- `backend/src/main/java/.../domain/financials/`: financial record types and
+  the saved snapshot aggregate used inside the backend.
 - `backend/src/main/java/.../service/`: validation, calculations, and domain
   orchestration.
 - `backend/src/main/java/.../repository/`: JSON and PostgreSQL persistence.
@@ -89,8 +99,9 @@ a branch, implementation, verification report, or draft PR.
   and SortPom; run formatters only on files in scope.
 - Keep React components focused, immutable Redux updates explicit, and
   financial/date calculations in named helpers with tests.
-- Keep controllers thin, DTOs at the API boundary, business rules in services,
-  and storage details behind repository interfaces.
+- Keep controllers thin, DTOs at the API boundary, financial record models in
+  the domain package, business rules in services, and storage details behind
+  repository interfaces.
 - Prefer existing naming and package patterns. Avoid broad cleanup mixed with a
   behavioral change.
 - Never log secrets or full personal financial snapshots.
@@ -114,6 +125,9 @@ From the repository root:
 .\scripts\inspect-postgres.ps1
 .\scripts\setup-postgres-readonly-role.ps1
 .\scripts\run-browser-checks.ps1
+.\scripts\export-financial-snapshot.ps1 -Format csv -OutputPath <outside-repo-path>
+.\scripts\import-financial-snapshot.ps1 -InputPath <outside-repo-path> -ConfirmRestore
+.\scripts\write-coverage-summary.ps1
 .\scripts\check-documentation-drift.ps1
 .\scripts\triage-dependency-updates.ps1
 .\scripts\generate-engineering-status.ps1
@@ -121,6 +135,10 @@ From the repository root:
 
 Run `.\scripts\run-security-checks.ps1` only when authenticated tooling and
 network access are available. CI is authoritative for GitHub-hosted behavior.
+`.snyk-cli-version` is the single source of truth for the Snyk CLI version used
+locally and in CI. Update that file intentionally, install the matching CLI,
+and rerun authenticated scans when upgrading Snyk; do not use `snyk@latest` in
+repository security gates.
 All required CI jobs must pass; do not bypass checks. Treat high-severity Snyk
 findings as blocking unless the repository owner explicitly accepts and records
 the risk. A missing `SNYK_TOKEN`, unavailable service, or unauthenticated scan
@@ -128,6 +146,12 @@ is not a pass. For Dependabot-triggered workflows, GitHub Actions may withhold
 repository secrets; in that case, treat the internal Snyk CLI step as skipped
 and rely on the external Snyk PR check or an owner-approved manual rerun for
 security evidence.
+CodeQL is a hosted Java and JavaScript/TypeScript scan; inspect uploaded alerts
+in GitHub rather than treating workflow completion as proof that no alerts
+exist. Dependency Review blocks pull requests that introduce high- or
+critical-severity vulnerabilities in runtime, development, or unknown scopes.
+Both checks require GitHub's repository security features and cannot be
+reproduced fully by the local verification scripts.
 Copilot review requests are assistive and non-blocking. Copilot comments must
 be validated against code, tests, docs, and data-safety rules before action.
 PR and CI failure summary packets are context only; they do not prove hosted
@@ -149,6 +173,9 @@ or security policy from a packet alone.
 - `backend/data/financials.local.json`, PostgreSQL contents, exports, logs, and
   screenshots may contain personal data. Do not commit, paste, summarize, or
   send them to external services.
+- JSON, CSV, and XLSX snapshot exports are backup/restore artifacts. Store them
+  outside the repository unless the data is synthetic and `-AllowRepositoryPath`
+  is intentional.
 - Prefer metadata, counts, keys, and redacted/minimal reproductions when
   diagnosing personal data. Ask before reading full local records.
 - Never replace personal local data with mock data, seed over it, or migrate it
@@ -156,11 +183,15 @@ or security policy from a packet alone.
 
 ## Intentional Limitations
 
-- There is no authentication, authorization, production deployment
-  infrastructure, external API integration, or multi-user conflict handling.
-- Saves replace one complete snapshot; concurrency is last-write-wins.
+- Financial APIs require a single local Basic-auth application user, but there
+  is no multi-user identity, tenant isolation, production deployment
+  infrastructure, or external API integration.
+- Full-snapshot saves use optimistic version checks; granular endpoints still
+  mutate immediately without client-supplied aggregate versions.
 - PostgreSQL persists one JSONB snapshot. V1 normalized tables are inactive
-  groundwork and may remain empty.
+  historical groundwork and may remain empty. V3/V4 `financial_record_*`
+  tables provide the tested relational adapter and granular CRUD path but are
+  not the active runtime persistence path yet.
 - JSON is the default local profile. PostgreSQL setup and integration tests are
   opt-in.
 - The deploy workflow is a manual placeholder, not a production release path.

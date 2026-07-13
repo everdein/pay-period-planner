@@ -225,16 +225,17 @@ On a new machine, install the local Playwright Chromium browser first:
 .\scripts\run-browser-checks.ps1 -InstallBrowsers
 ```
 
-The smoke test starts the Vite dev server, mocks `/api/v1/financials` with
-synthetic data, edits a monthly withdrawal, and verifies the save request
-payload. It intentionally avoids personal data and does not require the backend
-process.
+The smoke test starts Spring Boot and the Vite dev server. Spring Boot uses the
+`json` profile with a disposable data path under `test-results/`, seeded from
+committed synthetic example data. The browser covers load, edit, save, refresh
+persistence, delete confirmation, and post-delete refresh while avoiding
+personal local data.
 
 ### Browser Boundary
 
 | Action type                       | Default stance             | Notes                                                  |
 | --------------------------------- | -------------------------- | ------------------------------------------------------ |
-| Synthetic Playwright smoke        | Allowed when relevant      | Uses mocked API data and local browser artifacts       |
+| Live synthetic Playwright smoke   | Allowed when relevant      | Uses temp JSON data and local browser artifacts        |
 | Manual/browser visual inspection  | Allowed when scoped        | Avoid screenshots containing personal data             |
 | Live backend browser testing      | Explicitly scope target    | Use JSON or PostgreSQL profile intentionally           |
 | Personal financial data browsing  | Avoid by default           | Requires explicit approval and redacted reporting      |

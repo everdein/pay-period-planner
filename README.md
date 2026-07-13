@@ -187,14 +187,49 @@ a frontend login user.
 
 Current implementation note: the active PostgreSQL persistence path stores the
 whole financial snapshot in `financial_snapshot_document.snapshot_json`. The
-normalized V1 tables also exist as a relational schema foundation, but they are
-not populated by the current repository implementation.
+normalized V1 tables also exist, but ADR 0009 keeps them inactive rather than
+using them as the runtime relational adapter path. The V3/V4
+`financial_record_*` tables and adapter are the tested relational path for
+granular persistence, but they are not active runtime storage yet.
 
 ---
 
 ## Running the application
 
-Run the backend and frontend in separate terminals.
+There are two supported local ways to start the app. Choose one backend storage
+mode, then run the frontend in a separate terminal.
+
+| Path | Storage                   | Best for                            |
+| ---- | ------------------------- | ----------------------------------- |
+| A    | Local JSON file           | Fastest startup after a fresh clone |
+| B    | PostgreSQL JSONB snapshot | Testing database-backed persistence |
+
+In both paths, a running backend should keep its terminal open. If the command
+returns to the PowerShell prompt, the backend stopped during startup; check the
+last Spring Boot log lines before `BUILD SUCCESS` or `BUILD FAILURE`.
+
+Local API sign-in defaults:
+
+```text
+Username: financial_app
+Password: financial_app_local_password
+```
+
+Override these with `FINANCIALS_API_USERNAME` and `FINANCIALS_API_PASSWORD`
+before starting the backend. These credentials protect every
+`/api/v1/financials/**` endpoint during local development; do not reuse them for
+real deployment.
+
+Runtime guardrails:
+
+- only `/actuator/health` and `/actuator/info` are exposed by default
+- backend error responses do not include stack traces or binding internals
+- request bodies above `FINANCIALS_MAX_REQUEST_BYTES` are rejected with `413`
+  before controller handling; default is `1048576`
+- cross-origin browser calls are denied unless `FINANCIALS_ALLOWED_ORIGINS`
+  names exact allowed origins
+- activating `prod` requires the `postgres` profile, non-default API
+  credentials, and no wildcard CORS origin
 
 ---
 
@@ -250,16 +285,23 @@ The script will:
 - assign database ownership and privileges
 - apply the local migration SQL files when the target tables do not already
   exist
-- verify the `financial_snapshot_document` table exists
+- verify the `financial_snapshot_document` and `financial_record_snapshot`
+  tables exist
 
 The script is safe to rerun. If the database and tables already exist, it skips
 the create/migration steps and verifies the setup.
 
-After setup completes, start the PostgreSQL-backed backend:
+After setup completes, start the PostgreSQL-backed backend from the repository
+root:
 
 ```powershell
+cd C:\Users\<you>\dev\end-to-end-app
 .\scripts\start-backend-postgres.ps1
 ```
+
+The script starts Spring Boot with the `postgres` profile and the dedicated
+database user `financial_app_user`; it does not run the application as the
+PostgreSQL admin user.
 
 Backend URL:
 
@@ -324,6 +366,8 @@ If `psql` is on the PATH:
 ```powershell
 psql -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V1__create_financials_schema.sql
 psql -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V2__create_financial_snapshot_document.sql
+psql -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V3__create_financial_record_snapshot_schema.sql
+psql -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V4__add_financial_record_app_id_constraints.sql
 ```
 
 On Windows, if `psql` is not recognized, use the full PostgreSQL path:
@@ -332,6 +376,10 @@ On Windows, if `psql` is not recognized, use the full PostgreSQL path:
 & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V1__create_financials_schema.sql
 
 & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V2__create_financial_snapshot_document.sql
+
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V3__create_financial_record_snapshot_schema.sql
+
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V4__add_financial_record_app_id_constraints.sql
 ```
 
 When prompted, use:
@@ -351,6 +399,7 @@ Inside `psql`:
 ```sql
 \dt
 SELECT count(*) FROM financial_snapshot_document;
+SELECT count(*) FROM financial_record_snapshot;
 \q
 ```
 
@@ -362,6 +411,14 @@ asset_account
 debt_account
 financial_snapshot
 financial_snapshot_document
+financial_record_annual_withdrawal
+financial_record_asset_account
+financial_record_debt_account
+financial_record_important_date
+financial_record_income_event
+financial_record_income_summary_item
+financial_record_monthly_bill
+financial_record_snapshot
 important_date
 income_event
 income_summary_item
@@ -371,9 +428,11 @@ monthly_withdrawal
 A count of `0` in `financial_snapshot_document` is acceptable on a fresh
 database. The backend can seed the first snapshot from local JSON data.
 
-The current JSONB-backed implementation uses `financial_snapshot_document`.
-The other tables are present for the future relational persistence path and may
-remain empty.
+The current JSONB-backed runtime implementation uses
+`financial_snapshot_document`. The V1 tables are inactive historical
+groundwork and may remain empty. The V3/V4 `financial_record_*` tables are the
+tested relational adapter path and may also remain empty until the runtime
+service is intentionally wired to that adapter.
 
 ---
 
@@ -433,30 +492,87 @@ The financials API behaves as a single snapshot aggregate. The versioned route
 names use `financials` as the primary resource because the read and save
 endpoints load and persist the full financial workspace.
 
+Every `/api/v1/financials/**` endpoint requires HTTP Basic authentication. The
+frontend sign-in form stores the Basic token in browser session storage for the
+current tab/session only after an authenticated snapshot request succeeds. If
+the backend is not reachable, sign-in remains on the form and reports a backend
+connection error. Local scripts read `FINANCIALS_API_USERNAME` and
+`FINANCIALS_API_PASSWORD` or fall back to the local defaults above.
+
 Financial snapshot endpoints:
 
 ```http
 GET /api/v1/financials
+GET /api/v1/financials/history
+GET /api/v1/financials/export
+GET /api/v1/financials/export/csv
+GET /api/v1/financials/export/xlsx
+POST /api/v1/financials/import/csv
+POST /api/v1/financials/import/xlsx
 PUT /api/v1/financials
 PUT /api/v1/financials/pay-period
 ```
 
-Granular bill endpoints:
+Granular record endpoints:
 
 ```http
 POST /api/v1/financials/bills
 PUT /api/v1/financials/bills/{id}
 DELETE /api/v1/financials/bills/{id}
+POST /api/v1/financials/annual-withdrawals
+PUT /api/v1/financials/annual-withdrawals/{id}
+DELETE /api/v1/financials/annual-withdrawals/{id}
+POST /api/v1/financials/asset-accounts
+PUT /api/v1/financials/asset-accounts/{id}
+DELETE /api/v1/financials/asset-accounts/{id}
+POST /api/v1/financials/debt-accounts
+PUT /api/v1/financials/debt-accounts/{id}
+DELETE /api/v1/financials/debt-accounts/{id}
+POST /api/v1/financials/income-summary-items
+PUT /api/v1/financials/income-summary-items/{id}
+DELETE /api/v1/financials/income-summary-items/{id}
+POST /api/v1/financials/income-events
+PUT /api/v1/financials/income-events/{id}
+DELETE /api/v1/financials/income-events/{id}
+POST /api/v1/financials/important-dates
+PUT /api/v1/financials/important-dates/{id}
+DELETE /api/v1/financials/important-dates/{id}
 ```
 
 The Financials UI currently uses a draft/save workflow:
 
 - one request loads the financial snapshot when the app opens
 - edits are made locally in the browser
-- one save request persists the full snapshot to the backend
+- one save request persists the full snapshot to the backend with the current
+  snapshot version
 
-The individual bill endpoints remain available as a more granular API option,
-but the current UI treats the snapshot as the source of truth.
+If another tab or client saves first, the backend returns `409 Conflict` rather
+than silently overwriting the newer snapshot.
+
+The history endpoint returns recent saved-change audit events with version
+movement, coarse resource metadata, and aggregate projection summaries. Treat
+audit history as personal financial data.
+
+The export endpoints download the currently saved source snapshot as JSON, CSV,
+or XLSX. The JSON file preserves the full request-shaped backup envelope; CSV
+and XLSX use one tabular exchange format that can also be imported back through
+the version-checked restore endpoints. Imports replace the complete snapshot,
+so stale files return `409 Conflict` instead of silently overwriting newer
+data. Source-shaped exports do not currently include audit history. Export and
+import files should be handled as personal financial data.
+
+PowerShell helpers are available for local operators:
+
+```powershell
+.\scripts\export-financial-snapshot.ps1 -Format csv -OutputPath "$HOME\Downloads\financial-snapshot.csv"
+.\scripts\import-financial-snapshot.ps1 -InputPath "$HOME\Downloads\financial-snapshot.csv" -ConfirmRestore
+```
+
+The export helper refuses repository output paths unless `-AllowRepositoryPath`
+is supplied for synthetic/mock data.
+
+The individual record endpoints remain available as granular API options, but
+the current UI treats the snapshot as the source of truth.
 
 ---
 
@@ -470,8 +586,9 @@ sections for:
   payoff, and possible HYSA transfer
 - monthly withdrawals with pay period planning
 - annual withdrawals that can be included in the active pay period
-- income summary derived from one editable bi-weekly net income value
-- income calendar events with received/current/upcoming status
+- income summary source rows plus derived net/disposable income values
+- income calendar events with recurring payday generation and
+  received/current/upcoming status
 - retirement accounts
 - investments
 - cash and savings
@@ -486,6 +603,11 @@ use `MM/DD/YYYY`; browser date inputs use native date controls for editing.
 Pay period dates are automatically derived from the saved schedule and today's
 date when the app opens. Manually changing the pay period dates updates that
 schedule anchor on the next save.
+
+The Income Calendar can generate bi-weekly paycheck rows for a selected year
+from the first payday, starting check number, label, and type. By default it
+replaces existing numbered income rows in that year while preserving one-time
+income events such as tax returns or bonuses.
 
 The Projection view is derived from the saved snapshot and current draft state.
 It focuses on the next pay period, using bi-weekly net income, bills due, annual
@@ -570,10 +692,14 @@ cd backend
 
 ### PostgreSQL profile smoke test
 
-After local PostgreSQL setup, this command runs the snapshot-store integration
-tests in the dedicated `financial_snapshot_store_test` schema:
+After local PostgreSQL setup, this command runs the snapshot-store and V3/V4
+record-adapter integration tests in dedicated isolated schemas. Set the
+dedicated local application-role credentials in the current shell first; the
+tests do not contain fallback credentials:
 
 ```powershell
+$env:DATABASE_USERNAME = "<local app database user>"
+$env:DATABASE_PASSWORD = "<local app database password>"
 .\scripts\verify-local.ps1 -IncludePostgres
 ```
 
@@ -589,7 +715,8 @@ root:
 ```
 
 When a change affects PostgreSQL configuration, serialization, migrations, or
-storage behavior:
+storage behavior, set `DATABASE_USERNAME` and `DATABASE_PASSWORD` for the local
+application role before running:
 
 ```powershell
 .\scripts\verify-local.ps1 -IncludePostgres
@@ -601,8 +728,10 @@ Run networked security checks separately:
 .\scripts\run-security-checks.ps1
 ```
 
-This runs npm audits and an authenticated Snyk scan. It requires the Snyk CLI,
-`SNYK_TOKEN`, and network access; CI remains the canonical Snyk environment.
+This runs npm audits and an authenticated Snyk scan. It requires the Snyk CLI
+version recorded in `.snyk-cli-version`, `SNYK_TOKEN`, and network access; CI
+installs the same exact CLI version. A local version mismatch fails before the
+audits begin. CI remains the canonical hosted Snyk environment.
 The older `.\scripts\verify.ps1` entry point remains as a compatibility wrapper.
 
 Run the opt-in browser workflow smoke test with Playwright:
@@ -617,9 +746,11 @@ On a new machine, install the local Playwright Chromium browser first:
 .\scripts\run-browser-checks.ps1 -InstallBrowsers
 ```
 
-The current browser smoke uses synthetic mocked API data to validate browser
-navigation, draft editing, and save request construction without touching
-personal data or requiring the backend process.
+The current browser smoke starts Spring Boot and Vite together. Spring Boot uses
+the `json` profile with a disposable data path under `test-results/`, seeded
+from committed synthetic example data. The browser test covers load, edit,
+save, refresh persistence, delete confirmation, and post-delete refresh without
+touching personal local data.
 
 Inspect the local PostgreSQL schema and snapshot metadata without modifying
 data:
@@ -653,6 +784,16 @@ The script compares the local working tree with `HEAD`, checks source-map path
 references, and reports source changes that may need documentation owners. In
 GitHub Actions, `.github/workflows/documentation-drift.yml` writes the same
 packet to the job summary for pull requests and manual runs.
+
+Generate a deterministic coverage summary packet after frontend coverage and
+backend `clean verify` reports exist:
+
+```powershell
+.\scripts\write-coverage-summary.ps1
+```
+
+In GitHub Actions, the `Coverage Summary` job downloads the frontend Vitest and
+backend JaCoCo coverage artifacts and writes the packet to the job summary.
 
 Generate dependency and weekly maintenance packets:
 
@@ -775,6 +916,10 @@ Manual fallback:
 & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V1__create_financials_schema.sql
 
 & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V2__create_financial_snapshot_document.sql
+
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V3__create_financial_record_snapshot_schema.sql
+
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V4__add_financial_record_app_id_constraints.sql
 ```
 
 ---
@@ -811,6 +956,8 @@ GitHub Actions currently validates:
 - frontend builds
 - backend builds
 - Snyk dependency/security scans
+- CodeQL analysis for Java and JavaScript/TypeScript
+- dependency review for pull-request dependency changes
 
 The scan job expects `SNYK_TOKEN` to be configured for both Actions and
 Dependabot secrets. `NVD_API_KEY` is not used by the current workflow. If a
@@ -818,6 +965,20 @@ restricted event or misconfiguration prevents the workflow from receiving
 `SNYK_TOKEN`, Dependabot-triggered runs skip the internal Snyk CLI step with a
 warning and should be evaluated against the external Snyk PR check or a manual
 rerun.
+
+The scan job reads `.snyk-cli-version`, installs that exact npm package
+version, verifies the installed version, and only then runs `snyk test`. To
+upgrade the scanner, change the pin intentionally, install the matching local
+CLI or direct binary, run `.\scripts\run-security-checks.ps1`, and verify the
+hosted pull-request scan.
+
+CodeQL runs for pull requests, pushes to `main`, a weekly schedule, and manual
+dispatches. It uploads Java and JavaScript/TypeScript findings to GitHub code
+scanning; a completed analysis means results were uploaded, not necessarily
+that the repository has no alerts. Dependency Review runs on pull requests and
+fails when a dependency change introduces a high- or critical-severity
+vulnerability in runtime, development, or unknown scope. These are hosted
+GitHub checks and have no complete local equivalent.
 
 ---
 
@@ -838,9 +999,11 @@ Each subproject README is intentionally self-contained.
 Current intentional limitations:
 
 - JSON remains the default local fallback
-- PostgreSQL stores the full snapshot as `jsonb`; granular database-backed CRUD
-  is not implemented yet
-- no authentication
+- PostgreSQL stores the active runtime snapshot as `jsonb`; V3/V4 relational
+  tables and adapter support tested database-backed CRUD, but the runtime
+  service is not wired to them yet
+- single local Basic-auth application user; no multi-user identity or tenant
+  ownership model yet
 - no routing
 - no deployment infrastructure
 - no external financial website integrations

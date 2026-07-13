@@ -13,6 +13,7 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "postinstall": "node scripts/apply-dependency-compat-patches.cjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -45,5 +46,9 @@
     "typescript": "~6.0.3",
     "vite": "^8.1.4",
     "vitest": "^4.1.9"
+  },
+  "overrides": {
+    "brace-expansion": "5.0.7",
+    "js-yaml": "4.3.0"
   }
 }

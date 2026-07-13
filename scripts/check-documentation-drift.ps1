@@ -180,8 +180,8 @@ try {
         [pscustomobject]@{
             Area = "Persistence and database"
             Severity = "High"
-            SourcePatterns = @("^backend/src/main/java/.*/repository/", "^backend/src/main/resources/db/migration/", "^backend/src/main/resources/application.*\.properties$", "^scripts/.*postgres.*\.ps1$")
-            ExpectedDocs = @("docs/database-storage-guide.md", "docs/known-limitations.md", "backend/README.md", "AGENTS.md")
+            SourcePatterns = @("^backend/src/main/java/.*/domain/financials/", "^backend/src/main/java/.*/repository/", "^backend/src/main/resources/db/migration/", "^backend/src/main/resources/application.*\.properties$", "^scripts/.*postgres.*\.ps1$")
+            ExpectedDocs = @("docs/database-storage-guide.md", "docs/known-limitations.md", "docs/architecture-map.md", "backend/README.md", "AGENTS.md")
         },
         [pscustomobject]@{
             Area = "Verification and local scripts"

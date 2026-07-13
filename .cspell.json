@@ -43,6 +43,8 @@
     "frontend/coverage",
     "frontend/dist",
     "frontend/node_modules",
-    "node_modules"
+    "node_modules",
+    "playwright-report",
+    "test-results"
   ]
 }

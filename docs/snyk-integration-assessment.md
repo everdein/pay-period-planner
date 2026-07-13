@@ -1,6 +1,6 @@
 # Snyk MCP/API Feasibility Assessment
 
-Assessed on 2026-07-09 against official Snyk documentation and the current
+Assessed on 2026-07-13 against official Snyk documentation and the current
 repository scripts/workflows.
 
 ## Decision
@@ -13,6 +13,10 @@ The canonical repository gates remain:
 
 - CI `Snyk test` when repository secrets are available
 - `scripts/run-security-checks.ps1`
+
+Both gates use the exact CLI version recorded in `.snyk-cli-version`. CI
+installs that npm package version, while the local script verifies the installed
+CLI or direct binary matches before scanning.
 
 Snyk MCP can help an agent run or explain scans on a developer machine. Snyk
 API can support future Enterprise automation. Neither replaces authenticated
@@ -49,13 +53,14 @@ MCP command:
 ```toml
 [mcp_servers.snyk]
 command = "npx"
-args = ["-y", "snyk@latest", "mcp", "-t", "stdio", "--profile=lite"]
+args = ["-y", "snyk@1.1306.0", "mcp", "-t", "stdio", "--profile=lite"]
 ```
 
 This intentionally uses no committed token. Authenticate through the Snyk CLI
 or the MCP server's supported `snyk_auth` flow when the user chooses to do so.
-If a team later standardizes Snyk MCP versions, pin the Snyk CLI/package in the
-team-managed setup rather than in this repository's source tree.
+For repository work, keep the version aligned with `.snyk-cli-version` so MCP
+and scanner behavior remain consistent. Keep the MCP entry user-scoped and
+update it deliberately when the repository pin changes.
 
 ## Allowed Uses
 
@@ -112,10 +117,9 @@ When reporting a Snyk result, include:
 
 ## Future Upgrade Path
 
-1. Pin or otherwise standardize the Snyk CLI/action used by CI.
-2. If structured Snyk artifacts become necessary, emit machine-readable reports
+1. If structured Snyk artifacts become necessary, emit machine-readable reports
    to ignored local paths and upload only sanitized CI artifacts.
-3. If API automation is needed, use a service account, explicit org/project
+2. If API automation is needed, use a service account, explicit org/project
    scope, and environment/secret storage managed outside the repository.
-4. Revisit repository-scoped MCP only if a non-secret, team-managed
+3. Revisit repository-scoped MCP only if a non-secret, team-managed
    configuration becomes useful and the project is explicitly trusted.

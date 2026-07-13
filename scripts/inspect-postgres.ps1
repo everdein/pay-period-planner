@@ -39,6 +39,14 @@ WITH expected(table_name) AS (
         ('income_event'),
         ('important_date'),
         ('financial_snapshot_document'),
+        ('financial_record_snapshot'),
+        ('financial_record_monthly_bill'),
+        ('financial_record_annual_withdrawal'),
+        ('financial_record_asset_account'),
+        ('financial_record_debt_account'),
+        ('financial_record_income_summary_item'),
+        ('financial_record_income_event'),
+        ('financial_record_important_date'),
         ('flyway_schema_history')
 )
 SELECT
@@ -46,6 +54,22 @@ SELECT
     to_regclass('public.' || expected.table_name) IS NOT NULL AS present
 FROM expected
 ORDER BY expected.table_name;
+
+WITH expected(index_name) AS (
+    VALUES
+        ('uq_financial_record_monthly_bill_snapshot_app_record'),
+        ('uq_financial_record_annual_withdrawal_snapshot_app_record'),
+        ('uq_financial_record_asset_account_snapshot_app_record'),
+        ('uq_financial_record_debt_account_snapshot_app_record'),
+        ('uq_financial_record_income_summary_item_snapshot_app_record'),
+        ('uq_financial_record_income_event_snapshot_app_record'),
+        ('uq_financial_record_important_date_snapshot_app_record')
+)
+SELECT
+    expected.index_name,
+    to_regclass('public.' || expected.index_name) IS NOT NULL AS present
+FROM expected
+ORDER BY expected.index_name;
 
 SELECT
     has_database_privilege(current_user, current_database(), 'CONNECT') AS can_connect,
@@ -87,6 +111,14 @@ try {
         "income_event",
         "important_date",
         "financial_snapshot_document",
+        "financial_record_snapshot",
+        "financial_record_monthly_bill",
+        "financial_record_annual_withdrawal",
+        "financial_record_asset_account",
+        "financial_record_debt_account",
+        "financial_record_income_summary_item",
+        "financial_record_income_event",
+        "financial_record_important_date",
         "flyway_schema_history"
     )
 
@@ -144,7 +176,8 @@ SELECT
     jsonb_array_length(COALESCE(snapshot_json->'assetAccounts', '[]'::jsonb)) AS asset_count,
     jsonb_array_length(COALESCE(snapshot_json->'debtAccounts', '[]'::jsonb)) AS debt_count,
     jsonb_array_length(COALESCE(snapshot_json->'incomeEvents', '[]'::jsonb)) AS income_event_count,
-    jsonb_array_length(COALESCE(snapshot_json->'importantDates', '[]'::jsonb)) AS important_date_count
+    jsonb_array_length(COALESCE(snapshot_json->'importantDates', '[]'::jsonb)) AS important_date_count,
+    jsonb_array_length(COALESCE(snapshot_json->'auditEvents', '[]'::jsonb)) AS audit_event_count
 FROM public.financial_snapshot_document
 ORDER BY active DESC, id;
 ROLLBACK;
@@ -153,6 +186,32 @@ ROLLBACK;
             -v "ON_ERROR_STOP=1" -X -c $snapshotSql
         if ($LASTEXITCODE -ne 0) {
             throw "Snapshot metadata inspection failed with exit code $LASTEXITCODE."
+        }
+    }
+
+    if ($existingTables -contains "financial_record_snapshot") {
+        $recordSnapshotSql = @"
+BEGIN TRANSACTION READ ONLY;
+SELECT
+    snapshot.id,
+    snapshot.active,
+    snapshot.version,
+    snapshot.created_at,
+    snapshot.updated_at,
+    (SELECT count(*) FROM public.financial_record_monthly_bill WHERE snapshot_id = snapshot.id) AS bill_count,
+    (SELECT count(*) FROM public.financial_record_annual_withdrawal WHERE snapshot_id = snapshot.id) AS annual_withdrawal_count,
+    (SELECT count(*) FROM public.financial_record_asset_account WHERE snapshot_id = snapshot.id) AS asset_count,
+    (SELECT count(*) FROM public.financial_record_debt_account WHERE snapshot_id = snapshot.id) AS debt_count,
+    (SELECT count(*) FROM public.financial_record_income_event WHERE snapshot_id = snapshot.id) AS income_event_count,
+    (SELECT count(*) FROM public.financial_record_important_date WHERE snapshot_id = snapshot.id) AS important_date_count
+FROM public.financial_record_snapshot snapshot
+ORDER BY snapshot.active DESC, snapshot.id;
+ROLLBACK;
+"@
+        & $psqlPath -h $HostName -p $Port -U $User -d $Database `
+            -v "ON_ERROR_STOP=1" -X -c $recordSnapshotSql
+        if ($LASTEXITCODE -ne 0) {
+            throw "Relational snapshot metadata inspection failed with exit code $LASTEXITCODE."
         }
     }
 }

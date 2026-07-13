@@ -7,6 +7,20 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
+if ($IncludePostgres) {
+    $missingPostgresVariables = @(
+        "DATABASE_USERNAME",
+        "DATABASE_PASSWORD"
+    ) | Where-Object { [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) }
+
+    if ($missingPostgresVariables.Count -gt 0) {
+        throw (
+            "PostgreSQL verification requires these environment variables: " +
+            ($missingPostgresVariables -join ", ")
+        )
+    }
+}
+
 function Invoke-Step {
     param(
         [Parameter(Mandatory = $true)]
@@ -50,9 +64,9 @@ try {
             $previousIntegrationSetting = $env:RUN_POSTGRES_INTEGRATION_TESTS
             $env:RUN_POSTGRES_INTEGRATION_TESTS = "true"
             try {
-                Invoke-Step "Isolated PostgreSQL snapshot store smoke tests" {
+                Invoke-Step "Isolated PostgreSQL snapshot store and record adapter smoke tests" {
                     .\mvnw.cmd -B test `
-                        "-Dtest=PostgresFinancialsSnapshotStoreIT" `
+                        "-Dtest=PostgresFinancialsSnapshotStoreIT,PostgresFinancialRecordSnapshotAdapterIT" `
                         "-Djacoco.skip=true"
                 }
             }

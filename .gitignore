@@ -20,3 +20,5 @@ Thumbs.db
 
 # Local/private app data
 backend/data/*.local.json
+backend/data/*.local.json.bak
+backend/data/*.local.json.tmp

@@ -9,4 +9,7 @@ public record AssetCategorySnapshotRequest(
     @NotBlank(message = "Asset category key is required") String key,
     @NotBlank(message = "Asset category label is required") String label,
     @NotNull(message = "Asset accounts are required")
-        List<@Valid AssetAccountSnapshotRequest> accounts) {}
+        List<
+                @NotNull(message = "Asset account record is required") @Valid
+                AssetAccountSnapshotRequest>
+            accounts) {}
