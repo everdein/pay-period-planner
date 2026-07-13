@@ -36,7 +36,10 @@ the single aggregate immediately.
 | `frontend/src/api/client.ts`                          | Fetch wrapper and HTTP error handling                                   |
 | `frontend/src/api/endpoints/financials.ts`            | API contract types and endpoint calls                                   |
 | `frontend/src/observability/`                         | Error containment, safe local reporting, recovery UI                    |
-| `frontend/src/features/financials/FinancialsPage.tsx` | Cross-domain orchestration and full-snapshot save boundary              |
+| `frontend/src/features/financials/FinancialsPage.tsx` | Authenticated load, save, export, and status shell                      |
+| `useFinancialsDraftWorkspace.ts`                      | Cross-domain draft lifecycle, projection, removal, and save composition |
+| `FinancialsNavigation.tsx`                            | Financial workspace navigation                                          |
+| `FinancialsTabContent.tsx`                            | Active-tab presentation routing                                         |
 | `frontend/src/features/financials/*Tab.tsx`           | Tab-level presentation and interactions                                 |
 | `useMonthlyWithdrawalsDraft.ts`                       | Monthly bill form state, draft actions, sorting, and totals             |
 | `useAnnualWithdrawalsDraft.ts`                        | Annual withdrawal form state, draft actions, sorting, and totals        |
@@ -53,10 +56,12 @@ the single aggregate immediately.
 The Redux slice owns the last server snapshot and request status. Its fetch
 thunk suppresses concurrent loads so React Strict Mode effect replays cannot
 deliver a late duplicate snapshot over an active local draft.
-`FinancialsPage` expands that snapshot into feature-owned draft collections.
-Feature-owned draft hooks manage each financial editor and its derived domain
-state. `FinancialsPage` coordinates their shared dirty/reset/save lifecycle,
-cross-domain projection inputs, navigation, and removal confirmations.
+`useFinancialsDraftWorkspace` expands that snapshot into feature-owned draft
+collections, coordinates their shared dirty/reset lifecycle, composes
+cross-domain projection inputs, routes removal confirmations, and builds the
+full save request. Feature-owned draft hooks manage each editor and its derived
+domain state. `FinancialsPage` keeps the authenticated server-action boundary;
+navigation and active-tab rendering stay in focused presentation components.
 Unsaved edits stay in the browser until `buildExpenseSnapshotRequest` produces
 the full `PUT /api/v1/financials` payload, including the snapshot `version`
 last returned by the backend. A successful save replaces the Redux snapshot
