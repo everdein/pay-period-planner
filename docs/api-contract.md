@@ -18,6 +18,10 @@ controller annotations remain authoritative.
 Local development defaults are `financial_app` /
 `financial_app_local_password`. Override them with `FINANCIALS_API_USERNAME` and
 `FINANCIALS_API_PASSWORD` before starting the backend.
+These are application API credentials, not PostgreSQL database credentials.
+Failed authentication returns `401` without a browser Basic-auth challenge so
+the frontend sign-in form can display the error instead of opening a native
+browser credential prompt.
 
 Cross-origin browser calls are denied unless `FINANCIALS_ALLOWED_ORIGINS`
 contains exact allowed origins. Request bodies above
@@ -34,6 +38,7 @@ origin.
 | Method   | Path                                           | Success        | Purpose                                    |
 | -------- | ---------------------------------------------- | -------------- | ------------------------------------------ |
 | `GET`    | `/api/v1/financials`                           | `200` snapshot | Load the calculated current workspace      |
+| `GET`    | `/api/v1/financials/history`                   | `200` history  | Load recent saved-change audit events      |
 | `GET`    | `/api/v1/financials/export`                    | `200` export   | Download the saved source snapshot as JSON |
 | `GET`    | `/api/v1/financials/export/csv`                | `200` CSV      | Download the saved source snapshot as CSV  |
 | `GET`    | `/api/v1/financials/export/xlsx`               | `200` XLSX     | Download the saved source snapshot as XLSX |
@@ -72,6 +77,56 @@ Every `GET /api/v1/financials` response includes the current snapshot
 `version`. Clients must echo that value in `PUT /api/v1/financials`. If another
 write has committed first, the backend rejects the stale save with `409
 Conflict` and leaves the newer snapshot intact.
+
+## Audit History
+
+`GET /api/v1/financials/history` returns the newest saved-change events first.
+The optional `limit` query parameter defaults to `50` and must be between `1`
+and `100`.
+
+```http
+GET /api/v1/financials/history?limit=10
+```
+
+```json
+{
+  "events": [
+    {
+      "id": 1,
+      "occurredAt": "2026-07-12T10:15:30Z",
+      "action": "CREATE",
+      "resourceType": "monthly-bill",
+      "resourceId": 42,
+      "versionBefore": 7,
+      "versionAfter": 8,
+      "summary": "Created monthly bill",
+      "projectionSummary": {
+        "payPeriodStart": "2026-07-01",
+        "payPeriodEnd": "2026-07-14",
+        "monthlyBillCount": 3,
+        "annualWithdrawalCount": 1,
+        "assetAccountCount": 2,
+        "debtAccountCount": 1,
+        "incomeSummaryItemCount": 2,
+        "incomeEventCount": 2,
+        "importantDateCount": 1,
+        "totalMonthlyExpenses": 1500,
+        "totalAnnualWithdrawals": 99,
+        "totalTrackedAssets": 15000,
+        "totalDebt": 500,
+        "netWorth": 14500
+      }
+    }
+  ]
+}
+```
+
+Audit events are appended when a persisted write commits and the snapshot
+version advances. They intentionally store coarse metadata, record type/ID,
+version movement, a short action summary, and aggregate projection totals; they
+do not store request bodies or field-level before/after personal-finance
+diffs. The history is part of the persisted local data envelope, so it is
+personal financial data when the underlying snapshot is personal.
 
 ## Complete Snapshot
 
@@ -527,8 +582,9 @@ and reason, including:
 - `409` when a full snapshot save uses a stale `version`
 - `404` when a granular record update/delete ID is absent
 
-Unauthenticated financial API requests return `401`. Oversized requests return
-`413 Payload Too Large` with a generic text response before body parsing.
+Unauthenticated or invalid-credential financial API requests return `401`
+without a `WWW-Authenticate` challenge header. Oversized requests return `413
+Payload Too Large` with a generic text response before body parsing.
 
 An `IllegalStateException` while processing persistence is converted to `500`
 with title `Persistence failure` and generic detail. Malformed-body and

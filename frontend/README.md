@@ -111,7 +111,10 @@ This provides:
 
 The backend protects every `/api/v1/financials/**` endpoint with HTTP Basic
 authentication. The frontend sign-in form stores the Basic token in browser
-session storage for the current tab/session.
+session storage for the current tab/session only after an authenticated
+snapshot request succeeds. If the backend is not running, the sign-in form stays
+visible and reports a backend connection error instead of entering the app and
+showing the financials screen with a proxy failure.
 
 Local API sign-in defaults:
 
@@ -119,6 +122,9 @@ Local API sign-in defaults:
 Username: financial_app
 Password: financial_app_local_password
 ```
+
+These are application API credentials. They are intentionally different from
+the PostgreSQL database role `financial_app_user`.
 
 Override these by setting `FINANCIALS_API_USERNAME` and
 `FINANCIALS_API_PASSWORD` before starting the backend.

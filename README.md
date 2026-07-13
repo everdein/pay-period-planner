@@ -494,13 +494,16 @@ endpoints load and persist the full financial workspace.
 
 Every `/api/v1/financials/**` endpoint requires HTTP Basic authentication. The
 frontend sign-in form stores the Basic token in browser session storage for the
-current tab/session. Local scripts read `FINANCIALS_API_USERNAME` and
+current tab/session only after an authenticated snapshot request succeeds. If
+the backend is not reachable, sign-in remains on the form and reports a backend
+connection error. Local scripts read `FINANCIALS_API_USERNAME` and
 `FINANCIALS_API_PASSWORD` or fall back to the local defaults above.
 
 Financial snapshot endpoints:
 
 ```http
 GET /api/v1/financials
+GET /api/v1/financials/history
 GET /api/v1/financials/export
 GET /api/v1/financials/export/csv
 GET /api/v1/financials/export/xlsx
@@ -546,12 +549,17 @@ The Financials UI currently uses a draft/save workflow:
 If another tab or client saves first, the backend returns `409 Conflict` rather
 than silently overwriting the newer snapshot.
 
+The history endpoint returns recent saved-change audit events with version
+movement, coarse resource metadata, and aggregate projection summaries. Treat
+audit history as personal financial data.
+
 The export endpoints download the currently saved source snapshot as JSON, CSV,
 or XLSX. The JSON file preserves the full request-shaped backup envelope; CSV
 and XLSX use one tabular exchange format that can also be imported back through
 the version-checked restore endpoints. Imports replace the complete snapshot,
 so stale files return `409 Conflict` instead of silently overwriting newer
-data. Export and import files should be handled as personal financial data.
+data. Source-shaped exports do not currently include audit history. Export and
+import files should be handled as personal financial data.
 
 PowerShell helpers are available for local operators:
 
@@ -769,6 +777,16 @@ The script compares the local working tree with `HEAD`, checks source-map path
 references, and reports source changes that may need documentation owners. In
 GitHub Actions, `.github/workflows/documentation-drift.yml` writes the same
 packet to the job summary for pull requests and manual runs.
+
+Generate a deterministic coverage summary packet after frontend coverage and
+backend `clean verify` reports exist:
+
+```powershell
+.\scripts\write-coverage-summary.ps1
+```
+
+In GitHub Actions, the `Coverage Summary` job downloads the frontend Vitest and
+backend JaCoCo coverage artifacts and writes the packet to the job summary.
 
 Generate dependency and weekly maintenance packets:
 

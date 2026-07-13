@@ -26,9 +26,13 @@ The two adapters store the same source fields:
 - Income summary source items
 - Income events
 - Important dates
+- Audit events for committed changes, including version movement and coarse
+  aggregate projection summaries
 
-Derived API totals, due dates, period flags, monthly check counts, UI statuses,
-and projection values are not stored.
+Current API response totals, due dates, period flags, monthly check counts, and
+UI statuses are derived on read and are not stored as current snapshot fields.
+Historical audit events do store compact aggregate projection summaries for
+the version created by each committed write.
 
 ## Ownership
 
@@ -99,7 +103,7 @@ environment.
 | `id`            | Database identity                                   |
 | `active`        | Marks the current document                          |
 | `version`       | Current optimistic-concurrency version              |
-| `snapshot_json` | Complete `FinancialsData` storage envelope as JSONB |
+| `snapshot_json` | Complete `FinancialsData` storage envelope as JSONB, including audit history |
 | `created_at`    | Row creation timestamp                              |
 | `updated_at`    | Latest update timestamp                             |
 
@@ -290,7 +294,9 @@ GET /api/v1/financials/export/xlsx
 The export is a JSON attachment whose `snapshot` field mirrors the
 full-snapshot save request shape. It is useful as a portable, source-shaped
 copy of the currently saved aggregate. CSV and XLSX exports use a fixed-column
-tabular representation of the same source records.
+tabular representation of the same source records. These source-shaped exports
+do not currently include audit history; the storage envelope and JSON `.bak`
+copy do.
 
 The backend also exposes explicit full-snapshot tabular restore endpoints:
 
@@ -310,6 +316,8 @@ migration strategy.
 - Before PostgreSQL changes, use administrator-approved database-native backup
   tooling and verify restoration on a separate target.
 - Treat backups, exports, and import files as personal financial data.
+- Treat audit history as personal financial data because aggregate totals and
+  timestamps can reveal financial behavior.
 - Do not commit downloaded exports or store them in repository folders. The
   export script refuses repository output paths unless explicitly overridden for
   synthetic/mock data.

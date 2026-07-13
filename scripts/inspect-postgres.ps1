@@ -176,7 +176,8 @@ SELECT
     jsonb_array_length(COALESCE(snapshot_json->'assetAccounts', '[]'::jsonb)) AS asset_count,
     jsonb_array_length(COALESCE(snapshot_json->'debtAccounts', '[]'::jsonb)) AS debt_count,
     jsonb_array_length(COALESCE(snapshot_json->'incomeEvents', '[]'::jsonb)) AS income_event_count,
-    jsonb_array_length(COALESCE(snapshot_json->'importantDates', '[]'::jsonb)) AS important_date_count
+    jsonb_array_length(COALESCE(snapshot_json->'importantDates', '[]'::jsonb)) AS important_date_count,
+    jsonb_array_length(COALESCE(snapshot_json->'auditEvents', '[]'::jsonb)) AS audit_event_count
 FROM public.financial_snapshot_document
 ORDER BY active DESC, id;
 ROLLBACK;

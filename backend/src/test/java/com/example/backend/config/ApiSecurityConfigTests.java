@@ -29,7 +29,18 @@ class ApiSecurityConfigTests {
 
   @Test
   void rejectsUnauthenticatedFinancialApiRequests() throws Exception {
-    mockMvc.perform(get("/api/v1/financials")).andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(get("/api/v1/financials"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(header().doesNotExist("WWW-Authenticate"));
+  }
+
+  @Test
+  void rejectsInvalidFinancialApiCredentialsWithoutBrowserChallenge() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/financials").with(httpBasic("test-user", "wrong-password")))
+        .andExpect(status().isUnauthorized())
+        .andExpect(header().doesNotExist("WWW-Authenticate"));
   }
 
   @Test

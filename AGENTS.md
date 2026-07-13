@@ -123,6 +123,7 @@ From the repository root:
 .\scripts\run-browser-checks.ps1
 .\scripts\export-financial-snapshot.ps1 -Format csv -OutputPath <outside-repo-path>
 .\scripts\import-financial-snapshot.ps1 -InputPath <outside-repo-path> -ConfirmRestore
+.\scripts\write-coverage-summary.ps1
 .\scripts\check-documentation-drift.ps1
 .\scripts\triage-dependency-updates.ps1
 .\scripts\generate-engineering-status.ps1

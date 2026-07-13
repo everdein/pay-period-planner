@@ -15,6 +15,9 @@ import com.example.backend.dto.financials.AssetAccountRequest;
 import com.example.backend.dto.financials.ExpenseBillSnapshotRequest;
 import com.example.backend.dto.financials.ExpenseSnapshotRequest;
 import com.example.backend.dto.financials.ExpenseSnapshotResponse;
+import com.example.backend.dto.financials.FinancialAuditEventResponse;
+import com.example.backend.dto.financials.FinancialAuditHistoryResponse;
+import com.example.backend.dto.financials.FinancialProjectionSummaryResponse;
 import com.example.backend.dto.financials.FinancialSnapshotExportResponse;
 import com.example.backend.dto.financials.FinancialSnapshotFileExport;
 import com.example.backend.service.FinancialsService;
@@ -280,6 +283,24 @@ class FinancialsControllerTests {
   }
 
   @Test
+  void returnsAuditHistory() throws Exception {
+    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+
+    mockMvc
+        .perform(get("/api/v1/financials/history").param("limit", "5"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.events[0].id").value(11))
+        .andExpect(jsonPath("$.events[0].action").value("CREATE"))
+        .andExpect(jsonPath("$.events[0].resourceType").value("monthly-bill"))
+        .andExpect(jsonPath("$.events[0].resourceId").value(42))
+        .andExpect(jsonPath("$.events[0].versionBefore").value(7))
+        .andExpect(jsonPath("$.events[0].versionAfter").value(8))
+        .andExpect(jsonPath("$.events[0].summary").value("Created monthly bill"))
+        .andExpect(jsonPath("$.events[0].projectionSummary.totalMonthlyExpenses").value(1500))
+        .andExpect(jsonPath("$.events[0].projectionSummary.netWorth").value(14500));
+  }
+
+  @Test
   void exportsSnapshotAsCsvAttachment() throws Exception {
     MockMvc mockMvc = mockMvc(new TestFinancialsService());
 
@@ -407,6 +428,36 @@ class FinancialsControllerTests {
     @Override
     public ExpenseSnapshotResponse importSnapshotXlsx(byte[] workbook) {
       return emptySnapshotResponse(8);
+    }
+
+    @Override
+    public FinancialAuditHistoryResponse getAuditHistory(int limit) {
+      return new FinancialAuditHistoryResponse(
+          List.of(
+              new FinancialAuditEventResponse(
+                  11,
+                  Instant.parse("2026-07-12T10:15:30Z"),
+                  "CREATE",
+                  "monthly-bill",
+                  42L,
+                  7,
+                  8,
+                  "Created monthly bill",
+                  new FinancialProjectionSummaryResponse(
+                      LocalDate.of(2026, 7, 1),
+                      LocalDate.of(2026, 7, 14),
+                      3,
+                      1,
+                      2,
+                      1,
+                      2,
+                      2,
+                      1,
+                      new BigDecimal("1500.00"),
+                      new BigDecimal("99.00"),
+                      new BigDecimal("15000.00"),
+                      new BigDecimal("500.00"),
+                      new BigDecimal("14500.00")))));
     }
 
     private ExpenseSnapshotResponse emptySnapshotResponse(long version) {

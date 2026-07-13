@@ -18,7 +18,9 @@ changes in a new ADR.
 - **Current mitigation:** Protect every `/api/v1/financials/**` endpoint with
   the `FINANCIALS` role, keep the backend local, override default credentials
   with `FINANCIALS_API_USERNAME` and `FINANCIALS_API_PASSWORD` when needed, and
-  do not expose port `8080`.
+  do not expose port `8080`. Failed API authentication intentionally omits the
+  browser Basic-auth challenge so the frontend sign-in form can handle errors
+  without opening a native browser prompt.
 - **Revisit when:** Any shared, remote, hosted, or multi-user access is planned.
 
 ### LIM-002 — No user or tenant isolation
@@ -200,9 +202,24 @@ changes in a new ADR.
   local-only data custody.
 - **Revisit when:** Databases are shared, automated, or remotely provisioned.
 
+### LIM-018 — Audit history is coarse and storage-envelope scoped
+
+- **Status:** Accepted first audit/history slice
+- **Impact:** The backend records saved-change audit events with action,
+  resource type/ID, version movement, timestamp, and aggregate projection
+  summaries. It does not store field-level before/after diffs, authenticated
+  user identity, request origin, or a separately normalized audit table. Manual
+  JSON/CSV/XLSX source-shaped exports do not currently include audit history.
+- **Current mitigation:** Use `GET /api/v1/financials/history` for recent
+  history, keep the persisted storage envelope and local `.bak` copy together
+  for recovery, and treat audit history as personal financial data.
+- **Revisit when:** Multi-user support, compliance-grade audit needs,
+  exportable history, or runtime activation of a relational audit table is
+  planned.
+
 ## Testing and Delivery
 
-### LIM-018 — PostgreSQL smoke tests are not in hosted CI
+### LIM-019 — PostgreSQL smoke tests are not in hosted CI
 
 - **Status:** Known gap
 - **Impact:** CI can pass while PostgreSQL-specific integration behavior is
@@ -212,7 +229,7 @@ changes in a new ADR.
 - **Revisit when:** CI receives an ephemeral PostgreSQL service or Testcontainers
   strategy.
 
-### LIM-019 — Browser workflow coverage is smoke-level
+### LIM-020 — Browser workflow coverage is smoke-level
 
 - **Status:** Partially mitigated
 - **Impact:** The Playwright smoke test now proves Vite startup, proxying to a
@@ -226,7 +243,7 @@ changes in a new ADR.
 - **Revisit when:** PostgreSQL browser parity, visual regression, or broader
   release confidence is required.
 
-### LIM-020 — Accessibility automation is partial
+### LIM-021 — Accessibility automation is partial
 
 - **Status:** Known gap
 - **Impact:** JSX accessibility linting is limited and some rules are warnings;
@@ -236,7 +253,7 @@ changes in a new ADR.
 - **Revisit when:** Browser testing is added or the application is prepared for
   broader use.
 
-### LIM-021 — Snyk CLI version is not pinned in CI
+### LIM-022 — Snyk CLI version is not pinned in CI
 
 - **Status:** Known reproducibility gap
 - **Impact:** A new global CLI release can change project discovery, output, or
@@ -246,7 +263,7 @@ changes in a new ADR.
 - **Revisit when:** The scan job is next modified or a Snyk API automation is
   added; pin or otherwise standardize the scanner.
 
-### LIM-022 — Deployment is a placeholder
+### LIM-023 — Deployment is a placeholder
 
 - **Status:** Intentional
 - **Impact:** `workflow_dispatch` proves job orchestration only; it does not
@@ -254,7 +271,7 @@ changes in a new ADR.
 - **Current mitigation:** Do not describe the workflow as a release path.
 - **Revisit when:** A concrete hosting target and operational owner exist.
 
-### LIM-023 — No production observability or incident workflow
+### LIM-024 — No production observability or incident workflow
 
 - **Status:** Intentional until deployment exists
 - **Impact:** There are no centralized logs, metrics, traces, alerts,
@@ -263,7 +280,7 @@ changes in a new ADR.
   surface.
 - **Revisit when:** A persistent shared environment is introduced.
 
-### LIM-024 — Request-size guard depends on declared content length
+### LIM-025 — Request-size guard depends on declared content length
 
 - **Status:** Accepted operational guardrail
 - **Impact:** The backend rejects requests above `FINANCIALS_MAX_REQUEST_BYTES`

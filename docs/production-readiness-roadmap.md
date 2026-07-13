@@ -49,6 +49,8 @@ by isolated technical concern.
 - [x] Add production configuration guardrails for CORS, actuator exposure,
       logging, request size limits, profile-specific settings, and secure
       defaults.
+- [x] Add audit/history support for financial changes and projections.
+- [x] Add PR coverage summaries.
 
 ## Phase A - Make It Real
 
@@ -60,8 +62,6 @@ Phase B is complete.
 
 ## Phase C - Make It Impressive
 
-- [ ] Add audit/history support for financial changes and projections.
-- [ ] Add PR coverage summaries.
 - [ ] Add CodeQL and GitHub dependency review.
 - [ ] Pin or otherwise standardize the Snyk CLI/action used by CI so scan
       failures are reproducible.
@@ -78,5 +78,5 @@ Phase B is complete.
 
 Next highest-value items:
 
-1. Add audit/history support for financial changes and projections.
-2. Add PR coverage summaries.
+1. Add CodeQL and GitHub dependency review.
+2. Pin or otherwise standardize the Snyk CLI/action used by CI.

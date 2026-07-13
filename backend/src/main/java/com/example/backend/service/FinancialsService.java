@@ -4,6 +4,8 @@ import com.example.backend.domain.financials.AnnualWithdrawal;
 import com.example.backend.domain.financials.AssetAccount;
 import com.example.backend.domain.financials.DebtAccount;
 import com.example.backend.domain.financials.ExpenseBill;
+import com.example.backend.domain.financials.FinancialAuditEvent;
+import com.example.backend.domain.financials.FinancialProjectionSummary;
 import com.example.backend.domain.financials.FinancialSnapshot;
 import com.example.backend.domain.financials.ImportantDate;
 import com.example.backend.domain.financials.IncomeEvent;
@@ -25,6 +27,9 @@ import com.example.backend.dto.financials.ExpenseBillResponse;
 import com.example.backend.dto.financials.ExpenseBillSnapshotRequest;
 import com.example.backend.dto.financials.ExpenseSnapshotRequest;
 import com.example.backend.dto.financials.ExpenseSnapshotResponse;
+import com.example.backend.dto.financials.FinancialAuditEventResponse;
+import com.example.backend.dto.financials.FinancialAuditHistoryResponse;
+import com.example.backend.dto.financials.FinancialProjectionSummaryResponse;
 import com.example.backend.dto.financials.FinancialSnapshotExportResponse;
 import com.example.backend.dto.financials.FinancialSnapshotFileExport;
 import com.example.backend.dto.financials.ImportantDateRequest;
@@ -142,6 +147,16 @@ public class FinancialsService {
         annualWithdrawals,
         incomeEvents,
         importantDates);
+  }
+
+  public FinancialAuditHistoryResponse getAuditHistory(int limit) {
+    if (limit < 1 || limit > 100) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Audit history limit must be between 1 and 100");
+    }
+
+    return new FinancialAuditHistoryResponse(
+        financialsRepository.auditEvents(limit).stream().map(this::toResponse).toList());
   }
 
   public ExpenseBillResponse addBill(ExpenseBillRequest request) {
@@ -996,6 +1011,37 @@ public class FinancialsService {
   private ImportantDateResponse toResponse(ImportantDate importantDate) {
     return new ImportantDateResponse(
         importantDate.id(), importantDate.date(), importantDate.event(), importantDate.type());
+  }
+
+  private FinancialAuditEventResponse toResponse(FinancialAuditEvent event) {
+    return new FinancialAuditEventResponse(
+        event.id(),
+        event.occurredAt(),
+        event.action(),
+        event.resourceType(),
+        event.resourceId(),
+        event.versionBefore(),
+        event.versionAfter(),
+        event.summary(),
+        toResponse(event.projectionSummary()));
+  }
+
+  private FinancialProjectionSummaryResponse toResponse(FinancialProjectionSummary summary) {
+    return new FinancialProjectionSummaryResponse(
+        summary.payPeriodStart(),
+        summary.payPeriodEnd(),
+        summary.monthlyBillCount(),
+        summary.annualWithdrawalCount(),
+        summary.assetAccountCount(),
+        summary.debtAccountCount(),
+        summary.incomeSummaryItemCount(),
+        summary.incomeEventCount(),
+        summary.importantDateCount(),
+        summary.totalMonthlyExpenses(),
+        summary.totalAnnualWithdrawals(),
+        summary.totalTrackedAssets(),
+        summary.totalDebt(),
+        summary.netWorth());
   }
 
   private PayPeriodDatePolicy.PayPeriod currentPayPeriod() {

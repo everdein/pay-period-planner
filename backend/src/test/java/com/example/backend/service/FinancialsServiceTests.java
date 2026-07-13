@@ -167,6 +167,32 @@ class FinancialsServiceTests {
   }
 
   @Test
+  void recordsAuditHistoryWithProjectionSummary() throws IOException {
+    FinancialsService service = new FinancialsService(repository());
+    long loadedVersion = service.getSnapshot().version();
+
+    var created =
+        service.addBill(new ExpenseBillRequest("Audit Bill", 5, money("42.50"), "Check", false));
+    var history = service.getAuditHistory(10);
+
+    assertThat(history.events()).hasSize(1);
+    var event = history.events().getFirst();
+    assertThat(event.action()).isEqualTo("CREATE");
+    assertThat(event.resourceType()).isEqualTo("monthly-bill");
+    assertThat(event.resourceId()).isEqualTo(created.id());
+    assertThat(event.versionBefore()).isEqualTo(loadedVersion);
+    assertThat(event.versionAfter()).isEqualTo(loadedVersion + 1);
+    assertThat(event.summary()).isEqualTo("Created monthly bill");
+    assertThat(event.projectionSummary().monthlyBillCount()).isEqualTo(3);
+    assertThat(event.projectionSummary().totalMonthlyExpenses()).isEqualByComparingTo("1492.50");
+    assertThat(event.projectionSummary().totalTrackedAssets()).isEqualByComparingTo("15000.0");
+    assertThat(event.projectionSummary().totalDebt()).isEqualByComparingTo("500.0");
+    assertThat(event.projectionSummary().netWorth()).isEqualByComparingTo("14500.0");
+    assertThat(Files.readString(tempDir.resolve("financials.local.json")))
+        .contains("\"auditEvents\"");
+  }
+
+  @Test
   void createsUpdatesAndDeletesGranularFinancialRecords() throws IOException {
     FinancialsService service = new FinancialsService(repository());
 

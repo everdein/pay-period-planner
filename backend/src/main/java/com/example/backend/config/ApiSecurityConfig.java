@@ -1,7 +1,6 @@
 package com.example.backend.config;
 
-import static org.springframework.security.config.Customizer.withDefaults;
-
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -31,8 +30,12 @@ public class ApiSecurityConfig {
     return http.csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(
             (session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .cors(withDefaults())
-        .httpBasic(withDefaults())
+        .cors((cors) -> {})
+        .httpBasic(
+            (basic) ->
+                basic.authenticationEntryPoint(
+                    (request, response, authenticationException) ->
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
         .authorizeHttpRequests(
             (requests) ->
                 requests

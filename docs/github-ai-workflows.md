@@ -87,6 +87,12 @@ writes a GitHub Actions job summary through `GITHUB_STEP_SUMMARY`. The packet
 is deterministic context for an author, Copilot, Codex, or reviewer to turn
 into prose. It is not evidence that CI passed.
 
+The CI workflow also writes a coverage summary packet after frontend Vitest
+coverage and backend JaCoCo coverage artifacts are available. The packet
+summarizes aggregate frontend and backend coverage gates for reviewers and AI
+assistants; it does not replace checking the actual hosted job status or
+coverage artifacts.
+
 AI-generated PR summaries must stay evidence-based:
 
 - describe what changed and why;

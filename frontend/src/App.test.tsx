@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDispatch = vi.fn();
+const mockGetMonthlyExpenses = vi.hoisted(() => vi.fn());
 const AUTH_TOKEN_STORAGE_KEY = 'end-to-end-app.auth.basicToken';
 const mockFinancialsState = {
   snapshot: {
@@ -141,6 +142,12 @@ vi.mock('./app/hooks', () => ({
   useAppSelector: vi.fn(() => mockFinancialsState),
 }));
 
+vi.mock('./api/endpoints/financials', () => ({
+  financialsService: {
+    getMonthlyExpenses: mockGetMonthlyExpenses,
+  },
+}));
+
 import App from './App';
 
 describe('App', () => {
@@ -148,12 +155,14 @@ describe('App', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-22T12:00:00'));
     window.sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, 'Basic dGVzdDp0ZXN0');
+    mockGetMonthlyExpenses.mockResolvedValue(mockFinancialsState.snapshot);
   });
 
   afterEach(() => {
     vi.useRealTimers();
     window.sessionStorage.clear();
     mockDispatch.mockClear();
+    mockGetMonthlyExpenses.mockReset();
   });
 
   it('renders sign in before credentials are stored', () => {
@@ -164,6 +173,42 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /sign in to financials/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+  });
+
+  it('verifies credentials before entering the financials screen', async () => {
+    vi.useRealTimers();
+    window.sessionStorage.clear();
+
+    render(<App />);
+
+    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: 'financial_app' } });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'financial_app_local_password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => expect(mockGetMonthlyExpenses).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByRole('heading', { name: /financials/i })).toBeInTheDocument();
+    expect(window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY)).toMatch(/^Basic /);
+  });
+
+  it('keeps the sign-in form visible when the backend proxy is unavailable', async () => {
+    vi.useRealTimers();
+    window.sessionStorage.clear();
+    mockGetMonthlyExpenses.mockRejectedValue(new Error('HTTP 502 Bad Gateway'));
+
+    render(<App />);
+
+    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: 'financial_app' } });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'financial_app_local_password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/could not reach the backend/i);
+    expect(screen.getByRole('heading', { name: /sign in to financials/i })).toBeInTheDocument();
+    expect(window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY)).toBeNull();
   });
 
   it('renders the monthly expenses feature', () => {

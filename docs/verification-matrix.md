@@ -34,6 +34,7 @@ skipped; never silently omit a relevant row.
 | Redux/API client                | Relevant frontend tests, typecheck                    | Full local verification                                   | Rejected requests, stale state, save/load behavior                 |
 | Backend service/domain          | Focused Maven test                                    | Full local verification                                   | Validation, boundaries, regression test                            |
 | Controller/DTO/API              | Controller/service tests plus frontend typecheck      | Full local verification                                   | Request/response compatibility and Problem Detail behavior         |
+| Audit/history                   | Repository/service/controller tests                   | Full local verification                                   | Version movement, newest-first order, no request-body logging      |
 | CSV/XLSX import/export          | Controller/service tests plus frontend typecheck      | Full local verification                                   | Stale version rejection, fixed columns, no personal data in output |
 | JSON store                      | Store/repository tests                                | Full local verification                                   | Seed, backup, atomic replacement, malformed data                   |
 | PostgreSQL store/config/adapter | Focused integration test                              | `verify-local.ps1 -IncludePostgres`                       | Read-only metadata inspection afterward                            |
@@ -186,6 +187,7 @@ without exposing token values.
 npm run spell
 git diff --check
 git status --short
+.\scripts\write-coverage-summary.ps1
 .\scripts\check-documentation-drift.ps1
 .\scripts\triage-dependency-updates.ps1
 .\scripts\generate-engineering-status.ps1
@@ -208,6 +210,7 @@ against the source map and executable sources before posting or changing docs.
 | `import-financial-snapshot.ps1`     | None                                                                      | Replaces the saved snapshot through the backend    | Running backend credential/profile           |
 | `run-browser-checks.ps1`            | Playwright reports/traces in ignored paths                                | None                                               | May install browser binaries with flag       |
 | `run-security-checks.ps1`           | Tool caches/reporting side effects                                        | None                                               | Network and Snyk token                       |
+| `write-coverage-summary.ps1`        | Optional GitHub job summary output                                        | None                                               | None                                         |
 | `check-documentation-drift.ps1`     | Optional GitHub job summary output                                        | None                                               | None                                         |
 | `triage-dependency-updates.ps1`     | Optional GitHub job summary output                                        | None                                               | None                                         |
 | `generate-engineering-status.ps1`   | Optional GitHub job summary output                                        | None                                               | None                                         |
@@ -228,6 +231,7 @@ complete. Explain why they were required and what target they used.
 | Type Check           | Frontend typecheck                   | Clean checkout/install                                                    |
 | Build & Test Backend | Formatting plus Maven `clean verify` | Linux/JDK action/cache                                                    |
 | Build Frontend       | Frontend build                       | Linux/Node action/cache                                                   |
+| Coverage Summary     | Coverage summary script              | Artifact download and GitHub job summary                                  |
 | Scans                | Security script                      | Repository secret, Dependabot secret restrictions, and hosted Snyk access |
 | Copilot Review       | No local equivalent                  | Copilot policy, budget, and reviewer API                                  |
 | PR Summary Packet    | No local equivalent                  | Pull request event and job summary                                        |

@@ -597,6 +597,18 @@ Returns the current pay period, withdrawals, income summaries, income calendar
 events, asset category totals, debt balances, important dates, and calculated
 overview totals.
 
+### Get audit history
+
+```http
+GET /api/v1/financials/history?limit=50
+```
+
+Returns recent saved-change audit events newest first. Each event includes the
+action, coarse resource type/ID, version movement, timestamp, and aggregate
+projection summary after the committed write. Audit history is personal
+financial data; it intentionally does not include request bodies or field-level
+before/after diffs.
+
 ### Save financial snapshot
 
 ```http
@@ -620,7 +632,7 @@ Downloads the saved source snapshot with `Cache-Control: no-store`. The JSON
 response includes `format`, `exportedAt`, and a `snapshot` object that mirrors
 the full-snapshot save request shape. CSV and XLSX downloads use the same
 fixed-column tabular format for records and can be restored through the import
-endpoints.
+endpoints. Source-shaped exports do not currently include audit history.
 
 ```http
 POST /api/v1/financials/import/csv

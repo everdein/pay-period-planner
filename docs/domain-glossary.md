@@ -165,6 +165,14 @@ Examples include totals, due dates, `inPayPeriod`, category totals,
 `checksInMonth`, event statuses, and projection values. Derived fields must not
 silently become new persistence inputs.
 
+### Audit history
+
+Append-only saved-change metadata available from
+`GET /api/v1/financials/history`. Each audit event records action, resource
+type/ID, timestamp, snapshot version movement, and a compact aggregate
+projection summary after the write. Audit history is not a field-level ledger
+or compliance audit log.
+
 ## Persistence Terms
 
 ### JSON profile
@@ -182,9 +190,9 @@ JSONB. Flyway applies schema migrations.
 ### Active snapshot document
 
 The row in `financial_snapshot_document` where `active = true`. Its
-`snapshot_json` contains the persisted aggregate. Saves update that row,
-write the next repository-assigned version, and update its timestamp; an empty
-database receives version 1 when seeded.
+`snapshot_json` contains the persisted aggregate and audit history. Saves
+update that row, write the next repository-assigned version, and update its
+timestamp; an empty database receives version 1 when seeded.
 
 The version is mirrored into the API snapshot response and acts as the
 full-snapshot optimistic-concurrency token.
@@ -218,8 +226,9 @@ mock dataset.
 ### Personal financial data
 
 Any real balances, income, bills, dates, account/company combinations, local
-JSON, PostgreSQL rows, exports, logs, or screenshots. Keep it local and out of
-commits, prompts to external services, CI artifacts, and documentation.
+JSON, PostgreSQL rows, exports, audit history, logs, or screenshots. Keep it
+local and out of commits, prompts to external services, CI artifacts, and
+documentation.
 
 ### Metadata-only inspection
 

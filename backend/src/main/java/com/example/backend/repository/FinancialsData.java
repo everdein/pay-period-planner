@@ -4,6 +4,7 @@ import com.example.backend.domain.financials.AnnualWithdrawal;
 import com.example.backend.domain.financials.AssetAccount;
 import com.example.backend.domain.financials.DebtAccount;
 import com.example.backend.domain.financials.ExpenseBill;
+import com.example.backend.domain.financials.FinancialAuditEvent;
 import com.example.backend.domain.financials.FinancialSnapshot;
 import com.example.backend.domain.financials.ImportantDate;
 import com.example.backend.domain.financials.IncomeEvent;
@@ -21,12 +22,22 @@ public record FinancialsData(
     List<DebtAccount> debtAccounts,
     List<IncomeSummaryItem> incomeSummaryItems,
     List<IncomeEvent> incomeEvents,
-    List<ImportantDate> importantDates) {
+    List<ImportantDate> importantDates,
+    List<FinancialAuditEvent> auditEvents) {
 
   public FinancialsData {
     if (version == null || version < 1) {
       version = 1L;
     }
+
+    bills = immutableOrEmpty(bills);
+    annualWithdrawals = immutableOrEmpty(annualWithdrawals);
+    assetAccounts = immutableOrEmpty(assetAccounts);
+    debtAccounts = immutableOrEmpty(debtAccounts);
+    incomeSummaryItems = immutableOrEmpty(incomeSummaryItems);
+    incomeEvents = immutableOrEmpty(incomeEvents);
+    importantDates = immutableOrEmpty(importantDates);
+    auditEvents = immutableOrEmpty(auditEvents);
   }
 
   public FinancialsData(
@@ -49,7 +60,8 @@ public record FinancialsData(
         debtAccounts,
         incomeSummaryItems,
         incomeEvents,
-        importantDates);
+        importantDates,
+        List.of());
   }
 
   public static FinancialsData empty() {
@@ -57,6 +69,7 @@ public record FinancialsData(
         1L,
         LocalDate.now().withDayOfMonth(1),
         LocalDate.now().withDayOfMonth(15),
+        List.of(),
         List.of(),
         List.of(),
         List.of(),
@@ -77,7 +90,8 @@ public record FinancialsData(
         debtAccounts,
         incomeSummaryItems,
         incomeEvents,
-        importantDates);
+        importantDates,
+        auditEvents);
   }
 
   public FinancialSnapshot toSnapshot() {
@@ -95,6 +109,11 @@ public record FinancialsData(
   }
 
   public static FinancialsData fromSnapshot(FinancialSnapshot snapshot) {
+    return fromSnapshot(snapshot, List.of());
+  }
+
+  public static FinancialsData fromSnapshot(
+      FinancialSnapshot snapshot, List<FinancialAuditEvent> auditEvents) {
     return new FinancialsData(
         snapshot.version(),
         snapshot.payPeriodStart(),
@@ -105,6 +124,11 @@ public record FinancialsData(
         snapshot.debtAccounts(),
         snapshot.incomeSummaryItems(),
         snapshot.incomeEvents(),
-        snapshot.importantDates());
+        snapshot.importantDates(),
+        auditEvents);
+  }
+
+  private static <T> List<T> immutableOrEmpty(List<T> value) {
+    return value == null ? List.of() : List.copyOf(value);
   }
 }

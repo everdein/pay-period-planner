@@ -6,6 +6,8 @@ The application is a single-user financial planning workspace. The browser
 loads one aggregate snapshot, edits a local draft, and saves the complete
 snapshot through a Spring Boot API. The backend selects one persistence adapter
 at startup: local JSON by default or PostgreSQL under the `postgres` profile.
+Persisted writes append coarse audit events with version movement and aggregate
+projection summaries.
 
 ```mermaid
 flowchart LR
@@ -72,9 +74,9 @@ flowchart TD
 | ---------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------- |
 | `api/`                                   | Routes, validation entry points, HTTP status mapping                              | Persistence or financial calculations |
 | `dto/financials/`                        | External request/response contract                                                | Storage implementation                |
-| `domain/financials/`                     | Backend financial record types and saved snapshot aggregate                       | HTTP or storage implementation        |
+| `domain/financials/`                     | Backend financial record types, saved snapshot aggregate, audit/projection types  | HTTP or storage implementation        |
 | `service/`                               | Validation, date policy, totals, normalization, orchestration                     | File or SQL access                    |
-| `repository/FinancialsRepository`        | In-memory aggregate, IDs, synchronized mutation, persistence delegation           | HTTP behavior                         |
+| `repository/FinancialsRepository`        | In-memory aggregate, IDs, audit event capture, synchronized mutation, persistence | HTTP behavior                         |
 | `repository/*SnapshotStore`              | Load/save serialization for one storage mode                                      | API response derivation               |
 | `PostgresFinancialRecordSnapshotAdapter` | Tested V3/V4 relational save/load and granular CRUD path for the domain aggregate | Active runtime persistence            |
 | `config/`                                | Bound persistence configuration                                                   | Domain behavior                       |
@@ -89,7 +91,7 @@ save boundary.
 | ------------------ | --------------------------------------------------- | -------------------------------------------------------- |
 | Activation         | Default profile                                     | `SPRING_PROFILES_ACTIVE=postgres`                        |
 | Adapter            | `JsonFinancialsSnapshotStore`                       | `PostgresFinancialsSnapshotStore`                        |
-| Active data        | `backend/data/financials.local.json` with version   | `financial_snapshot_document.snapshot_json` plus version |
+| Active data        | `backend/data/financials.local.json` with version and audit history | `financial_snapshot_document.snapshot_json` plus version and audit history |
 | Seed source        | `financials.example.json` when local file is absent | Local JSON, then example JSON when no active row exists  |
 | Schema             | None                                                | Flyway migrations under `db/migration/`                  |
 | Local verification | Standard backend tests                              | Opt-in isolated-schema integration test                  |
@@ -135,7 +137,8 @@ sequenceDiagram
         Repo-->>Domain: SnapshotVersionConflictException
         Domain-->>Page: 409 Conflict through API/Redux
     else version matches
-        Repo->>Store: save(FinancialsData with incremented version)
+        Repo->>Repo: append audit event with projection summary
+        Repo->>Store: save(FinancialsData with incremented version + audit history)
         Store-->>Repo: persistence complete
         Domain-->>Page: recalculated response with next version through API/Redux
     end
@@ -174,8 +177,8 @@ manual placeholder, not production infrastructure.
 ## Data Boundaries
 
 - `financials.example.json` is synthetic and shareable.
-- `financials.local.json`, PostgreSQL rows, exports, logs, and screenshots may
-  contain personal financial data.
+- `financials.local.json`, PostgreSQL rows, exports, audit history, logs, and
+  screenshots may contain personal financial data.
 - Investigation should prefer schemas, keys, counts, versions, and timestamps.
 - Personal values must not enter commits, test fixtures, documentation, PR
   descriptions, CI artifacts, or external tools.
@@ -191,6 +194,7 @@ manual placeholder, not production infrastructure.
 | Financial/date rule              | Backend service or focused frontend helper | Both presentation and persistence assumptions             |
 | JSON behavior                    | `JsonFinancialsSnapshotStore`              | PostgreSQL parity and seed policy                         |
 | PostgreSQL behavior              | Store plus additive migration              | JSON parity, isolated integration test, storage docs      |
+| Audit/history behavior           | `FinancialsRepository` and audit DTOs      | API docs, storage guide, data-safety rules                |
 | CI/security                      | `.github/workflows/ci.yml`                 | Local scripts, lock files, permissions, Snyk expectations |
 | Architecture decision            | Owning code plus new ADR                   | Architecture map, limitations, affected READMEs           |
 

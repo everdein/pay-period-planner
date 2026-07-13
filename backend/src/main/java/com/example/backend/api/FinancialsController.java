@@ -10,6 +10,7 @@ import com.example.backend.dto.financials.ExpenseBillRequest;
 import com.example.backend.dto.financials.ExpenseBillResponse;
 import com.example.backend.dto.financials.ExpenseSnapshotRequest;
 import com.example.backend.dto.financials.ExpenseSnapshotResponse;
+import com.example.backend.dto.financials.FinancialAuditHistoryResponse;
 import com.example.backend.dto.financials.FinancialSnapshotExportResponse;
 import com.example.backend.dto.financials.FinancialSnapshotFileExport;
 import com.example.backend.dto.financials.ImportantDateRequest;
@@ -35,6 +36,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -71,6 +73,12 @@ public class FinancialsController {
   @GetMapping
   public ExpenseSnapshotResponse getSnapshot() {
     return financialsService.getSnapshot();
+  }
+
+  @GetMapping("/history")
+  public FinancialAuditHistoryResponse getAuditHistory(
+      @RequestParam(defaultValue = "50") int limit) {
+    return financialsService.getAuditHistory(limit);
   }
 
   @GetMapping(value = "/export", produces = MediaType.APPLICATION_JSON_VALUE)

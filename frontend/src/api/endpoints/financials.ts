@@ -270,8 +270,43 @@ export type FinancialSnapshotExport = {
   snapshot: ExpenseSnapshotRequest;
 };
 
+export type FinancialProjectionSummary = {
+  payPeriodStart: string;
+  payPeriodEnd: string;
+  monthlyBillCount: number;
+  annualWithdrawalCount: number;
+  assetAccountCount: number;
+  debtAccountCount: number;
+  incomeSummaryItemCount: number;
+  incomeEventCount: number;
+  importantDateCount: number;
+  totalMonthlyExpenses: number;
+  totalAnnualWithdrawals: number;
+  totalTrackedAssets: number;
+  totalDebt: number;
+  netWorth: number;
+};
+
+export type FinancialAuditEvent = {
+  id: number;
+  occurredAt: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'REPLACE';
+  resourceType: string;
+  resourceId: number | null;
+  versionBefore: number;
+  versionAfter: number;
+  summary: string;
+  projectionSummary: FinancialProjectionSummary;
+};
+
+export type FinancialAuditHistory = {
+  events: FinancialAuditEvent[];
+};
+
 export const financialsService = {
   getMonthlyExpenses: () => httpGet<ExpenseSnapshot>('/api/v1/financials'),
+  getAuditHistory: (limit = 50) =>
+    httpGet<FinancialAuditHistory>(`/api/v1/financials/history?limit=${limit}`),
   downloadSnapshotJson: () => httpGetBlob(FINANCIALS_EXPORT_PATH),
   downloadSnapshotCsv: () => httpGetBlob(FINANCIALS_EXPORT_CSV_PATH),
   downloadSnapshotXlsx: () => httpGetBlob(FINANCIALS_EXPORT_XLSX_PATH),
