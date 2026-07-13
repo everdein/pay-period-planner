@@ -1,14 +1,14 @@
-import { FINANCIALS_EXPORT_PATH } from '../../api/endpoints/financials';
-
 export function SaveControls({
-  exportHref = FINANCIALS_EXPORT_PATH,
+  exporting,
   isDirty,
+  onExport,
   onReset,
   onSave,
   saving,
 }: {
-  exportHref?: string;
+  exporting: boolean;
   isDirty: boolean;
+  onExport: () => void;
   onReset: () => void;
   onSave: () => void;
   saving: boolean;
@@ -21,13 +21,15 @@ export function SaveControls({
       <button className="ghost" disabled={!isDirty} onClick={onReset} type="button">
         Reset
       </button>
-      <a
+      <button
         aria-label="Export saved financial snapshot backup"
-        className="button-link ghost"
-        href={exportHref}
+        className="ghost"
+        disabled={exporting}
+        onClick={onExport}
+        type="button"
       >
-        Export Backup
-      </a>
+        {exporting ? 'Exporting...' : 'Export Backup'}
+      </button>
     </div>
   );
 }

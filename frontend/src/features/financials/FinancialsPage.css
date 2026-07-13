@@ -21,6 +21,39 @@
   margin-bottom: 16px;
 }
 
+.header-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.auth-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+}
+
+.auth-card {
+  border: 1px solid #d7e0eb;
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgb(23 32 51 / 10%);
+  max-width: 420px;
+  padding: 28px;
+  width: 100%;
+}
+
+.auth-card p:not(.eyebrow) {
+  color: #536179;
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
 .eyebrow {
   color: #536179;
   font-size: 0.8rem;

@@ -80,6 +80,36 @@ else {
     Write-Host ("{0,-12} {1}" -f "JAVA_HOME", $env:JAVA_HOME)
 }
 
+$apiUsername = if ([string]::IsNullOrWhiteSpace($env:FINANCIALS_API_USERNAME)) {
+    "financial_app (default)"
+}
+else {
+    $env:FINANCIALS_API_USERNAME
+}
+$apiPasswordState = if ([string]::IsNullOrWhiteSpace($env:FINANCIALS_API_PASSWORD)) {
+    "using local default"
+}
+else {
+    "set (value hidden)"
+}
+$apiAllowedOrigins = if ([string]::IsNullOrWhiteSpace($env:FINANCIALS_ALLOWED_ORIGINS)) {
+    "none (same-origin/proxy only)"
+}
+else {
+    $env:FINANCIALS_ALLOWED_ORIGINS
+}
+$apiMaxRequestBytes = if ([string]::IsNullOrWhiteSpace($env:FINANCIALS_MAX_REQUEST_BYTES)) {
+    "1048576 (default)"
+}
+else {
+    $env:FINANCIALS_MAX_REQUEST_BYTES
+}
+
+Write-Host ("{0,-12} {1}" -f "API user", $apiUsername)
+Write-Host ("{0,-12} {1}" -f "API password", $apiPasswordState)
+Write-Host ("{0,-12} {1}" -f "API origins", $apiAllowedOrigins)
+Write-Host ("{0,-12} {1}" -f "API max body", $apiMaxRequestBytes)
+
 if ($IncludePostgres) {
     $databaseUrl = if ([string]::IsNullOrWhiteSpace($env:DATABASE_URL)) {
         "jdbc:postgresql://localhost:5432/financial_app (default)"

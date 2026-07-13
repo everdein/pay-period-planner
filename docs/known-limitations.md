@@ -7,13 +7,18 @@ changes in a new ADR.
 
 ## Identity, Security, and Privacy
 
-### LIM-001 — No application authentication or authorization
+### LIM-001 — Single local Basic-auth application user
 
-- **Status:** Accepted for isolated local development
-- **Impact:** Anyone who can reach the backend can read or replace the complete
-  financial snapshot.
-- **Current mitigation:** Bind and use the application only in a trusted local
-  environment; do not expose port `8080`.
+- **Status:** Partially resolved for isolated local development
+- **Impact:** Financial APIs require HTTP Basic credentials, but the application
+  still has one global user, one global workspace, no tenant ownership, no
+  password rotation workflow, and no production session management. Basic auth
+  credentials are only appropriate for trusted local development unless served
+  over a hardened TLS deployment.
+- **Current mitigation:** Protect every `/api/v1/financials/**` endpoint with
+  the `FINANCIALS` role, keep the backend local, override default credentials
+  with `FINANCIALS_API_USERNAME` and `FINANCIALS_API_PASSWORD` when needed, and
+  do not expose port `8080`.
 - **Revisit when:** Any shared, remote, hosted, or multi-user access is planned.
 
 ### LIM-002 — No user or tenant isolation
@@ -257,6 +262,16 @@ changes in a new ADR.
 - **Current mitigation:** Local logs, test output, and a minimal actuator
   surface.
 - **Revisit when:** A persistent shared environment is introduced.
+
+### LIM-024 — Request-size guard depends on declared content length
+
+- **Status:** Accepted operational guardrail
+- **Impact:** The backend rejects requests above `FINANCIALS_MAX_REQUEST_BYTES`
+  when `Content-Length` is known. Streaming/chunked requests without a declared
+  length should still be limited by a production reverse proxy or gateway.
+- **Current mitigation:** Local request-size filter, API tests, and documented
+  production edge requirement.
+- **Revisit when:** A concrete production hosting target is selected.
 
 ## Maintaining This Register
 

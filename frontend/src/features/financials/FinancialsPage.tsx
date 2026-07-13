@@ -2,6 +2,7 @@ import './FinancialsPage.css';
 
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
+import { financialsService } from '../../api/endpoints/financials';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { AnnualWithdrawalsTab } from './AnnualWithdrawalsTab';
 import { AssetTable } from './AssetTable';
@@ -81,9 +82,15 @@ import { Overview } from './OverviewTab';
 import { ProjectionTab } from './ProjectionTab';
 import { SaveControls } from './SaveControls';
 
-export default function FinancialsPage() {
+type FinancialsPageProps = {
+  onSignOut?: () => void;
+};
+
+export default function FinancialsPage({ onSignOut }: FinancialsPageProps) {
   const dispatch = useAppDispatch();
   const { snapshot, status, saving, error } = useAppSelector((state) => state.financials);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<BillFormState>(emptyForm);
   const [draftBills, setDraftBills] = useState<DraftBill[]>([]);
@@ -381,6 +388,26 @@ export default function FinancialsPage() {
         })
       )
     );
+  }
+
+  async function exportBackup() {
+    if (!snapshot) {
+      return;
+    }
+
+    setExporting(true);
+    setExportError(null);
+
+    try {
+      const blob = await financialsService.downloadSnapshotJson();
+      downloadBlob(blob, `financial-snapshot-v${snapshot.version}.json`);
+    } catch (unknownError) {
+      setExportError(
+        unknownError instanceof Error ? unknownError.message : 'Unable to export financial backup'
+      );
+    } finally {
+      setExporting(false);
+    }
   }
 
   function startEdit(bill: DraftBill) {
@@ -853,14 +880,23 @@ export default function FinancialsPage() {
           <p className="eyebrow">Personal finance</p>
           <h1>Financials</h1>
         </div>
-        {snapshot && (
-          <SaveControls
-            isDirty={isDirty}
-            onReset={resetDraft}
-            onSave={() => void saveDraft()}
-            saving={saving}
-          />
-        )}
+        <div className="header-actions">
+          {snapshot && (
+            <SaveControls
+              exporting={exporting}
+              isDirty={isDirty}
+              onExport={() => void exportBackup()}
+              onReset={resetDraft}
+              onSave={() => void saveDraft()}
+              saving={saving}
+            />
+          )}
+          {onSignOut && (
+            <button className="ghost" onClick={onSignOut} type="button">
+              Sign Out
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="financials-layout">
@@ -889,6 +925,7 @@ export default function FinancialsPage() {
           {isDirty && <p className="status">You have unsaved changes.</p>}
           {status === 'loading' && <p className="status">Loading financials...</p>}
           {error && <p className="error">{error}</p>}
+          {exportError && <p className="error">{exportError}</p>}
 
           {snapshot && (
             <>
@@ -1079,4 +1116,15 @@ function incomeSummarySourceMatches(
     item.category.trim().toLowerCase() === form.category.trim().toLowerCase() &&
     item.interval.trim().toLowerCase() === form.interval.trim().toLowerCase()
   );
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }

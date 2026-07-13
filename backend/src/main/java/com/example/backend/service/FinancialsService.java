@@ -150,6 +150,7 @@ public class FinancialsService {
   }
 
   public ExpenseBillResponse updateBill(long id, ExpenseBillRequest request) {
+    validateRecordId(id);
     ExpenseBill bill = toBill(request, id);
     ExpenseBill updated =
         financialsRepository
@@ -159,6 +160,7 @@ public class FinancialsService {
   }
 
   public void deleteBill(long id) {
+    validateRecordId(id);
     if (!financialsRepository.deleteBill(id)) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bill not found");
     }
@@ -171,6 +173,7 @@ public class FinancialsService {
   }
 
   public AnnualWithdrawalResponse updateAnnualWithdrawal(long id, AnnualWithdrawalRequest request) {
+    validateRecordId(id);
     AnnualWithdrawal updated =
         financialsRepository
             .updateAnnualWithdrawal(id, toAnnualWithdrawal(request, id))
@@ -182,6 +185,7 @@ public class FinancialsService {
   }
 
   public void deleteAnnualWithdrawal(long id) {
+    validateRecordId(id);
     if (!financialsRepository.deleteAnnualWithdrawal(id)) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Annual withdrawal not found");
     }
@@ -193,6 +197,7 @@ public class FinancialsService {
   }
 
   public AssetAccountRecordResponse updateAssetAccount(long id, AssetAccountRequest request) {
+    validateRecordId(id);
     AssetAccount updated =
         financialsRepository
             .updateAssetAccount(id, toAssetAccount(request, id))
@@ -202,6 +207,7 @@ public class FinancialsService {
   }
 
   public void deleteAssetAccount(long id) {
+    validateRecordId(id);
     if (!financialsRepository.deleteAssetAccount(id)) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Asset account not found");
     }
@@ -213,6 +219,7 @@ public class FinancialsService {
   }
 
   public DebtAccountResponse updateDebtAccount(long id, DebtAccountRequest request) {
+    validateRecordId(id);
     DebtAccount updated =
         financialsRepository
             .updateDebtAccount(id, toDebtAccount(request, id))
@@ -222,6 +229,7 @@ public class FinancialsService {
   }
 
   public void deleteDebtAccount(long id) {
+    validateRecordId(id);
     if (!financialsRepository.deleteDebtAccount(id)) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Debt account not found");
     }
@@ -235,6 +243,7 @@ public class FinancialsService {
 
   public IncomeSummaryItemResponse updateIncomeSummaryItem(
       long id, IncomeSummaryItemRequest request) {
+    validateRecordId(id);
     IncomeSummaryItem updated =
         financialsRepository
             .updateIncomeSummaryItem(id, toIncomeSummaryItem(request, id))
@@ -246,6 +255,7 @@ public class FinancialsService {
   }
 
   public void deleteIncomeSummaryItem(long id) {
+    validateRecordId(id);
     if (!financialsRepository.deleteIncomeSummaryItem(id)) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Income summary item not found");
     }
@@ -257,6 +267,7 @@ public class FinancialsService {
   }
 
   public IncomeEventResponse updateIncomeEvent(long id, IncomeEventRequest request) {
+    validateRecordId(id);
     IncomeEvent updated =
         financialsRepository
             .updateIncomeEvent(id, toIncomeEvent(request, id))
@@ -266,6 +277,7 @@ public class FinancialsService {
   }
 
   public void deleteIncomeEvent(long id) {
+    validateRecordId(id);
     if (!financialsRepository.deleteIncomeEvent(id)) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Income event not found");
     }
@@ -277,6 +289,7 @@ public class FinancialsService {
   }
 
   public ImportantDateResponse updateImportantDate(long id, ImportantDateRequest request) {
+    validateRecordId(id);
     ImportantDate updated =
         financialsRepository
             .updateImportantDate(id, toImportantDate(request, id))
@@ -287,6 +300,7 @@ public class FinancialsService {
   }
 
   public void deleteImportantDate(long id) {
+    validateRecordId(id);
     if (!financialsRepository.deleteImportantDate(id)) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Important date not found");
     }
@@ -557,6 +571,12 @@ public class FinancialsService {
     }
 
     return version;
+  }
+
+  private void validateRecordId(long id) {
+    if (id < 1) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Record id must be positive");
+    }
   }
 
   private List<AssetAccount> toAssetAccounts(AssetCategorySnapshotRequest category) {

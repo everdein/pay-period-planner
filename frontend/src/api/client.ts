@@ -1,4 +1,10 @@
+import { getAuthorizationHeader } from './auth';
+
 async function responseErrorMessage(res: Response): Promise<string> {
+  if (res.status === 401) {
+    return 'HTTP 401 Unauthorized: sign in to access financial data';
+  }
+
   const text = await res.text().catch(() => '');
 
   if (!text) {
@@ -23,7 +29,7 @@ async function assertOk(res: Response): Promise<void> {
 
 export async function httpGet<T>(url: string): Promise<T> {
   const res = await fetch(url, {
-    headers: { 'content-type': 'application/json' },
+    headers: requestHeaders('application/json'),
   });
 
   await assertOk(res);
@@ -32,7 +38,9 @@ export async function httpGet<T>(url: string): Promise<T> {
 }
 
 export async function httpGetBlob(url: string): Promise<Blob> {
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    headers: requestHeaders(),
+  });
 
   await assertOk(res);
 
@@ -42,7 +50,7 @@ export async function httpGetBlob(url: string): Promise<Blob> {
 export async function httpPost<T, B = unknown>(url: string, body: B): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: requestHeaders('application/json'),
     body: JSON.stringify(body as unknown),
   });
 
@@ -58,7 +66,7 @@ export async function httpPostRaw<T>(
 ): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'content-type': contentType },
+    headers: requestHeaders(contentType),
     body,
   });
 
@@ -70,7 +78,7 @@ export async function httpPostRaw<T>(
 export async function httpPut<T, B = unknown>(url: string, body: B): Promise<T> {
   const res = await fetch(url, {
     method: 'PUT',
-    headers: { 'content-type': 'application/json' },
+    headers: requestHeaders('application/json'),
     body: JSON.stringify(body as unknown),
   });
 
@@ -82,8 +90,23 @@ export async function httpPut<T, B = unknown>(url: string, body: B): Promise<T> 
 export async function httpDelete(url: string): Promise<void> {
   const res = await fetch(url, {
     method: 'DELETE',
-    headers: { 'content-type': 'application/json' },
+    headers: requestHeaders('application/json'),
   });
 
   await assertOk(res);
+}
+
+function requestHeaders(contentType?: string) {
+  const headers: Record<string, string> = {};
+  const authorization = getAuthorizationHeader();
+
+  if (contentType) {
+    headers['content-type'] = contentType;
+  }
+
+  if (authorization) {
+    headers.Authorization = authorization;
+  }
+
+  return headers;
 }

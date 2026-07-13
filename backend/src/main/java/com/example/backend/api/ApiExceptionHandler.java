@@ -4,9 +4,12 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
@@ -38,6 +41,35 @@ public class ApiExceptionHandler {
     return problemDetail;
   }
 
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ProblemDetail handleMessageNotReadable(HttpMessageNotReadableException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.BAD_REQUEST, "Request body is malformed or cannot be parsed");
+    problemDetail.setTitle("Malformed request");
+    return problemDetail;
+  }
+
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ProblemDetail handleArgumentTypeMismatch(MethodArgumentTypeMismatchException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.BAD_REQUEST, "Request path or parameter has an invalid value");
+    problemDetail.setTitle("Invalid request");
+    problemDetail.setProperty(
+        "errors", List.of(exception.getName() + ": expected " + expectedType(exception)));
+    return problemDetail;
+  }
+
+  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+  public ProblemDetail handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Content-Type is not supported for this endpoint");
+    problemDetail.setTitle("Unsupported media type");
+    return problemDetail;
+  }
+
   @ExceptionHandler(ResponseStatusException.class)
   public ProblemDetail handleResponseStatus(ResponseStatusException exception) {
     ProblemDetail problemDetail =
@@ -53,5 +85,18 @@ public class ApiExceptionHandler {
             HttpStatus.INTERNAL_SERVER_ERROR, "The financial snapshot could not be processed");
     problemDetail.setTitle("Persistence failure");
     return problemDetail;
+  }
+
+  private String expectedType(MethodArgumentTypeMismatchException exception) {
+    Class<?> requiredType = exception.getRequiredType();
+    if (requiredType == null) {
+      return "a valid value";
+    }
+
+    return switch (requiredType.getSimpleName()) {
+      case "long", "Long" -> "a whole number";
+      case "int", "Integer" -> "an integer";
+      default -> requiredType.getSimpleName();
+    };
   }
 }

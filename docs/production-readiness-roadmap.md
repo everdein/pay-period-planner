@@ -44,6 +44,11 @@ by isolated technical concern.
 - [x] Add granular PostgreSQL CRUD persistence for financial records.
 - [x] Add CRUD APIs for financial records beyond the existing bill endpoints.
 - [x] Add CSV/XLSX import and export tooling.
+- [x] Harden and complete validation/error handling across financial endpoints.
+- [x] Add authentication and authorization for all financial APIs.
+- [x] Add production configuration guardrails for CORS, actuator exposure,
+      logging, request size limits, profile-specific settings, and secure
+      defaults.
 
 ## Phase A - Make It Real
 
@@ -51,11 +56,7 @@ Phase A is complete.
 
 ## Phase B - Make It Safe
 
-- [ ] Harden and complete validation/error handling across all future endpoints.
-- [ ] Add authentication and authorization for all financial APIs.
-- [ ] Add production configuration guardrails for CORS, actuator exposure,
-      logging, request size limits, profile-specific settings, and secure
-      defaults.
+Phase B is complete.
 
 ## Phase C - Make It Impressive
 
@@ -77,5 +78,5 @@ Phase A is complete.
 
 Next highest-value items:
 
-1. Harden and complete validation/error handling across all future endpoints.
-2. Add authentication and authorization for all financial APIs.
+1. Add audit/history support for financial changes and projections.
+2. Add PR coverage summaries.

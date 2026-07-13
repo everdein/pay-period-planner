@@ -5,10 +5,14 @@ test('loads, edits, saves, refreshes, and confirms deletion with the live backen
 }) => {
   await page.goto('/');
 
+  await page.getByLabel('Username').fill('financial_app');
+  await page.getByLabel('Password').fill('financial_app_local_password');
+  await page.getByRole('button', { name: 'Sign In' }).click();
+
   await expect(page.getByRole('heading', { name: 'Financials' })).toBeVisible();
   await expect(
-    page.getByRole('link', { name: /export saved financial snapshot backup/i })
-  ).toHaveAttribute('href', '/api/v1/financials/export');
+    page.getByRole('button', { name: /export saved financial snapshot backup/i })
+  ).toBeVisible();
 
   await page.getByRole('button', { name: 'Monthly Withdrawals' }).click();
   const monthlyWithdrawalsTable = page.locator('table.withdrawals-table').first();
@@ -39,7 +43,10 @@ test('loads, edits, saves, refreshes, and confirms deletion with the live backen
   ).toBeVisible();
   await expect(transferRow.getByRole('cell', { name: '$275.50' })).toBeVisible();
 
-  const removeButton = page.getByRole('button', { name: 'Remove Example Savings Transfer' });
+  const removeButton = transferRow.getByRole('button', {
+    name: 'Remove Example Savings Transfer',
+  });
+  await expect(removeButton).toBeEnabled();
   await removeButton.click();
 
   const dialog = page.getByRole('dialog', { name: /remove withdrawal/i });

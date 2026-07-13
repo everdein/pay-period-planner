@@ -2,6 +2,8 @@ param(
     [ValidateSet("csv", "xlsx")]
     [string]$Format,
     [string]$BaseUrl = "http://localhost:8080",
+    [string]$ApiUsername = $env:FINANCIALS_API_USERNAME,
+    [string]$ApiPassword = $env:FINANCIALS_API_PASSWORD,
     [Parameter(Mandatory = $true)]
     [string]$InputPath,
     [switch]$ConfirmRestore
@@ -10,8 +12,27 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function New-BasicAuthorizationHeader {
+    param(
+        [string]$Username,
+        [string]$Password
+    )
+
+    $credentials = "{0}:{1}" -f $Username, $Password
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($credentials)
+    return "Basic " + [System.Convert]::ToBase64String($bytes)
+}
+
 if (-not $ConfirmRestore) {
     throw "Import replaces the entire saved financial snapshot and increments its version. Rerun with -ConfirmRestore after verifying you have the right file and a backup."
+}
+
+if ([string]::IsNullOrWhiteSpace($ApiUsername)) {
+    $ApiUsername = "financial_app"
+}
+
+if ([string]::IsNullOrEmpty($ApiPassword)) {
+    $ApiPassword = "financial_app_local_password"
 }
 
 $resolvedInputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($InputPath)
@@ -40,6 +61,7 @@ $contentType = switch ($Format) {
 $response = Invoke-RestMethod `
     -Method Post `
     -Uri "$financialsBaseUrl/$importPath" `
+    -Headers @{ Authorization = New-BasicAuthorizationHeader -Username $ApiUsername -Password $ApiPassword } `
     -ContentType $contentType `
     -InFile $resolvedInputPath
 

@@ -98,7 +98,40 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ## Running the backend
 
-The backend has two local storage modes.
+The backend has two local storage modes. Choose one backend startup path, then
+run the frontend separately.
+
+| Path | Storage                   | Best for                            |
+| ---- | ------------------------- | ----------------------------------- |
+| A    | Local JSON file           | Fastest startup without PostgreSQL  |
+| B    | PostgreSQL JSONB snapshot | Testing database-backed persistence |
+
+A running backend should keep its terminal open. If the command returns to the
+PowerShell prompt, the backend stopped during startup; check the last Spring Boot
+log lines before `BUILD SUCCESS` or `BUILD FAILURE`.
+
+Local API sign-in defaults:
+
+```text
+Username: financial_app
+Password: financial_app_local_password
+```
+
+Override these with `FINANCIALS_API_USERNAME` and `FINANCIALS_API_PASSWORD`
+before starting the backend. These credentials protect every
+`/api/v1/financials/**` endpoint during local development; do not reuse them for
+real deployment.
+
+Runtime guardrails:
+
+- only `/actuator/health` and `/actuator/info` are exposed by default
+- backend error responses do not include stack traces or binding internals
+- request bodies above `FINANCIALS_MAX_REQUEST_BYTES` are rejected with `413`
+  before controller handling; default is `1048576`
+- cross-origin browser calls are denied unless `FINANCIALS_ALLOWED_ORIGINS`
+  names exact allowed origins
+- activating `prod` requires the `postgres` profile, non-default API
+  credentials, and no wildcard CORS origin
 
 ---
 
@@ -160,14 +193,19 @@ DATABASE_PASSWORD=financial_app_password
 From the repository root, prepare PostgreSQL with:
 
 ```powershell
+cd C:\Users\<you>\dev\end-to-end-app
 .\scripts\setup-local-postgres.ps1
 ```
 
-Then start the PostgreSQL-backed backend with:
+Then start the PostgreSQL-backed backend from the repository root with:
 
 ```powershell
 .\scripts\start-backend-postgres.ps1
 ```
+
+The script starts Spring Boot with the `postgres` profile and the dedicated
+database user `financial_app_user`; it does not run the application as the
+PostgreSQL admin user.
 
 Or run manually from the `backend` directory:
 
@@ -1000,8 +1038,8 @@ Intentional simplifications:
 - PostgreSQL stores the active runtime snapshot as `jsonb`; granular
   database-backed CRUD is implemented in the V3/V4 relational adapter path, but
   the runtime service is not wired to it yet
-- no authentication
-- no authorization
+- single local Basic-auth application user; no multi-user identity or tenant
+  ownership model yet
 - no external APIs
 - no production deployment infrastructure
 

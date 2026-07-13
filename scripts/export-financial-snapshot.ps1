@@ -2,6 +2,8 @@ param(
     [ValidateSet("json", "csv", "xlsx")]
     [string]$Format = "json",
     [string]$BaseUrl = "http://localhost:8080",
+    [string]$ApiUsername = $env:FINANCIALS_API_USERNAME,
+    [string]$ApiPassword = $env:FINANCIALS_API_PASSWORD,
     [Parameter(Mandatory = $true)]
     [string]$OutputPath,
     [switch]$Force,
@@ -11,8 +13,27 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function New-BasicAuthorizationHeader {
+    param(
+        [string]$Username,
+        [string]$Password
+    )
+
+    $credentials = "{0}:{1}" -f $Username, $Password
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($credentials)
+    return "Basic " + [System.Convert]::ToBase64String($bytes)
+}
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $resolvedOutputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputPath)
+
+if ([string]::IsNullOrWhiteSpace($ApiUsername)) {
+    $ApiUsername = "financial_app"
+}
+
+if ([string]::IsNullOrEmpty($ApiPassword)) {
+    $ApiPassword = "financial_app_local_password"
+}
 
 if (
     -not $AllowRepositoryPath -and
@@ -45,7 +66,10 @@ $accept = switch ($Format) {
 Invoke-WebRequest `
     -Method Get `
     -Uri "$financialsBaseUrl/$exportPath" `
-    -Headers @{ Accept = $accept } `
+    -Headers @{
+        Accept = $accept
+        Authorization = New-BasicAuthorizationHeader -Username $ApiUsername -Password $ApiPassword
+    } `
     -OutFile $resolvedOutputPath | Out-Null
 
 Write-Host "Exported $Format financial snapshot to $resolvedOutputPath." -ForegroundColor Green

@@ -10,7 +10,8 @@ subproject README before changing frontend, backend, database, or CI behavior.
 - `frontend/`: React 19, TypeScript, Redux Toolkit, Vite, and Vitest.
 - `backend/`: Java 21, Spring Boot 4, Maven, Spring JDBC, and JaCoCo.
 - `backend/data/financials.example.json`: committed mock seed data.
-- `backend/data/financials.local.json`: ignored local data; never commit it.
+- `backend/data/financials.local.json` plus `.bak`/`.tmp` siblings: ignored
+  local data; never commit them.
 - `backend/src/main/resources/db/migration/`: PostgreSQL schema migrations.
 - `.github/workflows/ci.yml`: GitHub Actions and Snyk pipeline.
 - `scripts/`: repeatable local setup, verification, and inspection commands.
@@ -167,7 +168,8 @@ or security policy from a packet alone.
 
 ## Intentional Limitations
 
-- There is no authentication, authorization, production deployment
+- Financial APIs require a single local Basic-auth application user, but there
+  is no multi-user identity, tenant isolation, production deployment
   infrastructure, or external API integration.
 - Full-snapshot saves use optimistic version checks; granular endpoints still
   mutate immediately without client-supplied aggregate versions.

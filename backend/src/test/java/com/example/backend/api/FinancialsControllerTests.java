@@ -80,6 +80,28 @@ class FinancialsControllerTests {
   }
 
   @Test
+  void rejectsMalformedJsonWithProblemDetails() throws Exception {
+    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+
+    mockMvc
+        .perform(post("/api/v1/financials/bills").contentType("application/json").content("{"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title").value("Malformed request"))
+        .andExpect(jsonPath("$.detail").value("Request body is malformed or cannot be parsed"));
+  }
+
+  @Test
+  void rejectsUnsupportedMediaTypeWithProblemDetails() throws Exception {
+    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+
+    mockMvc
+        .perform(post("/api/v1/financials/bills").contentType("text/plain").content("not-json"))
+        .andExpect(status().isUnsupportedMediaType())
+        .andExpect(jsonPath("$.title").value("Unsupported media type"))
+        .andExpect(jsonPath("$.detail").value("Content-Type is not supported for this endpoint"));
+  }
+
+  @Test
   void mapsResponseStatusExceptionsToProblemDetails() throws Exception {
     MockMvc mockMvc = mockMvc(new TestFinancialsService());
 
@@ -87,6 +109,40 @@ class FinancialsControllerTests {
         .perform(delete("/api/v1/financials/bills/99"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.detail").value("Bill not found"));
+  }
+
+  @Test
+  void rejectsInvalidPathVariableTypeWithProblemDetails() throws Exception {
+    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+
+    mockMvc
+        .perform(delete("/api/v1/financials/bills/not-a-number"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title").value("Invalid request"))
+        .andExpect(jsonPath("$.detail").value("Request path or parameter has an invalid value"))
+        .andExpect(content().string(containsString("id: expected a whole number")));
+  }
+
+  @Test
+  void rejectsNonPositiveGranularRecordId() throws Exception {
+    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+
+    mockMvc
+        .perform(
+            put("/api/v1/financials/bills/0")
+                .contentType("application/json")
+                .content(
+                    """
+                        {
+                          "bill": "Internet",
+                          "dueDay": 15,
+                          "amount": 80,
+                          "account": "Check",
+                          "paid": false
+                        }
+                        """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.detail").value("Record id must be positive"));
   }
 
   @Test
@@ -172,6 +228,34 @@ class FinancialsControllerTests {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.title").value("Invalid request"))
         .andExpect(jsonPath("$.errors").isArray());
+  }
+
+  @Test
+  void rejectsNullNestedSnapshotRecords() throws Exception {
+    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+
+    mockMvc
+        .perform(
+            put("/api/v1/financials")
+                .contentType("application/json")
+                .content(
+                    """
+                        {
+                          "version": 1,
+                          "payPeriodStart": "2026-06-12",
+                          "payPeriodEnd": "2026-06-26",
+                          "bills": [null],
+                          "annualWithdrawals": [],
+                          "assetCategories": [],
+                          "debtAccounts": [],
+                          "incomeSummaryItems": [],
+                          "incomeEvents": [],
+                          "importantDates": []
+                        }
+                        """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title").value("Invalid request"))
+        .andExpect(content().string(containsString("Bill record is required")));
   }
 
   @Test

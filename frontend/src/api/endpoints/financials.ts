@@ -272,6 +272,7 @@ export type FinancialSnapshotExport = {
 
 export const financialsService = {
   getMonthlyExpenses: () => httpGet<ExpenseSnapshot>('/api/v1/financials'),
+  downloadSnapshotJson: () => httpGetBlob(FINANCIALS_EXPORT_PATH),
   downloadSnapshotCsv: () => httpGetBlob(FINANCIALS_EXPORT_CSV_PATH),
   downloadSnapshotXlsx: () => httpGetBlob(FINANCIALS_EXPORT_XLSX_PATH),
   importSnapshotCsv: (csv: string) =>

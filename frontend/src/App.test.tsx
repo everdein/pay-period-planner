@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDispatch = vi.fn();
+const AUTH_TOKEN_STORAGE_KEY = 'end-to-end-app.auth.basicToken';
 const mockFinancialsState = {
   snapshot: {
     version: 1,
@@ -146,11 +147,23 @@ describe('App', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-22T12:00:00'));
+    window.sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, 'Basic dGVzdDp0ZXN0');
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    window.sessionStorage.clear();
     mockDispatch.mockClear();
+  });
+
+  it('renders sign in before credentials are stored', () => {
+    window.sessionStorage.clear();
+
+    render(<App />);
+
+    expect(screen.getByRole('heading', { name: /sign in to financials/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
   });
 
   it('renders the monthly expenses feature', () => {
@@ -167,8 +180,9 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^reset$/i })).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: /export saved financial snapshot backup/i })
-    ).toHaveAttribute('href', '/api/v1/financials/export');
+      screen.getByRole('button', { name: /export saved financial snapshot backup/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument();
     expect(screen.getByText(/^Tracked assets$/i)).toBeInTheDocument();
     expect(screen.getByText(/^Total debt$/i)).toBeInTheDocument();
     expect(screen.getByText(/^Net worth$/i)).toBeInTheDocument();

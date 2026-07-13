@@ -6,12 +6,28 @@
 - Media type: `application/json`
 - Dates: ISO local dates (`YYYY-MM-DD`), without time zone
 - Money: JSON decimal numbers mapped to Java `BigDecimal`
-- Authentication/authorization: none
+- Authentication/authorization: HTTP Basic authentication with the
+  `FINANCIALS` application role is required for every endpoint under this base
+  path
 - Concurrency: full-snapshot `PUT` requests use an optimistic `version` token
 - Primary UI save boundary: the complete financial snapshot
 
 This document describes the current contract. Backend DTO records and
 controller annotations remain authoritative.
+
+Local development defaults are `financial_app` /
+`financial_app_local_password`. Override them with `FINANCIALS_API_USERNAME` and
+`FINANCIALS_API_PASSWORD` before starting the backend.
+
+Cross-origin browser calls are denied unless `FINANCIALS_ALLOWED_ORIGINS`
+contains exact allowed origins. Request bodies above
+`FINANCIALS_MAX_REQUEST_BYTES` are rejected with `413 Payload Too Large` before
+controller handling; the local default is `1048576` bytes.
+
+Actuator exposure is intentionally narrow: only `/actuator/health` and
+`/actuator/info` are exposed by default. Activating the `prod` profile requires
+the `postgres` profile, non-default API credentials, and no wildcard CORS
+origin.
 
 ## Endpoints
 
@@ -334,11 +350,13 @@ Date, event, and type are required.
 }
 ```
 
-An update or delete for an absent ID returns `404`.
+An update or delete path ID must be a positive whole number. A non-positive or
+nonnumeric path ID returns `400`; a positive but absent ID returns `404`.
 
 The same create/update/delete pattern applies to the other record collections.
 Requests omit `id`; creates assign a new positive ID, updates preserve the path
-ID, and absent update/delete IDs return `404`.
+ID, non-positive path IDs return `400`, and absent update/delete IDs return
+`404`.
 
 ### Create or update an annual withdrawal
 
@@ -482,16 +500,40 @@ Validation failures return `400`:
 }
 ```
 
+Null elements inside snapshot record arrays are validation failures. For
+example, `{"bills":[null]}` returns `400` with an error for `bills[0]`.
+
+Malformed or unreadable request bodies return `400` without echoing parser
+details or submitted financial values:
+
+```json
+{
+  "title": "Malformed request",
+  "status": 400,
+  "detail": "Request body is malformed or cannot be parsed",
+  "instance": "/api/v1/financials/bills"
+}
+```
+
+Nonnumeric path variables, such as `/bills/not-a-number`, return `400` with
+title `Invalid request`. Unsupported request media types return `415` with
+title `Unsupported media type`.
+
 Service-generated `ResponseStatusException` errors preserve their HTTP status
 and reason, including:
 
 - `400` when pay-period end precedes start
+- `400` when a granular record update/delete path ID is not positive
 - `409` when a full snapshot save uses a stale `version`
 - `404` when a granular record update/delete ID is absent
 
+Unauthenticated financial API requests return `401`. Oversized requests return
+`413 Payload Too Large` with a generic text response before body parsing.
+
 An `IllegalStateException` while processing persistence is converted to `500`
-with title `Persistence failure` and generic detail. Internal financial data
-and implementation exceptions must not be added to public error details.
+with title `Persistence failure` and generic detail. Malformed-body and
+persistence errors intentionally avoid echoing internal exception text,
+snapshot contents, or submitted financial values.
 
 ## Compatibility Rules
 

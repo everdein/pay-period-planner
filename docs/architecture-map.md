@@ -20,9 +20,10 @@ flowchart LR
     Example -. "fallback seed" .-> PG
 ```
 
-There is no authentication, multi-user isolation, or production deployment.
-Full-snapshot saves use optimistic version checks; granular record and
-pay-period routes still mutate the single aggregate immediately.
+Financial APIs require one local Basic-auth application user, but there is no
+multi-user isolation or production deployment yet. Full-snapshot saves use
+optimistic version checks; granular record and pay-period routes still mutate
+the single aggregate immediately.
 
 ## Frontend
 

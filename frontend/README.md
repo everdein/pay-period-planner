@@ -109,6 +109,20 @@ This provides:
 - no hard-coded backend URLs
 - no local CORS configuration required
 
+The backend protects every `/api/v1/financials/**` endpoint with HTTP Basic
+authentication. The frontend sign-in form stores the Basic token in browser
+session storage for the current tab/session.
+
+Local API sign-in defaults:
+
+```text
+Username: financial_app
+Password: financial_app_local_password
+```
+
+Override these by setting `FINANCIALS_API_USERNAME` and
+`FINANCIALS_API_PASSWORD` before starting the backend.
+
 ---
 
 ## Financials UI
@@ -186,8 +200,8 @@ If the backend returns `409 Conflict`, another save committed first. The local
 draft remains in place and the Redux error state surfaces the conflict so the
 user can reload/reconcile before saving again.
 
-The header also links to `GET /api/v1/financials/export` so the user can
-download the saved server snapshot as a JSON backup. Unsaved draft edits are not
+The header also includes an authenticated export button that downloads
+`GET /api/v1/financials/export` as a JSON backup. Unsaved draft edits are not
 included until they are saved.
 
 This keeps form editing responsive while still demonstrating production-style
@@ -498,7 +512,8 @@ request.
 Intentional simplifications:
 
 - no routing
-- no authentication
+- single local Basic-auth sign-in; no multi-user identity or tenant ownership
+  model yet
 - no component library
 - no advanced caching/state normalization
 - no deployment infrastructure

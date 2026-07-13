@@ -196,7 +196,40 @@ granular persistence, but they are not active runtime storage yet.
 
 ## Running the application
 
-Run the backend and frontend in separate terminals.
+There are two supported local ways to start the app. Choose one backend storage
+mode, then run the frontend in a separate terminal.
+
+| Path | Storage                   | Best for                            |
+| ---- | ------------------------- | ----------------------------------- |
+| A    | Local JSON file           | Fastest startup after a fresh clone |
+| B    | PostgreSQL JSONB snapshot | Testing database-backed persistence |
+
+In both paths, a running backend should keep its terminal open. If the command
+returns to the PowerShell prompt, the backend stopped during startup; check the
+last Spring Boot log lines before `BUILD SUCCESS` or `BUILD FAILURE`.
+
+Local API sign-in defaults:
+
+```text
+Username: financial_app
+Password: financial_app_local_password
+```
+
+Override these with `FINANCIALS_API_USERNAME` and `FINANCIALS_API_PASSWORD`
+before starting the backend. These credentials protect every
+`/api/v1/financials/**` endpoint during local development; do not reuse them for
+real deployment.
+
+Runtime guardrails:
+
+- only `/actuator/health` and `/actuator/info` are exposed by default
+- backend error responses do not include stack traces or binding internals
+- request bodies above `FINANCIALS_MAX_REQUEST_BYTES` are rejected with `413`
+  before controller handling; default is `1048576`
+- cross-origin browser calls are denied unless `FINANCIALS_ALLOWED_ORIGINS`
+  names exact allowed origins
+- activating `prod` requires the `postgres` profile, non-default API
+  credentials, and no wildcard CORS origin
 
 ---
 
@@ -258,11 +291,17 @@ The script will:
 The script is safe to rerun. If the database and tables already exist, it skips
 the create/migration steps and verifies the setup.
 
-After setup completes, start the PostgreSQL-backed backend:
+After setup completes, start the PostgreSQL-backed backend from the repository
+root:
 
 ```powershell
+cd C:\Users\<you>\dev\end-to-end-app
 .\scripts\start-backend-postgres.ps1
 ```
+
+The script starts Spring Boot with the `postgres` profile and the dedicated
+database user `financial_app_user`; it does not run the application as the
+PostgreSQL admin user.
 
 Backend URL:
 
@@ -452,6 +491,11 @@ Because the Vite proxy is used:
 The financials API behaves as a single snapshot aggregate. The versioned route
 names use `financials` as the primary resource because the read and save
 endpoints load and persist the full financial workspace.
+
+Every `/api/v1/financials/**` endpoint requires HTTP Basic authentication. The
+frontend sign-in form stores the Basic token in browser session storage for the
+current tab/session. Local scripts read `FINANCIALS_API_USERNAME` and
+`FINANCIALS_API_PASSWORD` or fall back to the local defaults above.
 
 Financial snapshot endpoints:
 
@@ -917,7 +961,8 @@ Current intentional limitations:
 - PostgreSQL stores the active runtime snapshot as `jsonb`; V3/V4 relational
   tables and adapter support tested database-backed CRUD, but the runtime
   service is not wired to them yet
-- no authentication
+- single local Basic-auth application user; no multi-user identity or tenant
+  ownership model yet
 - no routing
 - no deployment infrastructure
 - no external financial website integrations

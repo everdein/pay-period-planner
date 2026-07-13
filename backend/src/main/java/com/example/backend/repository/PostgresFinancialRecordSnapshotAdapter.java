@@ -13,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -28,6 +29,7 @@ public class PostgresFinancialRecordSnapshotAdapter {
   private final JdbcTemplate jdbcTemplate;
   private final TransactionOperations transactionOperations;
 
+  @Autowired
   public PostgresFinancialRecordSnapshotAdapter(
       JdbcTemplate jdbcTemplate, PlatformTransactionManager transactionManager) {
     this(jdbcTemplate, new TransactionTemplate(transactionManager));
