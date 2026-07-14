@@ -17,14 +17,13 @@ description: Inspect and diagnose the local financial_app PostgreSQL database wi
 5. Confirm `transaction_read_only` is `on`. Check expected tables, Flyway
    history, exact row counts, active snapshot version/timestamps and collection
    counts, plus database/schema/table privileges.
-6. Treat empty normalized V1 tables as healthy when
-   `financial_snapshot_document` contains the active JSONB snapshot. Treat empty
-   V3/V4 `financial_record_*` tables as healthy until the runtime service is
-   explicitly wired to the relational adapter.
+6. Treat empty normalized V1 tables as healthy. Treat V2
+   `financial_snapshot_document` as a legacy migration source and
+   V3/V4/V6/V7 `financial_record_*` tables as active workspace storage.
 7. Inspect aggregate metadata and JSON keys by default. Never print complete
    financial snapshots unless the user explicitly authorizes that scope.
-8. Compare observations with both the `postgres` profile and JSON fallback
-   behavior before diagnosing divergence.
+8. Compare observations with the PostgreSQL relational runtime, Flyway history,
+   and any explicitly retained migration source before diagnosing divergence.
 9. Report the connected database/user, missing schema objects, migration state,
    row counts, active snapshot count/version, and whether the connected role is
    read-only or write-capable.

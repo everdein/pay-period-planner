@@ -23,8 +23,10 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
+import org.springframework.web.context.annotation.RequestScope;
 
 @Repository
+@RequestScope
 public class FinancialsRepository {
 
   private final AtomicLong nextId = new AtomicLong(1);

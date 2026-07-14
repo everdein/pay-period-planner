@@ -1,85 +1,238 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 
-import { clearApiCredentials, hasApiCredentials, saveApiCredentials } from './api/auth';
-import { ApiError } from './api/client';
-import { financialsService } from './api/endpoints/financials';
+import {
+  accountSessionService,
+  type ActiveAccountSession,
+  clearAccountSession,
+} from './api/auth';
+import { ApiError, setUnauthorizedHandler } from './api/client';
+import { useAppDispatch } from './app/hooks';
 import FinancialsPage from './features/financials/FinancialsPage';
+import { resetFinancials } from './features/financials/financialsSlice';
+
+type AuthMode = 'sign-in' | 'sign-up';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(hasApiCredentials);
-  const [username, setUsername] = useState('');
+  const dispatch = useAppDispatch();
+  const [activeSession, setActiveSession] = useState<ActiveAccountSession | null>(null);
+  const [recoveringSession, setRecoveringSession] = useState(true);
+  const [authMode, setAuthMode] = useState<AuthMode>('sign-in');
+  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSigningIn, setIsSigningIn] = useState(false);
-  const [signInError, setSignInError] = useState<string | null>(null);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
-  async function signIn(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      clearAccountSession();
+      dispatch(resetFinancials());
+      setActiveSession(null);
+      setPassword('');
+      setConfirmPassword('');
+      setAuthError('Your session expired. Sign in again to continue.');
+    });
+
+    return () => setUnauthorizedHandler(null);
+  }, [dispatch]);
+
+  useEffect(() => {
+    let current = true;
+
+    accountSessionService
+      .recover()
+      .then((session) => {
+        if (current) {
+          dispatch(resetFinancials());
+          setActiveSession(session);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!current) {
+          return;
+        }
+
+        if (error instanceof ApiError && error.status === 401) {
+          clearAccountSession();
+        } else {
+          setAuthError(sessionRecoveryFailureMessage(error));
+        }
+      })
+      .finally(() => {
+        if (current) {
+          setRecoveringSession(false);
+        }
+      });
+
+    return () => {
+      current = false;
+    };
+  }, [dispatch]);
+
+  async function submitAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsSigningIn(true);
-    setSignInError(null);
-    saveApiCredentials({ password, username });
+    if (authMode === 'sign-up' && password !== confirmPassword) {
+      setAuthError('Passwords do not match.');
+      return;
+    }
+
+    setSubmitting(true);
+    setAuthError(null);
 
     try {
-      await financialsService.getMonthlyExpenses();
-      setIsAuthenticated(true);
+      const session =
+        authMode === 'sign-up'
+          ? await accountSessionService.signUp({ displayName, email, password })
+          : await accountSessionService.signIn({ email, password });
+      dispatch(resetFinancials());
+      setActiveSession(session);
+      setPassword('');
+      setConfirmPassword('');
     } catch (error) {
-      clearApiCredentials();
-      setIsAuthenticated(false);
-      setSignInError(signInFailureMessage(error));
+      setAuthError(accountFailureMessage(error, authMode));
     } finally {
-      setIsSigningIn(false);
+      setSubmitting(false);
     }
   }
 
-  function signOut() {
-    clearApiCredentials();
-    setIsAuthenticated(false);
-    setPassword('');
+  async function signOut() {
+    setSigningOut(true);
+    setAuthError(null);
+
+    try {
+      await accountSessionService.signOut();
+      dispatch(resetFinancials());
+      setActiveSession(null);
+      setPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      setAuthError(actionFailureMessage(error, 'sign out'));
+    } finally {
+      setSigningOut(false);
+    }
   }
 
-  if (!isAuthenticated) {
+  function selectWorkspace(workspaceId: number) {
+    if (!activeSession || workspaceId === activeSession.workspaceId) {
+      return;
+    }
+
+    dispatch(resetFinancials());
+    setActiveSession(accountSessionService.selectWorkspace(activeSession, workspaceId));
+  }
+
+  function switchAuthMode(mode: AuthMode) {
+    setAuthMode(mode);
+    setAuthError(null);
+    setPassword('');
+    setConfirmPassword('');
+  }
+
+  if (recoveringSession) {
     return (
       <main className="expenses-shell auth-shell">
-        <section className="auth-card" aria-labelledby="sign-in-heading">
+        <section className="auth-card auth-status" aria-live="polite">
           <p className="eyebrow">Personal finance</p>
-          <h1 id="sign-in-heading">Sign in to Financials</h1>
-          <p>
-            Use the local financial API credentials configured for this backend session. The
-            defaults are documented in the README for local-only development.
-          </p>
-          <p className="auth-hint">
-            Default local app username: <code>financial_app</code>. The PostgreSQL user{' '}
-            <code>financial_app_user</code> is not an app login.
-          </p>
-          <form className="auth-form" onSubmit={signIn}>
+          <h1>Financials</h1>
+          <p>Checking your session...</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!activeSession) {
+    const signingUp = authMode === 'sign-up';
+
+    return (
+      <main className="expenses-shell auth-shell">
+        <section className="auth-card" aria-labelledby="account-heading">
+          <p className="eyebrow">Personal finance</p>
+          <h1>Financials</h1>
+          <div className="auth-tabs" role="tablist" aria-label="Account access">
+            <button
+              aria-selected={!signingUp}
+              className={!signingUp ? 'active' : ''}
+              onClick={() => switchAuthMode('sign-in')}
+              role="tab"
+              type="button"
+            >
+              Sign In
+            </button>
+            <button
+              aria-selected={signingUp}
+              className={signingUp ? 'active' : ''}
+              onClick={() => switchAuthMode('sign-up')}
+              role="tab"
+              type="button"
+            >
+              Create Account
+            </button>
+          </div>
+          <h2 id="account-heading">{signingUp ? 'Create your account' : 'Welcome back'}</h2>
+          <form className="auth-form" onSubmit={(event) => void submitAccount(event)}>
+            {signingUp && (
+              <label>
+                Display name
+                <input
+                  autoComplete="name"
+                  disabled={submitting}
+                  maxLength={120}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  required
+                  type="text"
+                  value={displayName}
+                />
+              </label>
+            )}
             <label>
-              Username
+              Email
               <input
-                autoComplete="username"
-                disabled={isSigningIn}
-                onChange={(event) => setUsername(event.target.value)}
+                autoComplete="email"
+                disabled={submitting}
+                maxLength={320}
+                onChange={(event) => setEmail(event.target.value)}
                 required
-                type="text"
-                value={username}
+                type="email"
+                value={email}
               />
             </label>
             <label>
               Password
               <input
-                autoComplete="current-password"
-                disabled={isSigningIn}
+                autoComplete={signingUp ? 'new-password' : 'current-password'}
+                disabled={submitting}
+                maxLength={72}
+                minLength={signingUp ? 12 : undefined}
                 onChange={(event) => setPassword(event.target.value)}
                 required
                 type="password"
                 value={password}
               />
             </label>
-            {signInError && (
+            {signingUp && (
+              <label>
+                Confirm password
+                <input
+                  autoComplete="new-password"
+                  disabled={submitting}
+                  maxLength={72}
+                  minLength={12}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  required
+                  type="password"
+                  value={confirmPassword}
+                />
+              </label>
+            )}
+            {authError && (
               <p className="auth-error" role="alert">
-                {signInError}
+                {authError}
               </p>
             )}
-            <button disabled={isSigningIn} type="submit">
-              {isSigningIn ? 'Signing in...' : 'Sign In'}
+            <button disabled={submitting} type="submit">
+              {submitting ? 'Please wait...' : signingUp ? 'Create Account' : 'Sign In'}
             </button>
           </form>
         </section>
@@ -87,24 +240,46 @@ export default function App() {
     );
   }
 
-  return <FinancialsPage onSignOut={signOut} />;
+  return (
+    <FinancialsPage
+      account={activeSession.account}
+      activeWorkspaceId={activeSession.workspaceId}
+      onSignOut={signOut}
+      onWorkspaceChange={selectWorkspace}
+      sessionError={authError}
+      signingOut={signingOut}
+    />
+  );
 }
 
-function signInFailureMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : '';
-  const reference = error instanceof ApiError ? ` Reference: ${error.requestId}.` : '';
-
-  if (message.includes('HTTP 401')) {
-    return `The app credentials were not accepted. Use the local API username and password, not the PostgreSQL database user.${reference}`;
+function accountFailureMessage(error: unknown, mode: AuthMode) {
+  const action = mode === 'sign-up' ? 'create your account' : 'sign in';
+  if (error instanceof ApiError) {
+    if (error.status === 401) {
+      return `The email or password was not accepted. Reference: ${error.requestId}.`;
+    }
+    if (error.status === 409) {
+      return `An account already exists for that email. Reference: ${error.requestId}.`;
+    }
   }
 
-  if (message.includes('HTTP 502')) {
-    return `The frontend could not reach the backend. Start or restart the backend, then try signing in again.${reference}`;
+  return actionFailureMessage(error, action);
+}
+
+function sessionRecoveryFailureMessage(error: unknown) {
+  if (error instanceof ApiError && error.status === 502) {
+    return `The frontend could not reach the backend. Reference: ${error.requestId}.`;
   }
 
-  if (message) {
-    return `Unable to sign in: ${message}`;
-  }
+  return actionFailureMessage(error, 'recover your session');
+}
 
-  return 'Unable to sign in. Confirm the backend is running, then try again.';
+function actionFailureMessage(error: unknown, action: string) {
+  if (error instanceof ApiError) {
+    return `Unable to ${action}. ${error.message}`;
+  }
+  if (error instanceof Error) {
+    return `Unable to ${action}: ${error.message}`;
+  }
+  return `Unable to ${action}. Confirm the backend is running, then try again.`;
 }

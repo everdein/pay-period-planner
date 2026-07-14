@@ -8,12 +8,10 @@ const repoRoot = path.resolve(frontendDir, '..');
 const backendDir = path.join(repoRoot, 'backend');
 const backendPort = 18080;
 const backendTarget = `http://127.0.0.1:${backendPort}`;
-const e2eDataPath = path.join(
-  repoRoot,
-  'test-results',
-  'financials-e2e',
-  `financials-${process.pid}.local.json`
-);
+const browserTestSchema = process.env.BROWSER_TEST_SCHEMA ?? `financials_browser_${process.pid}`;
+const browserDatabaseUrl =
+  process.env.BROWSER_TEST_DATABASE_URL ??
+  `jdbc:postgresql://localhost:5432/financial_app?currentSchema=${browserTestSchema}`;
 const mavenWrapper = process.platform === 'win32' ? '.\\mvnw.cmd' : './mvnw';
 
 export default defineConfig({
@@ -21,7 +19,7 @@ export default defineConfig({
     timeout: 5_000,
   },
   forbidOnly: Boolean(process.env.CI),
-  fullyParallel: true,
+  fullyParallel: false,
   outputDir: 'test-results',
   projects: [
     {
@@ -45,9 +43,12 @@ export default defineConfig({
       command: `${mavenWrapper} -B spring-boot:run`,
       cwd: backendDir,
       env: {
-        FINANCIALS_DATA_PATH: e2eDataPath,
+        DATABASE_PASSWORD: process.env.DATABASE_PASSWORD ?? 'financial_app_password',
+        DATABASE_URL: browserDatabaseUrl,
+        DATABASE_USERNAME: process.env.DATABASE_USERNAME ?? 'financial_app_user',
         SERVER_PORT: String(backendPort),
-        SPRING_PROFILES_ACTIVE: 'json',
+        SPRING_FLYWAY_DEFAULT_SCHEMA: browserTestSchema,
+        SPRING_FLYWAY_SCHEMAS: browserTestSchema,
       },
       reuseExistingServer: false,
       stderr: 'pipe',

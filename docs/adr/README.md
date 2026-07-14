@@ -11,7 +11,7 @@ as the codebase evolves.
 | ADR                                                             | Status   | Decision                                        |
 | --------------------------------------------------------------- | -------- | ----------------------------------------------- |
 | [0001](0001-use-react-and-spring-boot-for-the-reference-app.md) | Accepted | Use React and Spring Boot for the reference app |
-| [0002](0002-use-file-backed-json-for-local-financial-data.md)   | Accepted | Use file-backed JSON for local financial data   |
+| [0002](0002-use-file-backed-json-for-local-financial-data.md)   | Superseded | Use file-backed JSON for local financial data |
 | [0003](0003-use-draft-save-workflow-for-financial-edits.md)     | Accepted | Use a draft/save workflow for financial edits   |
 | [0004](0004-model-financials-as-a-single-snapshot-aggregate.md) | Accepted | Model financials as a single snapshot aggregate |
 | [0005](0005-enforce-domain-invariants-with-ensure-functions.md) | Accepted | Enforce domain invariants with ensure functions |
@@ -24,6 +24,7 @@ as the codebase evolves.
 | [0012](0012-add-granular-financial-record-apis.md)              | Accepted | Add granular financial record APIs              |
 | [0013](0013-add-tabular-financial-snapshot-import-export.md)    | Accepted | Add tabular snapshot import/export              |
 | [0014](0014-adopt-postgresql-only-workspace-persistence.md)     | Accepted | Adopt PostgreSQL-only workspace persistence     |
+| [0015](0015-use-flyway-as-the-single-migration-authority.md)    | Accepted | Use Flyway as the single migration authority    |
 
 ## Template
 

@@ -1,11 +1,21 @@
 // cspell:ignore unstub
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ApiError, httpGet, httpPut } from './client';
+import {
+  ApiError,
+  clearApiSessionContext,
+  httpGet,
+  httpPostVoid,
+  httpPut,
+  setActiveWorkspaceId,
+  setUnauthorizedHandler,
+} from './client';
 
 describe('API request correlation', () => {
   afterEach(() => {
     sessionStorage.clear();
+    clearApiSessionContext();
+    setUnauthorizedHandler(null);
     vi.unstubAllGlobals();
   });
 
@@ -23,6 +33,51 @@ describe('API request correlation', () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     const init = fetchMock.mock.calls[0]?.[1] as { headers: Record<string, string> };
     expect(init.headers['X-Request-ID']).toMatch(/^[0-9a-f-]{36}$/);
+    expect(init.headers.Authorization).toBeUndefined();
+    expect(init).toMatchObject({ credentials: 'same-origin' });
+  });
+
+  it('bootstraps CSRF and scopes mutations to the active workspace', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ headerName: 'X-XSRF-TOKEN', token: 'csrf-proof' }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ version: 2 }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ headerName: 'X-XSRF-TOKEN', token: 'fresh-proof' }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        })
+      );
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
+    setActiveWorkspaceId(42);
+
+    await httpPut('/api/v1/financials', { version: 2 });
+    await httpPostVoid('/api/v1/auth/signout');
+
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/auth/csrf');
+    const mutation = fetchMock.mock.calls[1];
+    expect(mutation?.[0]).toBe('/api/v1/financials');
+    expect(mutation?.[1]).toMatchObject({ credentials: 'same-origin', method: 'PUT' });
+    expect((mutation?.[1] as { headers: Record<string, string> }).headers).toMatchObject({
+      'X-Workspace-ID': '42',
+      'X-XSRF-TOKEN': 'csrf-proof',
+    });
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/v1/auth/csrf');
+    expect(
+      (fetchMock.mock.calls[3]?.[1] as { headers: Record<string, string> }).headers
+    ).toMatchObject({ 'X-XSRF-TOKEN': 'fresh-proof' });
   });
 
   it('surfaces the backend request ID with API errors', async () => {

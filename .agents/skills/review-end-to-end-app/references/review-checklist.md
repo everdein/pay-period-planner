@@ -44,17 +44,17 @@ and user or operator impact.
   and error recovery.
 - Require regression tests for defects and boundary tests for contract changes.
 
-## PostgreSQL and JSON Persistence
+## PostgreSQL Persistence and Legacy Migration
 
-- Keep JSON and PostgreSQL behavior equivalent for load, seed, save, IDs,
-  versions, and serialization.
-- Treat `financial_snapshot_document` as the active PostgreSQL store; do not
-  assume normalized V1 tables or inactive V3/V4 `financial_record_*` tables
-  contain runtime application data.
+- Treat the V3/V4/V6/V7 `financial_record_*` tables as the active runtime path
+  and `financial_snapshot_document` plus local JSON as explicit legacy
+  migration sources only.
+- Verify workspace ownership, IDs, versions, optimistic replacement, and
+  serialization remain consistent across runtime and migration boundaries.
 - Require additive migrations. Check constraints, indexes, transaction
   boundaries, locking/concurrency, rollback behavior, and Flyway ordering.
-- Check empty-database seeding and ensure personal local data cannot be
-  overwritten, logged, committed, or included in fixtures.
+- Verify startup does not seed an empty workspace and ensure personal local
+  data cannot be overwritten, logged, committed, or included in fixtures.
 - Use read-only inspection for diagnosis. Run isolated PostgreSQL tests for
   persistence changes.
 
@@ -75,8 +75,8 @@ and user or operator impact.
 
 - Confirm tests execute the changed branch and fail without the implementation.
 - Check assertions validate outcomes rather than only rendering or status.
-- Look for missing error, empty, boundary, date, concurrency, persistence-mode,
-  and accessibility cases.
+- Look for missing error, empty, boundary, date, concurrency, persistence, and
+  accessibility cases.
 - Do not accept lowered thresholds or broad exclusions as a substitute for
   tests.
 - Report checks not run and explain whether the gap is local, hosted,

@@ -6,11 +6,9 @@ description: Prepare the end-to-end-app repository for local development by chec
 # Bootstrap End-to-End App
 
 1. Read `AGENTS.md`, the root `README.md`, and `backend/README.md`.
-2. Ask whether PostgreSQL is needed only when the request does not make the
-   desired persistence profile clear. Default to the JSON profile for the
-   cheapest usable bootstrap.
-3. Run `.\scripts\check-environment.ps1`. Add `-IncludePostgres` when preparing
-   the PostgreSQL profile.
+2. Treat PostgreSQL as the only runtime persistence target. Ask whether local
+   database initialization is intended before running any mutating setup.
+3. Run `.\scripts\check-environment.ps1 -IncludePostgres`.
 4. Explain missing prerequisites without changing machine-wide configuration.
    Do not install runtimes, change execution policy, or edit global environment
    variables without explicit approval.
@@ -20,9 +18,8 @@ description: Prepare the end-to-end-app repository for local development by chec
 6. If PostgreSQL setup is included, run `.\scripts\inspect-postgres.ps1` after
    setup and report connectivity, schema presence, and snapshot metadata
    without printing snapshot contents.
-7. Report detected tool versions, dependency installation results, selected
-   persistence profile, skipped optional work, and the exact next start
-   command.
+7. Report detected tool versions, dependency installation results, PostgreSQL
+   setup state, skipped optional work, and the exact next start command.
 
 Never expose database passwords or personal financial data. Do not treat
 Codex's bundled runtime as evidence that the user's terminal is configured.

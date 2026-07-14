@@ -21,8 +21,9 @@ description: Implement, refactor, debug, or verify changes in the end-to-end-app
    changes.
 6. Run targeted checks while iterating, then run
    `.\scripts\verify-local.ps1`.
-7. Add `-IncludePostgres` when PostgreSQL configuration, SQL, serialization, or
-   storage behavior changes.
+7. The default verifier requires PostgreSQL and runs the isolated integration
+   suite. Use the `postgres-integration` Maven profile directly only for
+   focused database iteration.
 8. Report skipped checks and residual risks explicitly.
 
 Never commit local financial data or expose credentials. Use additive database

@@ -229,25 +229,26 @@ On a new machine, install the local Playwright Chromium browser first:
 .\scripts\run-browser-checks.ps1 -InstallBrowsers
 ```
 
-The smoke test starts Spring Boot and the Vite dev server. Spring Boot uses the
-`json` profile with a disposable data path under `test-results/`, seeded from
-committed synthetic example data. The browser covers load, edit, save, refresh
-persistence, delete confirmation, and post-delete refresh while avoiding
-personal local data.
+The smoke test starts Spring Boot and the Vite dev server against a disposable
+PostgreSQL schema. It creates account sessions and migrates only committed
+synthetic example data. The browser covers signup, sign-in, workspace
+isolation, load, edit, save, refresh persistence, delete confirmation,
+sign-out, and post-delete refresh while avoiding personal local data.
 
 ### Browser Boundary
 
 | Action type                       | Default stance             | Notes                                                  |
 | --------------------------------- | -------------------------- | ------------------------------------------------------ |
-| Live synthetic Playwright smoke   | Allowed when relevant      | Uses temp JSON data and local browser artifacts        |
+| Live synthetic Playwright smoke   | Allowed when relevant      | Uses an isolated PostgreSQL schema and local artifacts |
 | Manual/browser visual inspection  | Allowed when scoped        | Avoid screenshots containing personal data             |
-| Live backend browser testing      | Explicitly scope target    | Use JSON or PostgreSQL profile intentionally           |
+| Live backend browser testing      | Explicitly scope target    | Name the database/schema and synthetic dataset         |
 | Personal financial data browsing  | Avoid by default           | Requires explicit approval and redacted reporting      |
 | Browser screenshots/videos/traces | Treat as potentially local | Do not commit unless the task explicitly asks for them |
 | External website/browser access   | User approval as required  | Stay within task scope and connector/browser policy    |
 
 Prefer synthetic data for workflow tests. If a live backend is required, state
-the profile, port, dataset, and whether any local/personal data may be visible.
+the port, database/schema, dataset, and whether any local/personal data may be
+visible.
 Generated `playwright-report/` and `test-results/` output is ignored.
 
 ## Snyk MCP/API

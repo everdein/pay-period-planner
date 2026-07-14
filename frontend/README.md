@@ -109,25 +109,17 @@ This provides:
 - no hard-coded backend URLs
 - no local CORS configuration required
 
-The backend protects every `/api/v1/financials/**` endpoint with HTTP Basic
-authentication. The frontend sign-in form stores the Basic token in browser
-session storage for the current tab/session only after an authenticated
-snapshot request succeeds. If the backend is not running, the sign-in form stays
-visible and reports a backend connection error instead of entering the app and
-showing the financials screen with a proxy failure.
+The backend exposes
+account signup, sign-in, session recovery, and sign-out; the browser session is
+held in an `HttpOnly`, `SameSite=Strict` cookie. The frontend stores no account
+credentials or Basic token. It obtains fresh CSRF proof before each mutation,
+sends `X-Workspace-ID` for the selected membership, and stores only that
+non-sensitive workspace preference in browser session storage.
 
-Local API sign-in defaults:
-
-```text
-Username: financial_app
-Password: financial_app_local_password
-```
-
-These are application API credentials. They are intentionally different from
-the PostgreSQL database role `financial_app_user`.
-
-Override these by setting `FINANCIALS_API_USERNAME` and
-`FINANCIALS_API_PASSWORD` before starting the backend.
+New accounts begin with an empty `Personal` workspace. Existing data must be
+explicitly migrated into that workspace; no personal or synthetic snapshot is
+seeded during signup. If the backend is unavailable, the account screen remains
+visible and reports the correlated request reference.
 
 Each frontend API request includes a generated `X-Request-ID`. Failed requests
 surface the backend-confirmed ID so an error can be matched to backend logs.
@@ -260,11 +252,12 @@ On a new machine, install the local Playwright Chromium browser first:
 npm run test:e2e:install
 ```
 
-The current smoke test starts both Spring Boot and Vite. Spring Boot runs with
-the `json` profile and a disposable data path under `test-results/`, seeded from
-the committed synthetic example data. The browser loads the app through Vite,
-edits and saves a monthly withdrawal, reloads to verify persistence, confirms a
-delete modal, saves again, and reloads to verify the removal.
+The current smoke test starts both Spring Boot and Vite. Spring Boot runs in a
+unique PostgreSQL schema, applies all Flyway migrations, and
+drops the schema after the run. Using only the committed synthetic example, the
+browser creates two accounts and distinct workspaces, proves cross-user
+isolation, edits and saves a monthly withdrawal, recovers the first account,
+confirms a delete modal, saves again, and verifies the removal after reload.
 
 ### Run tests in watch mode
 
@@ -525,8 +518,7 @@ request.
 Intentional simplifications:
 
 - no routing
-- single local Basic-auth sign-in; no multi-user identity or tenant ownership
-  model yet
+- no account recovery, invitation, or membership-management workflow yet
 - no component library
 - no advanced caching/state normalization
 - no deployment infrastructure

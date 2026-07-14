@@ -1,5 +1,6 @@
 package com.example.backend.config;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -11,6 +12,8 @@ public class FinancialsSecurityProperties {
   private String password = FinancialsSecurityDefaults.LOCAL_PASSWORD;
   private List<String> allowedOrigins = new ArrayList<>();
   private long maxRequestBytes = 1_048_576L;
+  private Duration sessionDuration = Duration.ofDays(7);
+  private boolean sessionCookieSecure;
 
   public String username() {
     return username;
@@ -43,5 +46,21 @@ public class FinancialsSecurityProperties {
 
   public void setMaxRequestBytes(long maxRequestBytes) {
     this.maxRequestBytes = maxRequestBytes;
+  }
+
+  public Duration sessionDuration() {
+    return sessionDuration;
+  }
+
+  public void setSessionDuration(Duration sessionDuration) {
+    this.sessionDuration = sessionDuration;
+  }
+
+  public boolean sessionCookieSecure() {
+    return sessionCookieSecure;
+  }
+
+  public void setSessionCookieSecure(boolean sessionCookieSecure) {
+    this.sessionCookieSecure = sessionCookieSecure;
   }
 }

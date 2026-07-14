@@ -27,7 +27,7 @@
 | Documentation only    | Spell check, links/commands checked                         |
 | Frontend              | Typecheck, lint, tests with coverage, build                 |
 | Backend/API           | Formatting, tests, JaCoCo gate, package build               |
-| PostgreSQL            | Full local verification plus isolated PostgreSQL smoke test |
+| PostgreSQL            | Full local verification, including isolated integration tests |
 | Dependencies/security | Lockfiles, compatibility tests, authenticated scan          |
 | CI workflow           | Local equivalents plus hosted run after push                |
 | UI behavior           | Relevant tests and screenshot or explicit reason omitted    |

@@ -25,7 +25,7 @@ by isolated technical concern.
 - [x] Improve modal accessibility with focus management, Escape handling, and
       focus return.
 - [x] Add PostgreSQL snapshot persistence.
-- [x] Add opt-in PostgreSQL snapshot store integration test.
+- [x] Add the initial PostgreSQL snapshot store integration test.
 - [x] Add documented PostgreSQL backend startup helper.
 - [x] Add snapshot versioning and optimistic concurrency for full-snapshot
       saves.
@@ -86,21 +86,25 @@ transition is verified:
 - [x] Split financial draft state, actions, validation, coordination, and tests
       by domain feature while preserving the versioned snapshot save contract.
 - [x] Decide the target persistence and ownership architecture in ADR 0014.
-- [ ] Establish Flyway as the single migration authority before adding the
+- [x] Establish Flyway as the single migration authority before adding the
       identity and ownership schema.
-- [ ] Add user, workspace, workspace-membership, and server-managed session
+- [x] Add user, workspace, workspace-membership, and server-managed session
       tables through additive migrations.
-- [ ] Replace global active-snapshot constraints with workspace-scoped
+- [x] Replace global active-snapshot constraints with workspace-scoped
       ownership and update every repository operation accordingly.
-- [ ] Replace shared Basic authentication with signup, sign-in, sign-out,
-      session recovery, secure credential hashing, and workspace authorization.
-- [ ] Activate the V3/V4 relational adapter as the single runtime financial
+- [x] Add PostgreSQL-backed signup, sign-in, sign-out, session recovery, secure
+      credential hashing, default workspace creation, and database-derived
+      workspace principals without granting them global financial access.
+- [x] Replace frontend Basic authentication with signup, sign-in, session
+      recovery, sign-out, per-mutation CSRF proof, and workspace selection.
+- [x] Activate the V3/V4/V6/V7 relational adapter as the PostgreSQL runtime financial
       store while preserving optimistic versioning and the snapshot API.
-- [ ] Add cross-user API, repository, session, and browser isolation tests.
-- [ ] Add an explicit, backed-up JSON/JSONB-to-workspace migration workflow
+- [x] Add live PostgreSQL browser cross-user isolation coverage for distinct
+      account sessions, workspace snapshots, saves, sign-out, and recovery.
+- [x] Add an explicit, backed-up JSON/JSONB-to-workspace migration workflow
       with metadata-only verification and a documented rollback path.
-- [ ] Make PostgreSQL-backed tests required locally and in hosted CI.
-- [ ] Make PostgreSQL the only startup path, then remove the JSON runtime
+- [x] Make PostgreSQL-backed tests required locally and in hosted CI.
+- [x] Make PostgreSQL the only startup path, then remove the JSON runtime
       profile, JSON snapshot store, automatic personal-JSON seeding, and
       duplicate startup scripts and instructions.
 
@@ -134,13 +138,9 @@ JSON/CSV/XLSX backup formats after JSON runtime persistence is retired.
 
 Next highest-value items:
 
-1. Establish one Flyway migration path and add the user/workspace/session
-   schema.
-2. Make relational snapshots workspace-scoped and implement account/session
-   flows with explicit cross-user authorization tests.
-3. Build and verify the explicit JSON/JSONB-to-workspace migration and rollback
-   workflow.
-4. Activate PostgreSQL relational persistence as the only runtime path and
-   remove the JSON profile after recovery evidence is complete.
-5. Improve product UX and accessibility, then complete hosting, telemetry,
+1. Improve product UX and accessibility, including onboarding, workflow states,
+   responsive behavior, and assistive-technology coverage.
+2. Complete hosting, telemetry,
    backups, retention, and incident recovery.
+3. Add planning and reporting features only after the PostgreSQL-only runtime
+   and operational recovery path are authoritative.

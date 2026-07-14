@@ -12,7 +12,7 @@ vi.mock('../../api/endpoints/financials', () => ({
   },
 }));
 
-import financialsReducer, { fetchMonthlyExpenses } from './financialsSlice';
+import financialsReducer, { fetchMonthlyExpenses, resetFinancials } from './financialsSlice';
 
 function createTestStore() {
   return configureStore({ reducer: { financials: financialsReducer } });
@@ -55,5 +55,21 @@ describe('financialsSlice', () => {
     await store.dispatch(fetchMonthlyExpenses());
 
     expect(mockGetMonthlyExpenses).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears a loaded snapshot at an account or workspace boundary', () => {
+    const loadedState = {
+      error: null,
+      saving: false,
+      snapshot: { version: 9 } as ExpenseSnapshot,
+      status: 'succeeded' as const,
+    };
+
+    expect(financialsReducer(loadedState, resetFinancials())).toEqual({
+      error: null,
+      saving: false,
+      snapshot: null,
+      status: 'idle',
+    });
   });
 });

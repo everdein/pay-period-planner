@@ -1,5 +1,15 @@
 package com.example.backend.api;
 
+import com.example.backend.repository.SnapshotVersionConflictException;
+import com.example.backend.service.AccountAuthenticationException;
+import com.example.backend.service.AccountConflictException;
+import com.example.backend.service.AccountRequestException;
+import com.example.backend.service.WorkspaceAccessDeniedException;
+import com.example.backend.service.WorkspaceFinancialSnapshotNotFoundException;
+import com.example.backend.service.WorkspaceMigrationConflictException;
+import com.example.backend.service.WorkspaceMigrationNotFoundException;
+import com.example.backend.service.WorkspaceMigrationRequestException;
+import com.example.backend.service.WorkspaceSelectionException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.slf4j.MDC;
@@ -15,6 +25,92 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+  @ExceptionHandler(SnapshotVersionConflictException.class)
+  public ProblemDetail handleSnapshotVersionConflict(SnapshotVersionConflictException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.CONFLICT,
+            "The financial snapshot changed after it was loaded. Reload before saving.");
+    problemDetail.setTitle("Financial snapshot conflict");
+    return withRequestId(problemDetail);
+  }
+
+  @ExceptionHandler(WorkspaceSelectionException.class)
+  public ProblemDetail handleWorkspaceSelection(WorkspaceSelectionException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+    problemDetail.setTitle("Invalid workspace selection");
+    return withRequestId(problemDetail);
+  }
+
+  @ExceptionHandler(WorkspaceAccessDeniedException.class)
+  public ProblemDetail handleWorkspaceAccessDenied(WorkspaceAccessDeniedException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, exception.getMessage());
+    problemDetail.setTitle("Workspace access denied");
+    return withRequestId(problemDetail);
+  }
+
+  @ExceptionHandler(WorkspaceFinancialSnapshotNotFoundException.class)
+  public ProblemDetail handleWorkspaceFinancialSnapshotNotFound(
+      WorkspaceFinancialSnapshotNotFoundException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
+    problemDetail.setTitle("Financial snapshot not found");
+    return withRequestId(problemDetail);
+  }
+
+  @ExceptionHandler(WorkspaceMigrationRequestException.class)
+  public ProblemDetail handleWorkspaceMigrationRequest(
+      WorkspaceMigrationRequestException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+    problemDetail.setTitle("Invalid migration request");
+    return withRequestId(problemDetail);
+  }
+
+  @ExceptionHandler(WorkspaceMigrationConflictException.class)
+  public ProblemDetail handleWorkspaceMigrationConflict(
+      WorkspaceMigrationConflictException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    problemDetail.setTitle("Migration conflict");
+    return withRequestId(problemDetail);
+  }
+
+  @ExceptionHandler(WorkspaceMigrationNotFoundException.class)
+  public ProblemDetail handleWorkspaceMigrationNotFound(
+      WorkspaceMigrationNotFoundException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
+    problemDetail.setTitle("Migration resource not found");
+    return withRequestId(problemDetail);
+  }
+
+  @ExceptionHandler(AccountAuthenticationException.class)
+  public ProblemDetail handleAccountAuthentication(AccountAuthenticationException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, exception.getMessage());
+    problemDetail.setTitle("Authentication failed");
+    return withRequestId(problemDetail);
+  }
+
+  @ExceptionHandler(AccountConflictException.class)
+  public ProblemDetail handleAccountConflict(AccountConflictException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    problemDetail.setTitle("Account already exists");
+    return withRequestId(problemDetail);
+  }
+
+  @ExceptionHandler(AccountRequestException.class)
+  public ProblemDetail handleAccountRequest(AccountRequestException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+    problemDetail.setTitle("Invalid request");
+    return withRequestId(problemDetail);
+  }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ProblemDetail handleMethodArgumentNotValid(MethodArgumentNotValidException exception) {

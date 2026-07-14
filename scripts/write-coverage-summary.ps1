@@ -145,7 +145,7 @@ $summaryLines.Add("")
 $summaryLines.Add("## Use with AI")
 $summaryLines.Add("")
 $summaryLines.Add("Use this packet as coverage context only. It summarizes aggregate coverage")
-$summaryLines.Add("reports from CI and does not prove PostgreSQL smoke tests, browser workflow")
+$summaryLines.Add("reports from CI and does not prove PostgreSQL integration tests, browser workflow")
 $summaryLines.Add("coverage, Snyk status, or production readiness.")
 
 $summaryText = $summaryLines -join [Environment]::NewLine

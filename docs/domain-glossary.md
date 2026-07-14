@@ -173,47 +173,103 @@ type/ID, timestamp, snapshot version movement, and a compact aggregate
 projection summary after the write. Audit history is not a field-level ledger
 or compliance audit log.
 
+### Application user
+
+A database-backed identity represented by `application_user`. V5 stores a
+case-insensitively normalized email, adaptive credential hash, display name,
+and account status. The account API creates and authenticates these users, and
+financial authorization derives from their current workspace memberships.
+
+### Workspace
+
+The PostgreSQL runtime ownership boundary for one financial aggregate. Signup
+creates a `Personal` workspace and records its creator. V6 links relational
+snapshots to workspaces and scopes every PostgreSQL financial operation by a
+current membership.
+
+### Workspace membership
+
+The association between an application user and a workspace, with an `owner`,
+`admin`, or `member` role. V5 permits at most one owner per workspace. Session
+recovery reloads these memberships for the authenticated principal, and
+financial authorization validates the selected membership on every request.
+
+### Application session
+
+A server-managed authenticated session used by the account API. V5
+stores only a SHA-256 token hash, along with expiration, activity, and
+revocation metadata. The plaintext opaque token exists only in an `HttpOnly`,
+`SameSite=Strict` browser cookie. The financial API uses this
+session, and the frontend recovers it without storing credentials or reading
+the cookie value.
+
 ## Persistence Terms
 
-### JSON profile
+### PostgreSQL runtime
 
-The default Spring profile. `JsonFinancialsSnapshotStore` reads and writes the
-ignored `backend/data/financials.local.json`. If absent, it seeds from the
-committed synthetic `financials.example.json`.
+The only application persistence path. `PostgresFinancialsSnapshotStore` binds the request-scoped aggregate to an
+authenticated workspace and reads/writes V3/V4/V6/V7 relational rows. Flyway
+applies schema migrations.
 
-### PostgreSQL profile
+### Legacy JSON file
 
-The opt-in `postgres` Spring profile.
-`PostgresFinancialsSnapshotStore` reads and writes the complete aggregate as
-JSONB. Flyway applies schema migrations.
+An ignored `backend/data/financials.local.json` or recovery sibling retained
+outside runtime behavior as a possible explicit migration source. The
+application never reads, writes, or seeds from these files during startup.
 
-### Active snapshot document
+### Legacy snapshot document
 
-The row in `financial_snapshot_document` where `active = true`. Its
-`snapshot_json` contains the persisted aggregate and audit history. Saves
-update that row, write the next repository-assigned version, and update its
-timestamp; an empty database receives version 1 when seeded.
-
-The version is mirrored into the API snapshot response and acts as the
-full-snapshot optimistic-concurrency token.
+The retained row in `financial_snapshot_document` where `active = true`. Its
+`snapshot_json` may contain a pre-activation aggregate and audit history. It is
+an explicit migration source, not the PostgreSQL runtime store.
 
 ### Normalized V1 tables
 
 The relational tables introduced by
 `V1__create_financials_schema.sql`. They are inactive historical groundwork,
 not the active or planned runtime relational persistence path as-is. Zero rows
-in these tables is expected while the JSONB snapshot document contains data.
+in these tables is expected.
 
 ### Snapshot store
 
 The `FinancialsSnapshotStore` interface with `load` and `save` operations.
-Exactly one profile-specific implementation is active: JSON or PostgreSQL.
+`PostgresFinancialsSnapshotStore` is the only runtime implementation.
+
+### Workspace snapshot migration
+
+An explicit PostgreSQL-only operator operation that copies one backed-up legacy
+JSON file or active JSONB storage envelope into an empty relational workspace.
+It names the owner and workspace, preserves source version and audit events,
+and verifies record counts without changing the legacy source. The relational
+adapter is already the PostgreSQL runtime store.
+
+### Migration fingerprint
+
+The SHA-256 digest of the exact external JSON backup artifact used as migration
+input. The operator command creates the backup before applying the migration;
+the backend rejects the operation if the current source does not match that
+fingerprint.
+
+### Migration record
+
+The V7 `financial_snapshot_workspace_migration` row connecting a source kind,
+fingerprint, effective version, destination owner/workspace, migrated snapshot,
+expected counts, status, and timestamps. It contains metadata only, not another
+copy of financial values.
+
+### Rollback eligible
+
+An applied migration whose relational snapshot is still active and whose
+version and all record/audit counts still match its migration record. Guarded
+rollback deactivates that snapshot and retains its rows. Any later target change
+removes rollback eligibility and causes rollback to fail closed.
 
 ### Seed data
 
-Initial data used only when the selected store has no existing snapshot.
-Committed example data is synthetic. Local JSON may contain personal data and
-can seed an empty local PostgreSQL store.
+Committed example data is synthetic input for tests, demos, and explicit
+migration. Runtime startup and account creation never seed a financial
+workspace implicitly. Existing personal JSON enters PostgreSQL only through the
+explicit migration workflow.
 
 ## Data Classification Terms
 

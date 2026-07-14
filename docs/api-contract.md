@@ -6,22 +6,102 @@
 - Media type: `application/json`
 - Dates: ISO local dates (`YYYY-MM-DD`), without time zone
 - Money: JSON decimal numbers mapped to Java `BigDecimal`
-- Authentication/authorization: HTTP Basic authentication with the
-  `FINANCIALS` application role is required for every endpoint under this base
-  path
+- Authentication/authorization: financial routes require a valid account
+  session with `WORKSPACE` authority
 - Concurrency: full-snapshot `PUT` requests use an optimistic `version` token
 - Primary UI save boundary: the complete financial snapshot
 
 This document describes the current contract. Backend DTO records and
 controller annotations remain authoritative.
 
-Local development defaults are `financial_app` /
+Operator Basic-auth development defaults are `financial_app` /
 `financial_app_local_password`. Override them with `FINANCIALS_API_USERNAME` and
 `FINANCIALS_API_PASSWORD` before starting the backend.
-These are application API credentials, not PostgreSQL database credentials.
-Failed authentication returns `401` without a browser Basic-auth challenge so
-the frontend sign-in form can display the error instead of opening a native
-browser credential prompt.
+These credentials protect migration-admin and metrics routes only; they are not
+PostgreSQL database or financial-account credentials. Failed financial-session
+authentication returns `401` without a browser Basic-auth challenge.
+
+## Account And Session Foundation
+
+The account API is exposed under `/api/v1/auth`:
+
+| Method | Path                   | Success       | Purpose                              |
+| ------ | ---------------------- | ------------- | ------------------------------------ |
+| `GET`  | `/api/v1/auth/csrf`    | `200` token   | Bootstrap cookie-auth CSRF protection |
+| `POST` | `/api/v1/auth/signup`  | `201` session | Create user, workspace, and session  |
+| `POST` | `/api/v1/auth/signin`  | `200` session | Verify credentials and create session |
+| `GET`  | `/api/v1/auth/session` | `200` session | Recover the current browser session  |
+| `POST` | `/api/v1/auth/signout` | `204` empty   | Revoke and expire the current session |
+
+Signup accepts `email`, `password`, and `displayName`; sign-in accepts `email`
+and `password`. Email uniqueness is case-insensitive. Passwords must be 12-72
+characters and no more than 72 UTF-8 bytes because the current adaptive encoder
+uses bcrypt. Signup creates one `Personal` workspace with an `owner`
+membership.
+
+Successful signup and sign-in set a `financials_session` cookie with
+`HttpOnly`, `SameSite=Strict`, `Path=/`, and the configured lifetime. The raw
+opaque token is never returned in JSON and only its SHA-256 hash is stored.
+`FINANCIALS_SESSION_DURATION` defaults to `7d` and
+`FINANCIALS_SESSION_COOKIE_SECURE` must be `true` under the `prod` profile.
+
+Before any account or financial `POST`/`PUT`/`DELETE`, clients call
+`GET /api/v1/auth/csrf`, retain its `HttpOnly` CSRF cookie, and send the returned
+`token` in the returned `headerName` (`X-XSRF-TOKEN`). The frontend obtains a
+fresh proof for every mutation and never retries a write after submission.
+Missing or invalid CSRF proof returns `403`.
+
+Session responses contain `userId`, `email`, `displayName`, `expiresAt`, and
+the current `workspaces` list with workspace `id`, `name`, and membership
+`role`. A valid session receives `WORKSPACE` authority and may access only a
+relational financial snapshot owned by one of those memberships. When there is
+one membership it is selected automatically. Accounts with multiple
+memberships send `X-Workspace-ID`; malformed or missing ambiguous selections
+return `400`, and selecting a non-membership returns `403`. A workspace without
+an explicitly created or migrated snapshot returns `404` and is never silently
+seeded from personal JSON.
+
+## Workspace Migration Operations
+
+The operator-only transition API is exposed under
+`/api/v1/admin/workspace-migrations`. Every route requires operator Basic
+authentication with `FINANCIALS` authority. Account-session `WORKSPACE`
+principals receive `403` and unauthenticated requests receive `401`.
+
+| Method | Path                                                           | Confirmation | Purpose |
+| ------ | -------------------------------------------------------------- | ------------ | ------- |
+| `GET`  | `/legacy-jsonb-backup`                                         | None         | Download the effective active JSONB storage envelope |
+| `POST` | `/apply/json-file`                                             | `APPLY`      | Migrate the request JSON envelope into an empty owned workspace |
+| `POST` | `/apply/jsonb-document`                                        | `APPLY`      | Migrate the current active JSONB document into an empty owned workspace |
+| `GET`  | `/{migrationId}`                                               | None         | Read metadata-only migration verification |
+| `POST` | `/{migrationId}/rollback`                                      | `ROLLBACK`   | Deactivate an unchanged migrated snapshot |
+
+Apply requests require `expectedFingerprint`, `destinationEmail`, and positive
+`workspaceId` query parameters. The fingerprint is the lowercase or uppercase
+64-character SHA-256 digest of the exact external backup artifact. The
+confirmation value is sent in `X-Confirm-Financial-Migration`. A JSON-file apply
+uses `Content-Type: application/json` and the exact backed-up file as its body.
+
+The destination email must identify the active owner of the named workspace,
+and that workspace must not have an active relational financial snapshot.
+Apply validates source IDs, required fields, date ranges, numeric precision,
+and audit metadata, then writes the snapshot, all record families, source audit
+events, and migration history in one transaction. The legacy source is not
+changed or deactivated.
+
+Migration responses contain IDs, source kind and fingerprint, source/current
+versions, destination account/workspace metadata, expected/current record
+counts, status/timestamps, `metadataMatches`, `snapshotActive`, and
+`rollbackEligible`. They never contain financial values. Rollback succeeds only
+while the migrated snapshot remains active and its version and counts match the
+migration record; otherwise it returns `409`. Successful rollback retains the
+relational rows and history but marks the snapshot inactive and the migration
+`rolled_back`.
+
+Use `scripts/migrate-financial-snapshot-to-workspace.ps1` and
+`scripts/rollback-workspace-snapshot-migration.ps1` as the supported operator
+workflow because they create the external backup and perform an independent
+metadata verification request.
 
 Cross-origin browser calls are denied unless `FINANCIALS_ALLOWED_ORIGINS`
 contains exact allowed origins. Request bodies above
@@ -31,13 +111,13 @@ controller handling; the local default is `1048576` bytes.
 Clients may send `X-Request-ID` using 1–100 letters, numbers, periods,
 underscores, colons, or hyphens. The backend replaces missing or unsafe values
 and returns the final ID in every response header. CORS allows and exposes this
-header for configured origins.
+header for configured origins and allows `X-Workspace-ID` as a request header.
 
 Actuator exposure is intentionally narrow: `/actuator/health` and
-`/actuator/info` are public, `/actuator/metrics` requires financial API
+`/actuator/info` are public, `/actuator/metrics` requires operator
 credentials, and other Actuator endpoints are denied. Activating the `prod`
-profile requires the `postgres` profile, non-default API credentials, and no
-wildcard CORS origin.
+profile requires non-default operator credentials, no wildcard CORS origin,
+and secure session cookies.
 
 ## Endpoints
 
@@ -589,9 +669,10 @@ and reason, including:
 - `409` when a full snapshot save uses a stale `version`
 - `404` when a granular record update/delete ID is absent
 
-Unauthenticated or invalid-credential financial API requests return `401`
-without a `WWW-Authenticate` challenge header. Oversized requests return `413
-Payload Too Large` with a generic text response before body parsing.
+Unauthenticated or invalid-session financial API requests return `401` without
+a `WWW-Authenticate` challenge header. Operator Basic credentials do not grant
+financial access and receive `403`. Oversized requests return `413 Payload Too
+Large` with a generic text response before body parsing.
 
 An `IllegalStateException` while processing persistence is converted to `500`
 with title `Persistence failure` and generic detail. Malformed-body and

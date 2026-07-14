@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted; persistence statements superseded by ADR 0014
 
 ## Context
 
@@ -15,6 +15,10 @@ record families.
 PostgreSQL runtime persistence remains JSONB-backed. ADR 0011 added relational
 adapter CRUD support, but switching the active runtime store is a separate
 decision.
+
+Historical note: ADR 0014 later activated workspace-scoped relational
+PostgreSQL persistence. The endpoint and client-version decisions below remain
+active.
 
 ## Decision
 
@@ -46,7 +50,8 @@ designed.
   snapshot.
 - The current UI can continue using full-snapshot save while future clients can
   use granular endpoints.
-- Direct granular writes still mutate the single aggregate immediately and can
-  race with full-snapshot saves; `LIM-004` remains open for future concurrency
+- Direct granular writes still omit a client-supplied version. PostgreSQL now
+  detects a concurrent aggregate change and rejects the losing write with
+  `409`; `LIM-004` remains open for explicit client concurrency
   hardening.
 - PostgreSQL relational runtime activation remains separate from API exposure.

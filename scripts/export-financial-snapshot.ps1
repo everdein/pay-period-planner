@@ -2,8 +2,9 @@ param(
     [ValidateSet("json", "csv", "xlsx")]
     [string]$Format = "json",
     [string]$BaseUrl = "http://localhost:8080",
-    [string]$ApiUsername = $env:FINANCIALS_API_USERNAME,
-    [string]$ApiPassword = $env:FINANCIALS_API_PASSWORD,
+    [string]$AccountEmail = $env:FINANCIALS_ACCOUNT_EMAIL,
+    [string]$AccountPassword = $env:FINANCIALS_ACCOUNT_PASSWORD,
+    [long]$WorkspaceId = 0,
     [Parameter(Mandatory = $true)]
     [string]$OutputPath,
     [switch]$Force,
@@ -13,27 +14,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-function New-BasicAuthorizationHeader {
-    param(
-        [string]$Username,
-        [string]$Password
-    )
-
-    $credentials = "{0}:{1}" -f $Username, $Password
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($credentials)
-    return "Basic " + [System.Convert]::ToBase64String($bytes)
-}
+. (Join-Path $PSScriptRoot "financial-api-session.ps1")
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $resolvedOutputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputPath)
-
-if ([string]::IsNullOrWhiteSpace($ApiUsername)) {
-    $ApiUsername = "financial_app"
-}
-
-if ([string]::IsNullOrEmpty($ApiPassword)) {
-    $ApiPassword = "financial_app_local_password"
-}
 
 if (
     -not $AllowRepositoryPath -and
@@ -63,13 +47,32 @@ $accept = switch ($Format) {
     "xlsx" { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
 }
 
-Invoke-WebRequest `
-    -Method Get `
-    -Uri "$financialsBaseUrl/$exportPath" `
-    -Headers @{
-        Accept = $accept
-        Authorization = New-BasicAuthorizationHeader -Username $ApiUsername -Password $ApiPassword
-    } `
-    -OutFile $resolvedOutputPath | Out-Null
+$apiSession = $null
+try {
+    $apiSession = Connect-FinancialApiSession `
+        -BaseUrl $BaseUrl `
+        -AccountEmail $AccountEmail `
+        -AccountPassword $AccountPassword `
+        -WorkspaceId $WorkspaceId
+    $headers = New-FinancialApiHeaders -Session $apiSession
+    $headers["Accept"] = $accept
+
+    Invoke-WebRequest `
+        -Method Get `
+        -Uri "$financialsBaseUrl/$exportPath" `
+        -WebSession $apiSession.WebSession `
+        -Headers $headers `
+        -OutFile $resolvedOutputPath | Out-Null
+}
+finally {
+    if ($null -ne $apiSession) {
+        try {
+            Disconnect-FinancialApiSession -Session $apiSession
+        }
+        catch {
+            Write-Warning "The temporary export API session could not be revoked."
+        }
+    }
+}
 
 Write-Host "Exported $Format financial snapshot to $resolvedOutputPath." -ForegroundColor Green
