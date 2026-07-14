@@ -8,7 +8,11 @@ $ErrorActionPreference = "Stop"
 
 Write-Warning "scripts\verify.ps1 is retained for compatibility; prefer scripts\verify-local.ps1."
 
-& (Join-Path $PSScriptRoot "verify-local.ps1") -IncludePostgres:$IncludePostgres
+if ($IncludePostgres) {
+    Write-Warning "-IncludePostgres is retained for compatibility but is no longer required; PostgreSQL integration tests are part of the default verification gate."
+}
+
+& (Join-Path $PSScriptRoot "verify-local.ps1")
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

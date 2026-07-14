@@ -11,8 +11,8 @@ description: Review the end-to-end-app repository, pull requests, or change sets
    changed files, commits when applicable, and nearby tests. Do not review
    unrelated pre-existing worktree changes.
 3. Trace every changed behavior across the affected boundaries: React draft
-   state, API client, DTOs, service rules, JSON storage, PostgreSQL storage, and
-   CI when applicable.
+   state, API client, DTOs, service rules, PostgreSQL storage, legacy migration
+   inputs, and CI when applicable.
 4. Apply every relevant checklist section. For a full review, cover frontend,
    backend/API, PostgreSQL, CI/security, accessibility, and test coverage;
    state which sections are not applicable.
@@ -20,16 +20,16 @@ description: Review the end-to-end-app repository, pull requests, or change sets
    code path. Do not report style preferences, speculative risks without a
    trigger, or issues outside the reviewed change.
 6. Run the narrowest relevant checks. Use `.\scripts\verify-local.ps1` for a
-   repository-wide review and `-IncludePostgres` for persistence findings.
+   repository-wide review; it includes the isolated PostgreSQL integration
+   suite.
 7. Present findings first, ordered P0 through P3. Include one precise file/line
    reference, trigger, impact, evidence, and concise remediation per finding.
    Then report assumptions, skipped checks, and residual risk. If there are no
    findings, say so explicitly.
 
 Treat the V1 normalized tables as inactive historical groundwork; ADR 0009 keeps
-them out of the runtime relational adapter path. Do not infer that an
-empty V1 table means PostgreSQL persistence is broken. Treat V3/V4
-`financial_record_*` tables as the tested future relational path from ADR 0010
-and ADR 0011, not as active runtime storage until the service is explicitly
-wired to them. Do not infer that an authenticated Snyk scan passed from
-`npm audit`.
+them out of the runtime relational adapter path. Do not infer that an empty V1
+table means PostgreSQL persistence is broken. Treat the V3/V4/V6/V7
+`financial_record_*` tables as the active PostgreSQL runtime path and V2 JSONB
+as a legacy migration source. Do not infer that an authenticated Snyk scan
+passed from `npm audit`.

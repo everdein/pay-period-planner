@@ -47,6 +47,12 @@ WITH expected(table_name) AS (
         ('financial_record_income_summary_item'),
         ('financial_record_income_event'),
         ('financial_record_important_date'),
+        ('financial_record_audit_event'),
+        ('financial_snapshot_workspace_migration'),
+        ('application_user'),
+        ('workspace'),
+        ('workspace_membership'),
+        ('application_session'),
         ('flyway_schema_history')
 )
 SELECT
@@ -63,13 +69,52 @@ WITH expected(index_name) AS (
         ('uq_financial_record_debt_account_snapshot_app_record'),
         ('uq_financial_record_income_summary_item_snapshot_app_record'),
         ('uq_financial_record_income_event_snapshot_app_record'),
-        ('uq_financial_record_important_date_snapshot_app_record')
+        ('uq_financial_record_important_date_snapshot_app_record'),
+        ('uq_application_user_normalized_email'),
+        ('ix_workspace_created_by_user'),
+        ('uq_workspace_membership_owner'),
+        ('ix_workspace_membership_user'),
+        ('uq_application_session_token_hash'),
+        ('ix_application_session_user_active'),
+        ('ix_application_session_active_expiry'),
+        ('uq_financial_record_snapshot_active_workspace'),
+        ('uq_financial_record_snapshot_active_unowned'),
+        ('ix_financial_record_snapshot_workspace'),
+        ('uq_financial_record_audit_event_snapshot_app_event'),
+        ('ix_financial_record_audit_event_snapshot_occurred'),
+        ('uq_financial_snapshot_workspace_migration_applied_workspace'),
+        ('ix_financial_snapshot_workspace_migration_destination')
 )
 SELECT
     expected.index_name,
     to_regclass('public.' || expected.index_name) IS NOT NULL AS present
 FROM expected
 ORDER BY expected.index_name;
+
+SELECT
+    column_name,
+    data_type,
+    is_nullable
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'financial_record_snapshot'
+  AND column_name = 'workspace_id';
+
+SELECT
+    constraint_name,
+    constraint_type,
+    convalidated AS validated
+FROM information_schema.table_constraints table_constraint
+JOIN pg_catalog.pg_constraint postgres_constraint
+    ON postgres_constraint.conname = table_constraint.constraint_name
+    AND postgres_constraint.conrelid = 'public.financial_record_snapshot'::regclass
+WHERE table_constraint.table_schema = 'public'
+  AND table_constraint.table_name = 'financial_record_snapshot'
+  AND table_constraint.constraint_name IN (
+      'financial_record_snapshot_workspace_id_fkey',
+      'ck_financial_record_snapshot_workspace_required'
+  )
+ORDER BY constraint_name;
 
 SELECT
     has_database_privilege(current_user, current_database(), 'CONNECT') AS can_connect,
@@ -119,6 +164,12 @@ try {
         "financial_record_income_summary_item",
         "financial_record_income_event",
         "financial_record_important_date",
+        "financial_record_audit_event",
+        "financial_snapshot_workspace_migration",
+        "application_user",
+        "workspace",
+        "workspace_membership",
+        "application_session",
         "flyway_schema_history"
     )
 
@@ -194,6 +245,8 @@ ROLLBACK;
 BEGIN TRANSACTION READ ONLY;
 SELECT
     snapshot.id,
+    snapshot.workspace_id,
+    snapshot.source_document_id,
     snapshot.active,
     snapshot.version,
     snapshot.created_at,
@@ -202,8 +255,10 @@ SELECT
     (SELECT count(*) FROM public.financial_record_annual_withdrawal WHERE snapshot_id = snapshot.id) AS annual_withdrawal_count,
     (SELECT count(*) FROM public.financial_record_asset_account WHERE snapshot_id = snapshot.id) AS asset_count,
     (SELECT count(*) FROM public.financial_record_debt_account WHERE snapshot_id = snapshot.id) AS debt_count,
+    (SELECT count(*) FROM public.financial_record_income_summary_item WHERE snapshot_id = snapshot.id) AS income_summary_item_count,
     (SELECT count(*) FROM public.financial_record_income_event WHERE snapshot_id = snapshot.id) AS income_event_count,
-    (SELECT count(*) FROM public.financial_record_important_date WHERE snapshot_id = snapshot.id) AS important_date_count
+    (SELECT count(*) FROM public.financial_record_important_date WHERE snapshot_id = snapshot.id) AS important_date_count,
+    (SELECT count(*) FROM public.financial_record_audit_event WHERE snapshot_id = snapshot.id) AS audit_event_count
 FROM public.financial_record_snapshot snapshot
 ORDER BY snapshot.active DESC, snapshot.id;
 ROLLBACK;
@@ -212,6 +267,40 @@ ROLLBACK;
             -v "ON_ERROR_STOP=1" -X -c $recordSnapshotSql
         if ($LASTEXITCODE -ne 0) {
             throw "Relational snapshot metadata inspection failed with exit code $LASTEXITCODE."
+        }
+    }
+
+    if ($existingTables -contains "financial_snapshot_workspace_migration") {
+        $migrationSql = @"
+BEGIN TRANSACTION READ ONLY;
+SELECT
+    id,
+    source_kind,
+    source_fingerprint,
+    source_version,
+    source_document_id,
+    destination_user_id,
+    workspace_id,
+    migrated_snapshot_id,
+    monthly_bill_count,
+    annual_withdrawal_count,
+    asset_account_count,
+    debt_account_count,
+    income_summary_item_count,
+    income_event_count,
+    important_date_count,
+    audit_event_count,
+    status,
+    applied_at,
+    rolled_back_at
+FROM public.financial_snapshot_workspace_migration
+ORDER BY applied_at DESC, id;
+ROLLBACK;
+"@
+        & $psqlPath -h $HostName -p $Port -U $User -d $Database `
+            -v "ON_ERROR_STOP=1" -X -c $migrationSql
+        if ($LASTEXITCODE -ne 0) {
+            throw "Workspace migration metadata inspection failed with exit code $LASTEXITCODE."
         }
     }
 }

@@ -16,8 +16,8 @@ description: Prepare end-to-end-app changes for review by scoping the diff, chec
    values are present in tracked or staged content.
 4. Update owning documentation and add an ADR only for a new or superseding
    architectural decision. Do not rewrite accepted ADR history.
-5. Run focused tests while preparing, then `.\scripts\verify-local.ps1`. Add
-   `-IncludePostgres` for persistence changes. Run
+5. Run focused tests while preparing, then `.\scripts\verify-local.ps1`, which
+   includes isolated PostgreSQL integration tests. Run
    `.\scripts\run-security-checks.ps1` only when authenticated tooling and
    network access are available. Record every skipped check.
 6. Before committing, inspect the exact staged diff and run `git diff --check`.

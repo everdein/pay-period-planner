@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted; PostgreSQL authority statement superseded by ADR 0014
 
 ## Context
 
@@ -23,10 +23,12 @@ anchors, and frontend draft behavior.
 
 Do not activate the V1 normalized tables as the application persistence path.
 
-Keep `financial_snapshot_document` authoritative for the current PostgreSQL
-profile. Treat the V1 tables as inert historical groundwork that may remain
-empty in healthy databases. Do not dual-write, backfill, or query them from the
-runtime adapter.
+Keep `financial_snapshot_document` authoritative for the then-current
+PostgreSQL profile. Treat the V1 tables as inert historical groundwork that may
+remain empty in healthy databases. Do not dual-write, backfill, or query them
+from the runtime adapter. ADR 0014 later activated the additive V3/V4/V6/V7
+path and supersedes only this document-authority statement; the V1 decision
+remains active.
 
 Any future relational persistence work should use a new additive migration path
 instead of retrofitting V1. That future path should follow clearer domain model
@@ -37,8 +39,9 @@ the V3 `financial_record_*` migration and adapter path for that follow-up work.
 
 ## Consequences
 
-- Operators and agents have one authoritative PostgreSQL data source today:
-  `financial_snapshot_document`.
+- At the time of this decision, operators had one authoritative PostgreSQL data
+  source: `financial_snapshot_document`. ADR 0014 now makes V3/V4/V6/V7
+  workspace records authoritative at runtime.
 - The misleading V1 tables remain visible, but documentation, inspectors, and
   troubleshooting guidance identify them as inactive.
 - Future relational persistence is not blocked, but it must be designed as a

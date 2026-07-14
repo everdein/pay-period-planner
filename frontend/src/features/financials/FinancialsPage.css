@@ -14,7 +14,7 @@
 }
 
 .app-header {
-  align-items: end;
+  align-items: flex-end;
   display: flex;
   gap: 24px;
   justify-content: space-between;
@@ -29,6 +29,31 @@
   justify-content: flex-end;
 }
 
+.account-context {
+  align-items: flex-end;
+  border-left: 1px solid #d7e0eb;
+  display: flex;
+  gap: 12px;
+  padding-left: 16px;
+}
+
+.account-identity,
+.workspace-name {
+  display: grid;
+  gap: 2px;
+}
+
+.account-identity span,
+.workspace-name span {
+  color: #536179;
+  font-size: 0.78rem;
+}
+
+.workspace-picker,
+.workspace-picker select {
+  min-width: 150px;
+}
+
 .auth-shell {
   display: grid;
   min-height: 100vh;
@@ -37,22 +62,45 @@
 
 .auth-card {
   border: 1px solid #d7e0eb;
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: 0 24px 60px rgb(23 32 51 / 10%);
   max-width: 420px;
   padding: 28px;
   width: 100%;
 }
 
-.auth-card p:not(.eyebrow) {
+.auth-card > p:not(.eyebrow) {
   color: #536179;
 }
 
-.auth-hint {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 10px 12px;
+.auth-card h2 {
+  font-size: 1.1rem;
+  margin-top: 22px;
+}
+
+.auth-tabs {
+  border-bottom: 1px solid #d7e0eb;
+  display: flex;
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.auth-tabs button {
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  color: #536179;
+  padding: 9px 0;
+}
+
+.auth-tabs button.active {
+  border-bottom-color: #17365d;
+  color: #17365d;
+}
+
+.auth-status {
+  box-shadow: none;
 }
 
 .auth-form {
@@ -131,6 +179,16 @@ h2 {
 
 .financials-content {
   min-width: 0;
+}
+
+.empty-state {
+  border-top: 1px solid #d7e0eb;
+  padding: 56px 0;
+}
+
+.empty-state p:not(.eyebrow) {
+  color: #536179;
+  margin-bottom: 0;
 }
 
 .withdrawals-header,
@@ -909,6 +967,15 @@ tr.projection-row.neutral td {
   .app-header .save-actions {
     justify-content: flex-start;
     margin-top: 16px;
+  }
+
+  .account-context {
+    align-items: stretch;
+    border-left: 0;
+    border-top: 1px solid #d7e0eb;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    padding: 16px 0 0;
   }
 
   .pay-period,

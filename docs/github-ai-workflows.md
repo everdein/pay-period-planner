@@ -192,7 +192,7 @@ change repository settings.
 
 - Copilot review comments do not count as human approval.
 - Copilot review comments do not replace `scripts/verify-local.ps1`,
-  authenticated Snyk scans, PostgreSQL smoke tests, Playwright/browser checks,
+  authenticated Snyk scans, PostgreSQL integration tests, Playwright/browser checks,
   or required GitHub Actions jobs.
 - Do not ask Copilot to inspect, paste, or reason over personal financial
   values from ignored JSON, PostgreSQL rows, logs, screenshots, or exports.

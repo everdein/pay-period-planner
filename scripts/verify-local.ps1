@@ -1,24 +1,20 @@
-param(
-    [switch]$IncludePostgres
-)
-
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
-if ($IncludePostgres) {
-    $missingPostgresVariables = @(
+$missingPostgresVariables = @(
+    @(
         "DATABASE_USERNAME",
         "DATABASE_PASSWORD"
     ) | Where-Object { [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) }
+)
 
-    if ($missingPostgresVariables.Count -gt 0) {
-        throw (
-            "PostgreSQL verification requires these environment variables: " +
-            ($missingPostgresVariables -join ", ")
-        )
-    }
+if ($missingPostgresVariables.Count -gt 0) {
+    throw (
+        "PostgreSQL verification requires these environment variables: " +
+        ($missingPostgresVariables -join ", ")
+    )
 }
 
 function Invoke-Step {
@@ -41,7 +37,7 @@ Push-Location $repoRoot
 try {
     Invoke-Step "Environment check" {
         & (Join-Path $PSScriptRoot "check-environment.ps1") `
-            -IncludePostgres:$IncludePostgres
+            -IncludePostgres
     }
     Invoke-Step "Spell check" { npm run spell }
     Invoke-Step "Frontend type check" { npm --prefix frontend run type-check }
@@ -60,19 +56,17 @@ try {
             .\mvnw.cmd -B clean verify
         }
 
-        if ($IncludePostgres) {
-            $previousIntegrationSetting = $env:RUN_POSTGRES_INTEGRATION_TESTS
-            $env:RUN_POSTGRES_INTEGRATION_TESTS = "true"
-            try {
-                Invoke-Step "Isolated PostgreSQL snapshot store and record adapter smoke tests" {
-                    .\mvnw.cmd -B test `
-                        "-Dtest=PostgresFinancialsSnapshotStoreIT,PostgresFinancialRecordSnapshotAdapterIT" `
-                        "-Djacoco.skip=true"
-                }
+        $previousIntegrationSetting = $env:RUN_POSTGRES_INTEGRATION_TESTS
+        $env:RUN_POSTGRES_INTEGRATION_TESTS = "true"
+        try {
+            Invoke-Step "Required isolated PostgreSQL integration tests" {
+                .\mvnw.cmd -B test `
+                    "-Ppostgres-integration" `
+                    "-Djacoco.skip=true"
             }
-            finally {
-                $env:RUN_POSTGRES_INTEGRATION_TESTS = $previousIntegrationSetting
-            }
+        }
+        finally {
+            $env:RUN_POSTGRES_INTEGRATION_TESTS = $previousIntegrationSetting
         }
     }
     finally {

@@ -1,9 +1,21 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDispatch = vi.fn();
 const mockGetMonthlyExpenses = vi.hoisted(() => vi.fn());
-const AUTH_TOKEN_STORAGE_KEY = 'end-to-end-app.auth.basicToken';
+const mockRecover = vi.hoisted(() => vi.fn());
+const mockSignIn = vi.hoisted(() => vi.fn());
+const mockSignUp = vi.hoisted(() => vi.fn());
+const mockSignOut = vi.hoisted(() => vi.fn());
+const mockSelectWorkspace = vi.hoisted(() => vi.fn());
+const account = {
+  userId: 7,
+  email: 'alex@example.com',
+  displayName: 'Alex Morgan',
+  expiresAt: '2026-06-29T12:00:00Z',
+  workspaces: [{ id: 11, name: 'Personal', role: 'OWNER' }],
+};
+const activeSession = { account, workspaceId: 11 };
 const mockFinancialsState = {
   snapshot: {
     version: 1,
@@ -142,19 +154,44 @@ vi.mock('./app/hooks', () => ({
   useAppSelector: vi.fn(() => mockFinancialsState),
 }));
 
+vi.mock('./api/auth', () => ({
+  accountSessionService: {
+    recover: mockRecover,
+    selectWorkspace: mockSelectWorkspace,
+    signIn: mockSignIn,
+    signOut: mockSignOut,
+    signUp: mockSignUp,
+  },
+  clearAccountSession: vi.fn(),
+}));
+
 vi.mock('./api/endpoints/financials', () => ({
   financialsService: {
     getMonthlyExpenses: mockGetMonthlyExpenses,
   },
 }));
 
+import { ApiError } from './api/client';
 import App from './App';
+
+async function renderAuthenticatedApp() {
+  await act(async () => {
+    render(<App />);
+  });
+}
 
 describe('App', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-22T12:00:00'));
-    window.sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, 'Basic dGVzdDp0ZXN0');
+    mockRecover.mockResolvedValue(activeSession);
+    mockSignIn.mockResolvedValue(activeSession);
+    mockSignUp.mockResolvedValue(activeSession);
+    mockSignOut.mockResolvedValue(undefined);
+    mockSelectWorkspace.mockImplementation((session, workspaceId) => ({
+      ...session,
+      workspaceId,
+    }));
     mockGetMonthlyExpenses.mockResolvedValue(mockFinancialsState.snapshot);
   });
 
@@ -163,56 +200,128 @@ describe('App', () => {
     window.sessionStorage.clear();
     mockDispatch.mockClear();
     mockGetMonthlyExpenses.mockReset();
+    mockRecover.mockReset();
+    mockSignIn.mockReset();
+    mockSignUp.mockReset();
+    mockSignOut.mockReset();
+    mockSelectWorkspace.mockReset();
   });
 
-  it('renders sign in before credentials are stored', () => {
-    window.sessionStorage.clear();
+  it('renders sign in when no account session can be recovered', async () => {
+    mockRecover.mockRejectedValue(new ApiError('Unauthorized', 401, 'request-401'));
 
-    render(<App />);
+    await renderAuthenticatedApp();
 
-    expect(screen.getByRole('heading', { name: /sign in to financials/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /welcome back/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
   });
 
-  it('verifies credentials before entering the financials screen', async () => {
+  it('signs in through the account session API', async () => {
     vi.useRealTimers();
-    window.sessionStorage.clear();
+    mockRecover.mockRejectedValue(new ApiError('Unauthorized', 401, 'request-401'));
 
-    render(<App />);
+    await renderAuthenticatedApp();
 
-    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: 'financial_app' } });
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'alex@example.com' } });
     fireEvent.change(screen.getByLabelText(/password/i), {
-      target: { value: 'financial_app_local_password' },
+      target: { value: 'correct horse battery staple' },
     });
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
-    await waitFor(() => expect(mockGetMonthlyExpenses).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(mockSignIn).toHaveBeenCalledWith({
+        email: 'alex@example.com',
+        password: 'correct horse battery staple',
+      })
+    );
 
     expect(screen.getByRole('heading', { name: /financials/i })).toBeInTheDocument();
-    expect(window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY)).toMatch(/^Basic /);
+    expect(screen.getByText('alex@example.com')).toBeInTheDocument();
+  });
+
+  it('creates an account and validates password confirmation', async () => {
+    vi.useRealTimers();
+    mockRecover.mockRejectedValue(new ApiError('Unauthorized', 401, 'request-401'));
+
+    await renderAuthenticatedApp();
+    fireEvent.click(screen.getByRole('tab', { name: /create account/i }));
+    fireEvent.change(screen.getByLabelText(/display name/i), { target: { value: 'Alex Morgan' } });
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'alex@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^password$/i), {
+      target: { value: 'correct horse battery staple' },
+    });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+      target: { value: 'different password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/passwords do not match/i);
+    expect(mockSignUp).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+      target: { value: 'correct horse battery staple' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() =>
+      expect(mockSignUp).toHaveBeenCalledWith({
+        displayName: 'Alex Morgan',
+        email: 'alex@example.com',
+        password: 'correct horse battery staple',
+      })
+    );
   });
 
   it('keeps the sign-in form visible when the backend proxy is unavailable', async () => {
     vi.useRealTimers();
-    window.sessionStorage.clear();
-    mockGetMonthlyExpenses.mockRejectedValue(new Error('HTTP 502 Bad Gateway'));
+    mockRecover.mockRejectedValue(new ApiError('Unauthorized', 401, 'request-401'));
+    mockSignIn.mockRejectedValue(new Error('HTTP 502 Bad Gateway'));
 
-    render(<App />);
+    await renderAuthenticatedApp();
 
-    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: 'financial_app' } });
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'alex@example.com' } });
     fireEvent.change(screen.getByLabelText(/password/i), {
-      target: { value: 'financial_app_local_password' },
+      target: { value: 'correct horse battery staple' },
     });
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/could not reach the backend/i);
-    expect(screen.getByRole('heading', { name: /sign in to financials/i })).toBeInTheDocument();
-    expect(window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY)).toBeNull();
+    expect(await screen.findByRole('alert')).toHaveTextContent(/unable to sign in/i);
+    expect(screen.getByRole('heading', { name: /welcome back/i })).toBeInTheDocument();
   });
 
-  it('renders the monthly expenses feature', () => {
-    render(<App />);
+  it('revokes the account session before returning to sign in', async () => {
+    vi.useRealTimers();
+    await renderAuthenticatedApp();
+
+    fireEvent.click(screen.getByRole('button', { name: /sign out/i }));
+
+    await waitFor(() => expect(mockSignOut).toHaveBeenCalledOnce());
+    expect(screen.getByRole('heading', { name: /welcome back/i })).toBeInTheDocument();
+  });
+
+  it('switches among workspaces without retaining the prior snapshot boundary', async () => {
+    const secondWorkspaceSession = {
+      account: {
+        ...account,
+        workspaces: [
+          ...account.workspaces,
+          { id: 12, name: 'Household', role: 'MEMBER' },
+        ],
+      },
+      workspaceId: 11,
+    };
+    mockRecover.mockResolvedValue(secondWorkspaceSession);
+
+    await renderAuthenticatedApp();
+    fireEvent.change(screen.getByLabelText(/workspace/i), { target: { value: '12' } });
+
+    expect(mockSelectWorkspace).toHaveBeenCalledWith(secondWorkspaceSession, 12);
+    expect(mockDispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'financials/resetFinancials' }));
+  });
+
+  it('renders the monthly expenses feature', async () => {
+    await renderAuthenticatedApp();
 
     expect(screen.getByRole('heading', { name: /financials/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /monthly withdrawals/i })).toBeInTheDocument();
@@ -244,8 +353,8 @@ describe('App', () => {
     expect(screen.getByRole('cell', { name: /retirement/i })).toBeInTheDocument();
   });
 
-  it('keeps save and reset controls available on asset tabs', () => {
-    render(<App />);
+  it('keeps save and reset controls available on asset tabs', async () => {
+    await renderAuthenticatedApp();
 
     fireEvent.click(screen.getByRole('button', { name: /retirement/i }));
 
@@ -254,8 +363,8 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /add account/i })).toBeInTheDocument();
   });
 
-  it('edits an asset account and recalculates its draft total', () => {
-    render(<App />);
+  it('edits an asset account and recalculates its draft total', async () => {
+    await renderAuthenticatedApp();
 
     fireEvent.click(screen.getByRole('button', { name: /retirement/i }));
     fireEvent.click(screen.getByRole('button', { name: /edit 401k 10%/i }));
@@ -266,8 +375,8 @@ describe('App', () => {
     expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
   });
 
-  it('renders income calendar and important dates tabs', () => {
-    render(<App />);
+  it('renders income calendar and important dates tabs', async () => {
+    await renderAuthenticatedApp();
 
     fireEvent.click(screen.getByRole('button', { name: /income calendar/i }));
 
@@ -283,8 +392,8 @@ describe('App', () => {
     expect(screen.getByText(/^Next$/i)).toBeInTheDocument();
   });
 
-  it('generates recurring payday rows in the income calendar draft', () => {
-    render(<App />);
+  it('generates recurring payday rows in the income calendar draft', async () => {
+    await renderAuthenticatedApp();
 
     fireEvent.click(screen.getByRole('button', { name: /income calendar/i }));
     fireEvent.change(screen.getByLabelText(/^first payday$/i), {
@@ -297,8 +406,8 @@ describe('App', () => {
     expect(screen.getByRole('cell', { name: '12/25/2026' })).toBeInTheDocument();
   });
 
-  it('renders annual withdrawals tab', () => {
-    render(<App />);
+  it('renders annual withdrawals tab', async () => {
+    await renderAuthenticatedApp();
 
     fireEvent.click(screen.getByRole('button', { name: /annual withdrawals/i }));
 
@@ -308,8 +417,8 @@ describe('App', () => {
     expect(screen.getAllByText('$140.58')).not.toHaveLength(0);
   });
 
-  it('renders pay period projection tab', () => {
-    render(<App />);
+  it('renders pay period projection tab', async () => {
+    await renderAuthenticatedApp();
 
     fireEvent.click(screen.getByRole('button', { name: /projection/i }));
 
@@ -323,8 +432,8 @@ describe('App', () => {
     expect(screen.getAllByText('$33.78')).not.toHaveLength(0);
   });
 
-  it('renders income summary tab', () => {
-    render(<App />);
+  it('renders income summary tab', async () => {
+    await renderAuthenticatedApp();
 
     fireEvent.click(screen.getByRole('button', { name: /income summary/i }));
 
@@ -335,8 +444,8 @@ describe('App', () => {
     expect(screen.getByText('$4,192.50')).toBeInTheDocument();
   });
 
-  it('renders and edits persisted non-primary income summary source rows', () => {
-    render(<App />);
+  it('renders and edits persisted non-primary income summary source rows', async () => {
+    await renderAuthenticatedApp();
 
     fireEvent.click(screen.getByRole('button', { name: /income summary/i }));
 
@@ -354,8 +463,8 @@ describe('App', () => {
     expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
   });
 
-  it('renders debt tab', () => {
-    render(<App />);
+  it('renders debt tab', async () => {
+    await renderAuthenticatedApp();
 
     fireEvent.click(screen.getByRole('button', { name: /^debt$/i }));
 
@@ -364,8 +473,8 @@ describe('App', () => {
     expect(screen.getAllByText('$2,130.03')).not.toHaveLength(0);
   });
 
-  it('edits a debt account and recalculates the draft total', () => {
-    render(<App />);
+  it('edits a debt account and recalculates the draft total', async () => {
+    await renderAuthenticatedApp();
 
     fireEvent.click(screen.getByRole('button', { name: /^debt$/i }));
     fireEvent.click(screen.getByRole('button', { name: /edit apple/i }));
@@ -383,8 +492,8 @@ describe('App', () => {
     expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
   });
 
-  it('locks projection anchors and confirms before removing non-anchor withdrawals', () => {
-    render(<App />);
+  it('locks projection anchors and confirms before removing non-anchor withdrawals', async () => {
+    await renderAuthenticatedApp();
 
     fireEvent.click(screen.getByRole('button', { name: /monthly withdrawals/i }));
     expect(screen.getByRole('button', { name: /remove rent/i })).toBeDisabled();

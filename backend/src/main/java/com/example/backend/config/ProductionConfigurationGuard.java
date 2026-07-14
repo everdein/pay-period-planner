@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProductionConfigurationGuard implements ApplicationRunner {
 
-  private static final String POSTGRES_PROFILE = "postgres";
   private static final String PROD_PROFILE = "prod";
 
   private final Environment environment;
@@ -28,18 +27,18 @@ public class ProductionConfigurationGuard implements ApplicationRunner {
         Arrays.asList(environment.getActiveProfiles()),
         securityProperties.username(),
         securityProperties.password(),
-        securityProperties.allowedOrigins());
+        securityProperties.allowedOrigins(),
+        securityProperties.sessionCookieSecure());
   }
 
   static void validate(
-      List<String> activeProfiles, String username, String password, List<String> allowedOrigins) {
+      List<String> activeProfiles,
+      String username,
+      String password,
+      List<String> allowedOrigins,
+      boolean sessionCookieSecure) {
     if (!activeProfiles.contains(PROD_PROFILE)) {
       return;
-    }
-
-    if (!activeProfiles.contains(POSTGRES_PROFILE)) {
-      throw new IllegalStateException(
-          "The prod profile must be combined with the postgres profile");
     }
 
     if (FinancialsSecurityDefaults.LOCAL_USERNAME.equals(username)
@@ -51,6 +50,11 @@ public class ProductionConfigurationGuard implements ApplicationRunner {
     if (allowedOrigins.stream().anyMatch("*"::equals)) {
       throw new IllegalStateException(
           "FINANCIALS_ALLOWED_ORIGINS cannot include '*' when the prod profile is active");
+    }
+
+    if (!sessionCookieSecure) {
+      throw new IllegalStateException(
+          "FINANCIALS_SESSION_COOKIE_SECURE must be true when the prod profile is active");
     }
   }
 }

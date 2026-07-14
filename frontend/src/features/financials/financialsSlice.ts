@@ -44,7 +44,9 @@ export const saveExpenseSnapshot = createAsyncThunk(
 const financialsSlice = createSlice({
   name: 'financials',
   initialState,
-  reducers: {},
+  reducers: {
+    resetFinancials: () => initialState,
+  },
   selectors: {
     selectFinancialsSnapshot: (state) => state.snapshot,
   },
@@ -52,6 +54,7 @@ const financialsSlice = createSlice({
     builder
       .addCase(fetchMonthlyExpenses.pending, (state) => {
         state.status = 'loading';
+        state.snapshot = null;
         state.error = null;
       })
       .addCase(fetchMonthlyExpenses.fulfilled, (state, action) => {
@@ -60,6 +63,7 @@ const financialsSlice = createSlice({
       })
       .addCase(fetchMonthlyExpenses.rejected, (state, action) => {
         state.status = 'failed';
+        state.snapshot = null;
         state.error = action.error.message ?? 'Unable to load monthly expenses';
       });
 
@@ -81,5 +85,6 @@ const financialsSlice = createSlice({
 });
 
 export const { selectFinancialsSnapshot } = financialsSlice.selectors;
+export const { resetFinancials } = financialsSlice.actions;
 
 export default financialsSlice.reducer;

@@ -13,12 +13,8 @@ flowchart TD
 
     Setup --> Env["Run check-environment.ps1"]
     Frontend --> FE["Check port, dependencies, exact Vite/Vitest error"]
-    Backend --> Profile{"JSON or postgres profile?"}
-    Profile --> JSON["Inspect paths and JSON parse/write errors"]
-    Profile --> PG["Run read-only PostgreSQL inspector"]
-    Data --> Store{"Which profile/store is active?"}
-    Store --> JSON
-    Store --> PG
+    Backend --> PG["Run read-only PostgreSQL inspector"]
+    Data --> PG
     CI --> Logs["Inspect exact run, job, first failed step"]
 ```
 
@@ -47,7 +43,8 @@ Run from the repository root:
 .\scripts\check-environment.ps1
 ```
 
-Add `-IncludePostgres` only when preparing the PostgreSQL profile.
+Add `-IncludePostgres` when checking the required database prerequisites or
+preparing local PostgreSQL.
 
 ### A tool is missing or the wrong version
 
@@ -125,6 +122,12 @@ code failure.
    branch below.
 6. For connection refusal, start or diagnose the backend.
 
+Under `postgres`, `401` means the account session is absent/invalid, `403` on a
+write can mean missing CSRF proof, `400 Invalid workspace selection` means an
+ambiguous/malformed `X-Workspace-ID`, `403 Workspace access denied` means the
+selected workspace is not a current membership, and `404 Financial snapshot
+not found` means the workspace has not received an explicit snapshot.
+
 ### Save fails or draft looks stale
 
 1. Preserve the browser draft; do not reload before capturing the error.
@@ -141,30 +144,18 @@ code failure.
 
 ### Backend will not start
 
-1. Confirm Java/Maven with `check-environment.ps1`.
-2. Identify the active profile from startup logs.
+1. Confirm Java, Maven, and PostgreSQL with
+   `check-environment.ps1 -IncludePostgres`.
+2. Preserve the first startup exception and Flyway message.
 3. Check port `8080`:
 
    ```powershell
    Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue
    ```
 
-4. Follow the JSON or PostgreSQL branch based on the active profile.
-5. Do not enable the other profile as a “fix”; the stores are independent.
-
-### JSON profile fails
-
-Common signals include inability to load/write the configured data path or
-invalid JSON.
-
-1. Confirm `backend/data/financials.local.json` exists or can be created.
-2. Inspect file existence, permissions, size, and parse error location without
-   printing values.
-3. Check for sibling `.tmp` and `.bak` files.
-4. Back up all three before repair.
-5. Never replace an existing local file with example data automatically.
-6. Restore from `.bak` only after explicit approval and after preserving the
-   current file for investigation.
+4. Run the read-only PostgreSQL inspector and follow the connectivity,
+   migration, privilege, or workspace branch that matches the failure.
+5. Do not point startup at a legacy JSON file; it is a migration source only.
 
 ### API returns `400 Invalid request`
 
@@ -229,35 +220,82 @@ Do not run setup against an unknown/shared server.
 
 ### Tables exist but Flyway history is absent
 
-This can result from the current local setup script applying V1/V2/V3/V4
-directly.
-It is registered as `LIM-014`.
+This can result from the retired direct-`psql` setup path. LIM-014 records the
+historical limitation; ADR 0015 establishes Flyway as the single authority.
 
 1. Do not fabricate history rows.
-2. Do not assume the runtime can safely apply future migrations.
-3. Before adding migrations, establish one migration authority and test an
-   upgrade path on a copy/disposable target.
+2. Run `scripts/inspect-postgres.ps1` and back up any personal data.
+3. Use `setup-local-postgres.ps1 -AdoptLegacySnapshotDocumentSchema` only for
+   a V2 document-only schema with the expected columns and no duplicate active
+   rows. Flyway V2 restores the unique-active index when absent.
+4. Use `setup-local-postgres.ps1 -AdoptLegacyV4Schema` only when the expected
+   V1-V4 table/index signature is present.
+5. If the signature check fails, stop and plan an additive repair migration on
+   a copy or disposable target. Do not run migration files with `psql -f`.
 
 ### `financial_snapshot_document` has zero rows
 
-This is expected before first PostgreSQL-backed startup. Starting the backend
-will seed it from personal local JSON when present, then mock example data, then
-an empty snapshot. Confirm and back up the intended source before startup.
+This is healthy. The table is a legacy migration source and PostgreSQL startup
+does not seed it.
 
 ### Normalized V1 tables are empty
 
-Expected. They are inactive V1 historical groundwork. The active data is the
-JSONB document row. Do not backfill normalized tables as a troubleshooting
-step; ADR 0009 keeps them out of the runtime relational path.
+Expected. They are inactive V1 historical groundwork. Active PostgreSQL data
+uses V3/V4/V6/V7 workspace tables. Do not backfill V1 as a troubleshooting
+step.
 
-### V3/V4 `financial_record_*` tables are empty
+### V3/V4/V6/V7 `financial_record_*` tables are empty
 
-Expected until the runtime service is intentionally wired to the relational
-adapter. ADR 0010 adds the V3 migration and adapter path, ADR 0011 adds
-granular adapter CRUD and V4 app-record indexes, but the runtime service still
-uses `financial_snapshot_document`.
+Expected only when no workspace has received an explicit initial or migrated
+snapshot. The runtime never seeds one from local/example JSON. Recover the
+account session, confirm the intended workspace ID, and use the backed-up
+migration workflow rather than inserting records manually.
 
-### More than one active document or unexpected version changes
+### A relational snapshot has a null `workspace_id`
+
+This can be a pre-V6 row intentionally preserved for the explicit ownership
+migration. V6 blocks new or changed unowned rows and allows at most one active
+legacy unowned row, but its workspace-required check remains pending validation
+until that migration names a destination user/workspace. Do not assign
+ownership or validate the constraint as an ad hoc troubleshooting step.
+
+### Workspace migration returns `404`
+
+1. Confirm the PostgreSQL account exists and is active.
+2. Recover the account session and verify the requested workspace ID appears
+   with `owner` role.
+3. For `jsonb-document`, inspect metadata to confirm one active legacy document
+   exists. Do not start or seed the backend merely to create a source.
+4. Do not substitute another email or workspace by guessing; rerun only with the
+   intended destination identity.
+
+### Workspace migration returns `409`
+
+1. If the detail reports a fingerprint mismatch, stop writes, create a fresh
+   external backup, and rerun with its SHA-256 fingerprint. Never edit the
+   backup to force a match.
+2. If the destination already has an active relational snapshot, stop. The
+   workflow is intentionally not a merge or overwrite operation.
+3. If rollback reports the snapshot changed or is inactive, retain the source,
+   backup, migration UUID, and metadata. Do not deactivate rows or rewrite the
+   migration status manually.
+4. Use metadata-only inspection of migration status, snapshot ID/active/version,
+   and record/audit counts before planning recovery.
+
+### Workspace migration metadata does not match
+
+The apply transaction should roll back completely if target version or counts
+do not match the source. Preserve the external backup and request ID, inspect
+Flyway version and table/count metadata, and reproduce with synthetic data in
+an isolated schema. Do not print values, copy selected record tables, or retry
+against another personal workspace until the cause is understood.
+
+### V5 identity, workspace, membership, and session tables are empty
+
+Expected before account/session flows are used. Signup creates these rows; do
+not seed identity rows manually as a troubleshooting step.
+
+### More than one active snapshot per workspace or unexpected version changes
 
 1. Stop writers.
 2. Back up the database.
@@ -277,24 +315,22 @@ uses `financial_snapshot_document`.
 
 ## 5. Missing or Unexpected Data
 
-### Confirm the active store
+### Confirm the workspace and source
 
-- No explicit profile means JSON.
-- `SPRING_PROFILES_ACTIVE=postgres` means PostgreSQL.
-- The stores do not synchronize automatically.
-
-Data “missing” after switching profiles usually means the other store is being
-read, not that records were deleted.
+PostgreSQL relational workspace storage is always active. Recover the account
+session, confirm the selected workspace ID, and inspect only metadata. If data
+exists only in a retained JSON or JSONB source, use the explicit backed-up
+migration workflow; startup never synchronizes or seeds it.
 
 ### Suspected data loss
 
 1. Stop the backend and avoid saves.
-2. Record the active profile and last known good time.
+2. Record the database, account, workspace ID, and last known good time.
 3. Preserve:
    - Current `.local.json`, `.tmp`, and `.bak` files, or
    - A PostgreSQL administrator-approved backup.
-4. Collect metadata only: file timestamps/sizes or document ID, active flag,
-   version, and timestamps.
+4. Collect metadata only: file timestamps/sizes or workspace/snapshot ID,
+   active flag, version, and timestamps.
 5. Compare with the last known backup outside the live target.
 6. Plan restoration or migration explicitly; never merge snapshots by guessing
    which missing collections are intentional.
@@ -314,8 +350,8 @@ as corruption.
    or external-service failure.
 4. Fix the verified cause and rerun the focused command.
 5. Rerun `verify-local.ps1` before completion.
-6. Add `-IncludePostgres` only when the change requires it; the option mutates
-   and drops its isolated test schema.
+6. The default verifier creates and drops isolated PostgreSQL test schemas. If
+   that step fails, rerun the `postgres-integration` Maven profile directly.
 
 Generated coverage/build changes are test artifacts. Do not commit them unless
 the repository intentionally tracks and the task updates them.

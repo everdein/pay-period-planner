@@ -48,8 +48,9 @@ included in that JSON output.
 
 `/actuator/health` and `/actuator/info` remain public and contain no financial
 details. `/actuator/metrics` and its child endpoints require the same
-`FINANCIALS_API_USERNAME` and `FINANCIALS_API_PASSWORD` credentials as the
-financial API. Other Actuator endpoints are denied.
+`FINANCIALS_API_USERNAME` and `FINANCIALS_API_PASSWORD` operator credentials as
+migration administration. Financial workspace routes use account sessions.
+Other Actuator endpoints are denied.
 
 Useful metric names include:
 

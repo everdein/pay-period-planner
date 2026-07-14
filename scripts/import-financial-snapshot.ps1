@@ -2,8 +2,9 @@ param(
     [ValidateSet("csv", "xlsx")]
     [string]$Format,
     [string]$BaseUrl = "http://localhost:8080",
-    [string]$ApiUsername = $env:FINANCIALS_API_USERNAME,
-    [string]$ApiPassword = $env:FINANCIALS_API_PASSWORD,
+    [string]$AccountEmail = $env:FINANCIALS_ACCOUNT_EMAIL,
+    [string]$AccountPassword = $env:FINANCIALS_ACCOUNT_PASSWORD,
+    [long]$WorkspaceId = 0,
     [Parameter(Mandatory = $true)]
     [string]$InputPath,
     [switch]$ConfirmRestore
@@ -12,27 +13,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-function New-BasicAuthorizationHeader {
-    param(
-        [string]$Username,
-        [string]$Password
-    )
-
-    $credentials = "{0}:{1}" -f $Username, $Password
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($credentials)
-    return "Basic " + [System.Convert]::ToBase64String($bytes)
-}
+. (Join-Path $PSScriptRoot "financial-api-session.ps1")
 
 if (-not $ConfirmRestore) {
     throw "Import replaces the entire saved financial snapshot and increments its version. Rerun with -ConfirmRestore after verifying you have the right file and a backup."
-}
-
-if ([string]::IsNullOrWhiteSpace($ApiUsername)) {
-    $ApiUsername = "financial_app"
-}
-
-if ([string]::IsNullOrEmpty($ApiPassword)) {
-    $ApiPassword = "financial_app_local_password"
 }
 
 $resolvedInputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($InputPath)
@@ -58,12 +42,35 @@ $contentType = switch ($Format) {
     "xlsx" { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
 }
 
-$response = Invoke-RestMethod `
-    -Method Post `
-    -Uri "$financialsBaseUrl/$importPath" `
-    -Headers @{ Authorization = New-BasicAuthorizationHeader -Username $ApiUsername -Password $ApiPassword } `
-    -ContentType $contentType `
-    -InFile $resolvedInputPath
+$apiSession = $null
+try {
+    $apiSession = Connect-FinancialApiSession `
+        -BaseUrl $BaseUrl `
+        -AccountEmail $AccountEmail `
+        -AccountPassword $AccountPassword `
+        -WorkspaceId $WorkspaceId
+    $csrfProof = Get-FinancialApiCsrfProof -Session $apiSession
+    $headers = New-FinancialApiHeaders -Session $apiSession
+    $headers[$csrfProof.HeaderName] = $csrfProof.Token
+
+    $response = Invoke-RestMethod `
+        -Method Post `
+        -Uri "$financialsBaseUrl/$importPath" `
+        -WebSession $apiSession.WebSession `
+        -Headers $headers `
+        -ContentType $contentType `
+        -InFile $resolvedInputPath
+}
+finally {
+    if ($null -ne $apiSession) {
+        try {
+            Disconnect-FinancialApiSession -Session $apiSession
+        }
+        catch {
+            Write-Warning "The temporary import API session could not be revoked."
+        }
+    }
+}
 
 Write-Host "Imported $Format financial snapshot." -ForegroundColor Green
 Write-Host ("New version: {0}" -f $response.version)

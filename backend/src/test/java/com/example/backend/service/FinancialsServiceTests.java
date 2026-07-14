@@ -20,27 +20,23 @@ import com.example.backend.dto.financials.IncomeEventSnapshotRequest;
 import com.example.backend.dto.financials.IncomeSummaryItemRequest;
 import com.example.backend.dto.financials.IncomeSummaryItemSnapshotRequest;
 import com.example.backend.dto.financials.PayPeriodRequest;
+import com.example.backend.repository.FinancialsData;
 import com.example.backend.repository.FinancialsRepository;
-import com.example.backend.repository.JsonFinancialsSnapshotStore;
+import com.example.backend.repository.FinancialsSnapshotStore;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.ObjectMapper;
 
 class FinancialsServiceTests {
-
-  @TempDir private Path tempDir;
 
   @Test
   void returnsSeededMonthlyExpenseSnapshot() throws IOException {
@@ -188,8 +184,6 @@ class FinancialsServiceTests {
     assertThat(event.projectionSummary().totalTrackedAssets()).isEqualByComparingTo("15000.0");
     assertThat(event.projectionSummary().totalDebt()).isEqualByComparingTo("500.0");
     assertThat(event.projectionSummary().netWorth()).isEqualByComparingTo("14500.0");
-    assertThat(Files.readString(tempDir.resolve("financials.local.json")))
-        .contains("\"auditEvents\"");
   }
 
   @Test
@@ -394,7 +388,6 @@ class FinancialsServiceTests {
     assertThat(saved.incomeEvents().getFirst().checksInMonth()).isEqualTo(2);
     assertThat(saved.importantDates())
         .anyMatch((importantDate) -> importantDate.event().equals("Christmas"));
-    assertThat(Files.exists(tempDir.resolve("financials.local.json.bak"))).isTrue();
   }
 
   @Test
@@ -428,11 +421,10 @@ class FinancialsServiceTests {
   }
 
   private FinancialsRepository repository() throws IOException {
-    Path dataPath = tempDir.resolve("financials.local.json");
-    Path examplePath = tempDir.resolve("financials.example.json");
-    Files.writeString(
-        examplePath,
-        """
+    FinancialsData seedData =
+        new ObjectMapper()
+            .readValue(
+                """
         {
           "version": 1,
           "payPeriodStart": "2026-01-01",
@@ -525,9 +517,28 @@ class FinancialsServiceTests {
             }
           ]
         }
-        """);
-    return new FinancialsRepository(
-        new JsonFinancialsSnapshotStore(new ObjectMapper(), dataPath, examplePath));
+        """,
+                FinancialsData.class);
+    return new FinancialsRepository(new InMemoryFinancialsSnapshotStore(seedData));
+  }
+
+  private static final class InMemoryFinancialsSnapshotStore implements FinancialsSnapshotStore {
+
+    private FinancialsData data;
+
+    private InMemoryFinancialsSnapshotStore(FinancialsData data) {
+      this.data = data;
+    }
+
+    @Override
+    public FinancialsData load() {
+      return data;
+    }
+
+    @Override
+    public void save(FinancialsData data) {
+      this.data = data;
+    }
   }
 
   private BigDecimal money(String value) {

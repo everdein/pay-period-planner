@@ -2,36 +2,38 @@
 
 ## System Context
 
-The application is a single-user financial planning workspace. The browser
+The application is a financial planning workspace. The browser
 loads one aggregate snapshot, edits a local draft, and saves the complete
-snapshot through a Spring Boot API. The backend selects one persistence adapter
-at startup: local JSON by default or PostgreSQL under the `postgres` profile.
+snapshot through a Spring Boot API. The backend always uses workspace-scoped
+relational PostgreSQL.
 Persisted writes append coarse audit events with version movement and aggregate
 projection summaries.
 
-This map describes the current runtime. ADR 0014 records the accepted target of
-PostgreSQL-only, workspace-scoped relational persistence with account/session
-management. That target is implementation work; until its transition criteria
-are verified, the two current profiles and single-user boundaries below remain
-authoritative.
+This map describes the current runtime. ADR 0014 records the implemented
+PostgreSQL-only, workspace-scoped relational persistence and account/session
+model.
 
 ```mermaid
 flowchart LR
-    User["Local user"] --> UI["React financial workspace"]
+    User["Account user"] --> UI["React financial workspace"]
     UI -->|"HTTP /api/v1/financials"| API["Spring Boot API"]
     API --> Service["FinancialsService"]
     Service --> Repository["FinancialsRepository<br/>in-memory aggregate + ID assignment"]
-    Repository --> Store{"FinancialsSnapshotStore"}
-    Store -->|"json profile"| JSON["financials.local.json"]
-    Store -->|"postgres profile"| PG["financial_snapshot_document<br/>JSONB snapshot"]
-    JSON -. "initial seed" .-> Example["financials.example.json<br/>synthetic mock data"]
-    Example -. "fallback seed" .-> PG
+    Repository --> Store["PostgresFinancialsSnapshotStore"]
+    Store -->|"workspace session"| PG["financial_record_*<br/>relational workspace snapshot"]
 ```
 
-Financial APIs require one local Basic-auth application user, but there is no
-multi-user isolation or production deployment yet. Full-snapshot saves use
-optimistic version checks; granular record and pay-period routes still mutate
-the single aggregate immediately.
+The account API creates users, personal workspaces,
+memberships, and hashed server sessions with explicit CSRF protection.
+`WORKSPACE` principals resolve one current membership and every financial read
+or write is isolated to that relational workspace. The React client recovers
+the `HttpOnly` session, obtains fresh CSRF proof before each mutation, stores
+only a non-sensitive workspace preference, and clears Redux snapshot state at
+every account or workspace boundary. A separate Basic-auth operator workflow can
+back up JSON/JSONB, import it into an empty owned relational workspace, verify
+metadata, and roll back an unchanged migration. Full-snapshot saves use
+optimistic versions; PostgreSQL writers serialize on a workspace row before
+replacing its active snapshot.
 
 ## Frontend
 
@@ -39,7 +41,8 @@ the single aggregate immediately.
 | ----------------------------------------------------- | ----------------------------------------------------------------------- |
 | `frontend/src/App.tsx`                                | Application shell                                                       |
 | `frontend/src/app/`                                   | Redux store and typed hooks                                             |
-| `frontend/src/api/client.ts`                          | Fetch wrapper and HTTP error handling                                   |
+| `frontend/src/api/auth.ts`                            | Account session activation and workspace preference                     |
+| `frontend/src/api/client.ts`                          | Cookie/CSRF/workspace fetch wrapper and HTTP error handling              |
 | `frontend/src/api/endpoints/financials.ts`            | API contract types and endpoint calls                                   |
 | `frontend/src/observability/`                         | Error containment, safe local reporting, recovery UI                    |
 | `frontend/src/features/financials/FinancialsPage.tsx` | Authenticated load, save, export, and status shell                      |
@@ -57,7 +60,7 @@ the single aggregate immediately.
 | `financialsDraft.ts`                                  | Draft conversion, normalization, and request building                   |
 | `financialsProjection.ts`                             | Projection calculations                                                 |
 | `financialsDatePolicy.ts`                             | Client-side date policy                                                 |
-| `financialsSlice.ts`                                  | Server snapshot, loading, saving, and error state                       |
+| `financialsSlice.ts`                                  | Server snapshot, identity-boundary reset, loading, saving, and errors    |
 
 The Redux slice owns the last server snapshot and request status. Its fetch
 thunk suppresses concurrent loads so React Strict Mode effect replays cannot
@@ -88,10 +91,10 @@ flowchart TD
     Service --> Repository["repository/FinancialsRepository"]
     Repository --> Domain
     Repository --> Interface["FinancialsSnapshotStore"]
-    Repository -. "future runtime path" .-> RecordAdapter["PostgresFinancialRecordSnapshotAdapter"]
-    Interface --> JsonStore["JsonFinancialsSnapshotStore<br/>@Profile(json)"]
-    Interface --> PostgresStore["PostgresFinancialsSnapshotStore<br/>@Profile(postgres)"]
-    RecordAdapter --> RecordTables["financial_record_* tables<br/>inactive runtime path"]
+    Interface --> PostgresStore["PostgresFinancialsSnapshotStore"]
+    PostgresStore --> WorkspaceResolver["AuthenticatedWorkspaceResolver"]
+    PostgresStore --> RecordAdapter["PostgresFinancialRecordSnapshotAdapter"]
+    RecordAdapter --> RecordTables["financial_record_* tables<br/>active PostgreSQL runtime"]
 ```
 
 | Layer                                    | Responsibilities                                                                  | Must not own                          |
@@ -101,41 +104,71 @@ flowchart TD
 | `domain/financials/`                     | Backend financial record types, saved snapshot aggregate, audit/projection types  | HTTP or storage implementation        |
 | `service/`                               | Validation, date policy, totals, normalization, orchestration                     | File or SQL access                    |
 | `repository/FinancialsRepository`        | In-memory aggregate, IDs, audit event capture, synchronized mutation, persistence | HTTP behavior                         |
-| `repository/*SnapshotStore`              | Load/save serialization for one storage mode                                      | API response derivation               |
-| `PostgresFinancialRecordSnapshotAdapter` | Tested V3/V4 relational save/load and granular CRUD path for the domain aggregate | Active runtime persistence            |
-| `config/`                                | Bound persistence configuration                                                   | Domain behavior                       |
+| `repository/*SnapshotStore`              | Workspace-scoped relational snapshot load/save                                     | API response derivation               |
+| `PostgresFinancialRecordSnapshotAdapter` | Workspace-scoped relational load, optimistic replacement, audit persistence, and granular CRUD | HTTP authorization |
+| `AuthenticatedWorkspaceResolver`         | Resolve sole or `X-Workspace-ID` membership from the authenticated session         | SQL or financial calculations         |
+| `PostgresAccountSessionRepository`       | PostgreSQL users, memberships, hashed sessions, revocation, and recovery           | Financial snapshot access             |
+| `AccountSessionService`                  | Credential hashing, opaque-token issuance, account/workspace transaction           | Financial persistence                 |
+| `WorkspaceSnapshotMigrationService`      | Backed-up source validation, ownership checks, metadata verification, rollback      | Runtime-store selection               |
+| `PostgresWorkspaceSnapshotMigrationRepository` | Legacy JSONB reads, relational audit/history metadata, migration records       | HTTP or frontend behavior             |
+| `config/`                                | Security, CORS, request limits, and observability configuration                    | Domain behavior                       |
 
 `config/RequestObservabilityFilter` validates or creates request IDs, records
 safe request completion metadata, and increments low-cardinality snapshot
 outcome counters. Spring Boot supplies standard HTTP/JVM metrics. Metrics are
 credential-protected; only health and info remain public. The production
-profile emits Logstash-compatible JSON, while local profiles retain readable
+profile emits Logstash-compatible JSON, while local startup retains readable
 console output.
 
 The granular record and pay-period routes use the same repository aggregate as
 the full snapshot route. The current UI uses the full snapshot as its primary
 save boundary.
 
-## Persistence Profiles
+## Persistence
 
-| Concern            | JSON profile                                                        | PostgreSQL profile                                                         |
-| ------------------ | ------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Activation         | Default profile                                                     | `SPRING_PROFILES_ACTIVE=postgres`                                          |
-| Adapter            | `JsonFinancialsSnapshotStore`                                       | `PostgresFinancialsSnapshotStore`                                          |
-| Active data        | `backend/data/financials.local.json` with version and audit history | `financial_snapshot_document.snapshot_json` plus version and audit history |
-| Seed source        | `financials.example.json` when local file is absent                 | Local JSON, then example JSON when no active row exists                    |
-| Schema             | None                                                                | Flyway migrations under `db/migration/`                                    |
-| Local verification | Standard backend tests                                              | Opt-in isolated-schema integration test                                    |
+| Concern            | Runtime behavior                                                         |
+| ------------------ | ------------------------------------------------------------------------ |
+| Adapter            | `PostgresFinancialsSnapshotStore`                                        |
+| Active data        | Workspace-scoped `financial_record_*` rows and relational audit events   |
+| Initial data       | Explicit migration or application-created snapshot; no implicit seed     |
+| Authorization      | Account session `WORKSPACE` authority plus membership selection          |
+| Schema             | Flyway migrations under `db/migration/`                                  |
+| Local verification | Required isolated-schema integration gate                                |
+
+Flyway is the only PostgreSQL migration executor. Local setup delegates to
+`scripts/migrate-postgres.ps1`, application startup uses Spring Flyway
+integration, and PostgreSQL integration tests use the Flyway Java API against
+isolated schemas. Direct execution of versioned SQL files is unsupported.
 
 `V1__create_financials_schema.sql` defines normalized tables that remain
 inactive historical groundwork. ADR 0009 decides they should not become the
 active relational persistence path as-is, and they may remain empty.
-`V2__create_financial_snapshot_document.sql` defines the active JSONB document
-store. `V3__create_financial_record_snapshot_schema.sql` defines the
+`V2__create_financial_snapshot_document.sql` defines the retained legacy JSONB
+migration source. `V3__create_financial_record_snapshot_schema.sql` defines the
 `financial_record_*` relational table family from ADR 0010, and
 `V4__add_financial_record_app_id_constraints.sql` adds the app-record
-uniqueness needed by the granular CRUD adapter from ADR 0011. The runtime
-service is not wired to that relational adapter yet.
+uniqueness needed by the granular CRUD adapter from ADR 0011. The PostgreSQL
+runtime is wired to this relational adapter.
+`V5__create_identity_workspace_session_schema.sql` adds users, workspaces,
+memberships, and hashed server-session storage. The PostgreSQL account API uses
+those tables for signup, sign-in, recovery, and sign-out. Current financial API
+authentication derives from account sessions and current memberships. Legacy
+Basic credentials remain for operator endpoints and metrics, not PostgreSQL
+financial access.
+`V6__scope_financial_record_snapshots_to_workspace.sql` replaces the global
+relational active-snapshot constraint with one active snapshot per workspace
+and requires a workspace ID for every new relational snapshot. Every adapter
+operation is workspace-scoped. Pre-V6 unowned relational rows remain untouched
+until explicit migration; the JSONB document is not a runtime write target.
+`V7__add_workspace_snapshot_migration_history.sql` preserves storage-envelope
+audit events beside relational snapshots and records source fingerprints,
+destination ownership, versions, counts, status, and timestamps for explicit
+JSON/JSONB migration and guarded rollback. The operator service refuses to
+overwrite an active workspace snapshot and leaves both the legacy source and
+external backup untouched.
+At runtime, the request-scoped aggregate repository loads one selected
+workspace, appends audit metadata in memory, and saves through an optimistic
+relational replacement. Historical snapshots and audit events remain retained.
 The application role is write-capable; inspection integrations should use a
 separate read-only role.
 
@@ -193,18 +226,20 @@ flowchart LR
     Change["Source or documentation change"] --> Local["scripts/verify-local.ps1"]
     Local --> Frontend["Spell + typecheck + lint<br/>tests/coverage + build"]
     Local --> Backend["Formatting + tests<br/>JaCoCo + package"]
-    Local -->|"optional"| PGTest["Isolated PostgreSQL smoke test"]
+    Local -->|"required"| PGTest["Isolated PostgreSQL integration tests"]
     Change -->|"authenticated"| Security["run-security-checks.ps1"]
     Change --> HostedSecurity["CodeQL + dependency review"]
     Frontend --> CI["GitHub Actions"]
     Backend --> CI
+    PGTest --> CI
     Security --> CI
     HostedSecurity --> CI
     CI --> Draft["Draft PR review"]
 ```
 
 GitHub Actions repeats frontend quality gates, frontend and backend builds,
-coverage, and an authenticated high-severity Snyk scan. Separate hosted
+coverage, the required PostgreSQL integration profile against an ephemeral
+service, and an authenticated high-severity Snyk scan. Separate hosted
 workflows run CodeQL for Java and JavaScript/TypeScript and review pull-request
 dependency changes for newly introduced high- or critical-severity
 vulnerabilities. The deploy job is a manual placeholder, not production
@@ -228,8 +263,8 @@ infrastructure.
 | HTTP contract                    | Controller and DTOs                        | Frontend endpoint types, service, contract tests, docs           |
 | CSV/XLSX import/export           | `FinancialSnapshotTabularCodec`            | Controller/service tests, API docs, data-safety rules            |
 | Financial/date rule              | Backend service or focused frontend helper | Both presentation and persistence assumptions                    |
-| JSON behavior                    | `JsonFinancialsSnapshotStore`              | PostgreSQL parity and seed policy                                |
-| PostgreSQL behavior              | Store plus additive migration              | JSON parity, isolated integration test, storage docs             |
+| Legacy JSON migration            | Workspace migration service and scripts    | Backup verification, isolated integration test, storage docs     |
+| PostgreSQL behavior              | Store plus additive migration              | Session boundary, isolated integration test, storage docs        |
 | Audit/history behavior           | `FinancialsRepository` and audit DTOs      | API docs, storage guide, data-safety rules                       |
 | CI/security                      | `.github/workflows/*.yml`                  | Local scripts, lock files, permissions, hosted scan expectations |
 | Architecture decision            | Owning code plus new ADR                   | Architecture map, limitations, affected READMEs                  |

@@ -18,10 +18,13 @@ This runs:
 6. Frontend production build
 7. Backend formatting and POM ordering checks
 8. Backend clean build, tests, JaCoCo coverage, and packaging
+9. Required isolated PostgreSQL integration tests
 
 Use targeted commands while iterating, then run the aggregate gate before
 declaring implementation work complete. Report checks as passed, failed, or
-skipped; never silently omit a relevant row.
+skipped; never silently omit a relevant row. Set `DATABASE_USERNAME` and
+`DATABASE_PASSWORD` for the dedicated local application role before running the
+gate.
 
 ## Change-to-Check Matrix
 
@@ -36,9 +39,10 @@ skipped; never silently omit a relevant row.
 | Controller/DTO/API              | Controller/service tests plus frontend typecheck       | Full local verification                                   | Request/response compatibility and Problem Detail behavior         |
 | Audit/history                   | Repository/service/controller tests                    | Full local verification                                   | Version movement, newest-first order, no request-body logging      |
 | CSV/XLSX import/export          | Controller/service tests plus frontend typecheck       | Full local verification                                   | Stale version rejection, fixed columns, no personal data in output |
-| JSON store                      | Store/repository tests                                 | Full local verification                                   | Seed, backup, atomic replacement, malformed data                   |
-| PostgreSQL store/config/adapter | Focused integration test                               | `verify-local.ps1 -IncludePostgres`                       | Read-only metadata inspection afterward                            |
+| Legacy JSON migration           | Migration service/API tests                           | Full local verification                                   | Backup fingerprint, explicit owner/workspace, source unchanged     |
+| PostgreSQL store/config/adapter | Focused integration profile                            | Full local verification                                   | Read-only metadata inspection afterward                            |
 | Migration SQL                   | Review ordered migration and constraints               | Full verification with PostgreSQL                         | Fresh and upgraded isolated schema; Flyway history behavior        |
+| Workspace data migration        | Service/controller tests plus script parser             | Full local verification                                   | External backup fingerprint, ownership, counts, audit, rollback    |
 | PowerShell scripts              | PowerShell parser plus safest applicable execution     | Full local verification when orchestration changed        | Exit codes, working directory, cleanup, mutation scope             |
 | Dependency/lockfile             | Clean install and affected build/tests                 | Full local verification and authenticated security checks | Direct/transitive path, compatibility, both lock files             |
 | GitHub workflow                 | Run exact local equivalents                            | Hosted PR run required                                    | Events, permissions, job dependencies, cache paths, secrets        |
@@ -52,7 +56,7 @@ skipped; never silently omit a relevant row.
 | Observability/correlation       | Filter, security, API-client, and error-boundary tests | Full local verification                                   | No sensitive fields; bounded metric tags; protected Actuator       |
 | Accessibility                   | JSX accessibility lint plus focused interaction tests  | Full local verification                                   | Manual/browser keyboard and focus review when behavior changed     |
 | Browser workflow                | `scripts/run-browser-checks.ps1`                       | Full local verification plus browser smoke when relevant  | Synthetic data, screenshots/traces only when intentionally shared  |
-| Cross-layer feature             | Narrow checks in every affected layer                  | Full local verification; add PostgreSQL if applicable     | End-to-end contract and persistence parity                         |
+| Cross-layer feature             | Narrow checks in every affected layer                  | Full local verification                                   | End-to-end contract and persistence parity                         |
 
 ## Canonical Commands
 
@@ -72,6 +76,8 @@ a local role, database, and schema; it is setup, not verification.
 ### Financial snapshot import/export
 
 ```powershell
+$env:FINANCIALS_ACCOUNT_EMAIL = "<account email>"
+$env:FINANCIALS_ACCOUNT_PASSWORD = "<account password>"
 .\scripts\export-financial-snapshot.ps1 -Format json -OutputPath "$HOME\Downloads\financial-snapshot.json"
 .\scripts\export-financial-snapshot.ps1 -Format csv -OutputPath "$HOME\Downloads\financial-snapshot.csv"
 .\scripts\export-financial-snapshot.ps1 -Format xlsx -OutputPath "$HOME\Downloads\financial-snapshot.xlsx"
@@ -117,22 +123,40 @@ From `backend/`:
 
 `clean verify` compiles, tests, packages, checks formatting, creates the JaCoCo
 report, and enforces at least 80% bundle line coverage for default production
-code. Opt-in PostgreSQL adapter paths that require a live database, including
-the V3/V4 relational CRUD adapter, are verified with `-IncludePostgres`
-instead of the default coverage gate.
+code. The aggregate verifier then runs every PostgreSQL `*IT` class through the
+`postgres-integration` profile with JaCoCo disabled for that isolated database
+run.
 
 ### PostgreSQL
 
 ```powershell
-.\scripts\verify-local.ps1 -IncludePostgres
+.\scripts\verify-local.ps1
 .\scripts\inspect-postgres.ps1
 ```
 
-The verification option runs `PostgresFinancialsSnapshotStoreIT` and
-`PostgresFinancialRecordSnapshotAdapterIT` against fixed isolated schemas,
-truncates or recreates their test tables, and drops those schemas afterward. Do
-not use it where those schema names belong to another application. Inspection
-is read-only and reports metadata rather than financial values. Set
+The default verifier runs `PostgresFinancialsSnapshotStoreIT`,
+`PostgresFinancialRecordSnapshotAdapterIT`, `PostgresIdentitySchemaIT`, and
+`PostgresWorkspaceOwnershipSchemaIT`, `AccountSessionServiceIT`,
+`AccountSessionApiIT`, `WorkspaceSnapshotMigrationApiIT`, and
+`WorkspaceFinancialRuntimeApiIT` against isolated
+schemas, recreates their test tables,
+and drops those schemas afterward. The identity
+test checks normalized-email, membership-role, single-owner, and
+session-lifetime constraints. The ownership tests exercise a V5-to-V6 upgrade,
+new-row ownership constraints, one active snapshot per workspace, and
+cross-workspace isolation for every relational record family. The account tests
+inspect password/token hashing, session recovery/revocation, two-user
+membership isolation, and Flyway-before-repository startup. They also verify
+that PostgreSQL rejects legacy Basic credentials for financial access. The
+runtime API test verifies session authorization, CSRF enforcement, relational
+audit continuity, and two-user/two-workspace isolation. The migration API test
+runs Flyway
+through V7 and checks both source types, Basic/session authorization, backup
+fingerprints, destination ownership, record/audit preservation, metadata-only
+verification, overwrite refusal, successful rollback, and changed-version
+rollback refusal. Do not use it
+where those schema names belong to another application. Inspection is
+read-only and reports metadata rather than financial values. Set
 `DATABASE_USERNAME` and `DATABASE_PASSWORD` in the current shell before running
 the PostgreSQL verification; the integration tests intentionally have no
 embedded credential defaults.
@@ -140,12 +164,13 @@ embedded credential defaults.
 PostgreSQL verification is required for changes to:
 
 - Migrations
-- PostgreSQL configuration or profile selection
+- Datasource, Flyway, or PostgreSQL runtime configuration
 - SQL or JDBC behavior
 - Snapshot serialization/deserialization
-- Seed behavior
+- Empty-workspace and no-implicit-seed behavior
 - Database role assumptions
-- JSON/PostgreSQL parity
+- Identity, workspace, membership, or session constraints
+- Legacy JSON/JSONB migration behavior
 
 ### Browser workflow
 
@@ -154,13 +179,15 @@ PostgreSQL verification is required for changes to:
 .\scripts\run-browser-checks.ps1 -InstallBrowsers
 ```
 
-The browser smoke test starts Spring Boot and Vite together. Spring Boot runs
-with the `json` profile and a disposable data path under `test-results/`, seeded
-from committed synthetic example data. The browser test covers load, edit,
-save, refresh persistence, delete confirmation, and post-delete refresh. It is
-required for changes to browser workflows, Vite proxy behavior, save/load
-interaction paths, or the Playwright harness. It does not replace backend API,
-unit/service coverage, PostgreSQL verification, or full local verification.
+The browser smoke test starts Spring Boot and Vite together against a unique
+PostgreSQL schema that the wrapper drops in its `finally` block. The test uses
+only committed synthetic example data and covers
+signup, sign-in, sign-out, CSRF writes, two-user workspace isolation, load,
+edit, save, refresh persistence, delete confirmation, and post-delete refresh.
+It is required for changes to browser workflows, identity/session behavior,
+Vite proxy behavior, save/load interaction paths, or the Playwright harness. It
+does not replace backend API, unit/service, PostgreSQL integration, or full
+local verification.
 
 ### Security
 
@@ -222,20 +249,22 @@ against the source map and executable sources before posting or changing docs.
 | ----------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------- |
 | `check-environment.ps1`             | None                                                                      | None                                               | None                                         |
 | `bootstrap-local.ps1`               | Dependency directories/hooks                                              | Only with `-IncludePostgres`                       | Package installation may need network        |
-| `verify-local.ps1`                  | Build, test, and coverage output; may create ignored local JSON if absent | None by default                                    | Maven metadata/dependencies may need network |
-| `verify-local.ps1 -IncludePostgres` | Same as above                                                             | Creates/truncates/drops isolated test schema       | Local database credentials                   |
+| `verify-local.ps1`                  | Build, test, and coverage output                                      | Creates and drops isolated test schemas            | Local database credentials; Maven may need network |
 | `inspect-postgres.ps1`              | None                                                                      | Explicit read-only transactions                    | Local database credentials                   |
-| `export-financial-snapshot.ps1`     | Writes the requested export file outside the repository by default        | None                                               | Running backend may read local data          |
-| `import-financial-snapshot.ps1`     | None                                                                      | Replaces the saved snapshot through the backend    | Running backend credential/profile           |
+| `export-financial-snapshot.ps1`     | Writes the requested export file outside the repository by default        | Creates and revokes a temporary account session    | Account credential and selected workspace    |
+| `import-financial-snapshot.ps1`     | None                                                                      | Replaces the saved snapshot; creates/revokes session | Account credential and selected workspace  |
 | `run-browser-checks.ps1`            | Playwright reports/traces in ignored paths                                | None                                               | May install browser binaries with flag       |
 | `run-security-checks.ps1`           | Tool caches/reporting side effects                                        | None                                               | Network and Snyk token                       |
 | `write-coverage-summary.ps1`        | Optional GitHub job summary output                                        | None                                               | None                                         |
 | `check-documentation-drift.ps1`     | Optional GitHub job summary output                                        | None                                               | None                                         |
 | `triage-dependency-updates.ps1`     | Optional GitHub job summary output                                        | None                                               | None                                         |
 | `generate-engineering-status.ps1`   | Optional GitHub job summary output                                        | None                                               | None                                         |
-| `setup-local-postgres.ps1`          | None                                                                      | Creates/updates role, database, and schema         | PostgreSQL administrator credential          |
+| `setup-local-postgres.ps1`          | None                                                                      | Creates/updates role/database and invokes Flyway   | PostgreSQL administrator credential          |
+| `migrate-postgres.ps1`              | Maven output/cache                                                        | Applies and validates Flyway migrations            | Application database credential              |
+| `migrate-financial-snapshot-to-workspace.ps1` | External JSON backup and API response metadata                  | Creates workspace relational snapshot/history      | Financial API credential and personal source |
+| `rollback-workspace-snapshot-migration.ps1` | Metadata-only API response                                             | Deactivates unchanged migrated snapshot             | Financial API credential and migration UUID  |
 | `setup-postgres-readonly-role.ps1`  | None                                                                      | Creates/updates read-only role and grants          | PostgreSQL administrator credential          |
-| `start-backend-postgres.ps1`        | Logs/runtime output                                                       | Seeds active snapshot when empty; later app writes | Application database credential              |
+| `start-backend.ps1`                 | Logs/runtime output                                                       | Applies Flyway migrations; later app writes        | Application database credential              |
 
 Do not run mutating or credentialed checks solely to make a checklist look
 complete. Explain why they were required and what target they used.
@@ -249,6 +278,7 @@ complete. Explain why they were required and what target they used.
 | Spell Check          | Root spell command                   | Clean checkout/install                                                    |
 | Type Check           | Frontend typecheck                   | Clean checkout/install                                                    |
 | Build & Test Backend | Formatting plus Maven `clean verify` | Linux/JDK action/cache                                                    |
+| PostgreSQL Integration | Maven `postgres-integration` profile | Ephemeral PostgreSQL service container and Linux/JDK action/cache         |
 | Build Frontend       | Frontend build                       | Linux/Node action/cache                                                   |
 | Coverage Summary     | Coverage summary script              | Artifact download and GitHub job summary                                  |
 | Scans                | Security script                      | Repository secret, Dependabot secret restrictions, and hosted Snyk access |
@@ -261,9 +291,10 @@ complete. Explain why they were required and what target they used.
 | Weekly Maintenance   | Engineering status script            | Schedule actor, audits, recent CI runs                                    |
 | Deploy               | No real local equivalent             | Manual placeholder only                                                   |
 
-Current CI does not run the opt-in PostgreSQL integration test. Local
-PostgreSQL evidence must therefore be reported separately for persistence
-changes.
+CI runs the same `postgres-integration` Maven profile as the default local gate.
+The downstream `Scans` job depends on the PostgreSQL job, so hosted checks do
+not advance past a failed integration result. A hosted run is still required to
+validate service-container behavior.
 
 ## Verification Evidence
 

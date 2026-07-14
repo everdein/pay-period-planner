@@ -1,38 +1,105 @@
-export type ApiCredentials = {
-  password: string;
-  username: string;
+import {
+  clearApiSessionContext,
+  httpGet,
+  httpPost,
+  httpPostVoid,
+  setActiveWorkspaceId,
+} from './client';
+
+export type WorkspaceAccess = {
+  id: number;
+  name: string;
+  role: string;
 };
 
-const AUTH_TOKEN_STORAGE_KEY = 'end-to-end-app.auth.basicToken';
+export type AccountSession = {
+  userId: number;
+  email: string;
+  displayName: string;
+  expiresAt: string;
+  workspaces: WorkspaceAccess[];
+};
 
-export function saveApiCredentials(credentials: ApiCredentials) {
-  const token = basicAuthorizationHeader(credentials);
-  storage()?.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+export type ActiveAccountSession = {
+  account: AccountSession;
+  workspaceId: number;
+};
+
+export type AccountSignInRequest = {
+  email: string;
+  password: string;
+};
+
+export type AccountSignUpRequest = AccountSignInRequest & {
+  displayName: string;
+};
+
+const WORKSPACE_STORAGE_KEY = 'end-to-end-app.auth.workspaceId';
+
+export const accountSessionService = {
+  recover: async () =>
+    activateSession(await httpGet<AccountSession>('/api/v1/auth/session', false)),
+  signIn: async (request: AccountSignInRequest) => {
+    setActiveWorkspaceId(null);
+    return activateSession(
+      await httpPost<AccountSession, AccountSignInRequest>('/api/v1/auth/signin', request)
+    );
+  },
+  signUp: async (request: AccountSignUpRequest) => {
+    setActiveWorkspaceId(null);
+    return activateSession(
+      await httpPost<AccountSession, AccountSignUpRequest>('/api/v1/auth/signup', request)
+    );
+  },
+  signOut: async () => {
+    await httpPostVoid('/api/v1/auth/signout');
+    clearAccountSession();
+  },
+  selectWorkspace: (activeSession: ActiveAccountSession, workspaceId: number) => {
+    const workspace = activeSession.account.workspaces.find((candidate) => candidate.id === workspaceId);
+    if (!workspace) {
+      throw new Error('The selected workspace is not available to this account.');
+    }
+
+    persistWorkspaceId(workspace.id);
+    setActiveWorkspaceId(workspace.id);
+    return { ...activeSession, workspaceId: workspace.id };
+  },
+};
+
+export function clearAccountSession() {
+  storage()?.removeItem(WORKSPACE_STORAGE_KEY);
+  clearApiSessionContext();
 }
 
-export function clearApiCredentials() {
-  storage()?.removeItem(AUTH_TOKEN_STORAGE_KEY);
+function activateSession(account: AccountSession): ActiveAccountSession {
+  const preferredWorkspaceId = storedWorkspaceId();
+  const workspace =
+    account.workspaces.find((candidate) => candidate.id === preferredWorkspaceId) ??
+    account.workspaces[0];
+
+  if (!workspace) {
+    clearAccountSession();
+    throw new Error('This account does not have access to a financial workspace.');
+  }
+
+  persistWorkspaceId(workspace.id);
+  setActiveWorkspaceId(workspace.id);
+  return { account, workspaceId: workspace.id };
 }
 
-export function getAuthorizationHeader() {
-  return storage()?.getItem(AUTH_TOKEN_STORAGE_KEY) ?? null;
+function storedWorkspaceId() {
+  const value = storage()?.getItem(WORKSPACE_STORAGE_KEY);
+  if (!value) {
+    return null;
+  }
+
+  const workspaceId = Number(value);
+  return Number.isSafeInteger(workspaceId) && workspaceId > 0 ? workspaceId : null;
 }
 
-export function hasApiCredentials() {
-  return getAuthorizationHeader() !== null;
-}
-
-function basicAuthorizationHeader({ password, username }: ApiCredentials) {
-  return `Basic ${base64Utf8(`${username}:${password}`)}`;
-}
-
-function base64Utf8(value: string) {
-  const bytes = new TextEncoder().encode(value);
-  let binary = '';
-  bytes.forEach((byte) => {
-    binary += String.fromCharCode(byte);
-  });
-  return btoa(binary);
+function persistWorkspaceId(workspaceId: number) {
+  storage()?.setItem(WORKSPACE_STORAGE_KEY, String(workspaceId));
 }
 
 function storage() {

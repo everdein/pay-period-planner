@@ -62,9 +62,9 @@ summarize these sources but must not override them.
 
 - Verify table names, migration order, Flyway behavior, active storage adapter,
   seeding, versioning, and expected empty tables.
-- Do not describe V1 normalized tables or inactive V3/V4 financial-record
-  tables as active runtime persistence while the JSONB document store remains
-  authoritative.
+- Describe V1 normalized tables as inactive historical groundwork, V2 JSONB as
+  a legacy migration source, and V3/V4/V6/V7 financial-record tables as active
+  workspace runtime persistence.
 - Distinguish the write-capable application role from a recommended read-only
   inspection or MCP role.
 

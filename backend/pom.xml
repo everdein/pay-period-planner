@@ -51,6 +51,10 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-flyway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
             <!-- Only health/info endpoints are enabled. Exclude the optional
                  percentile histogram runtime until it has a patched release. -->
@@ -147,6 +151,29 @@
             </plugin>
 
             <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <configuration>
+                    <locations>
+                        <location>filesystem:src/main/resources/db/migration</location>
+                    </locations>
+                    <validateMigrationNaming>true</validateMigrationNaming>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.flywaydb</groupId>
+                        <artifactId>flyway-database-postgresql</artifactId>
+                        <version>${flyway.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.postgresql</groupId>
+                        <artifactId>postgresql</artifactId>
+                        <version>${postgresql.version}</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+
+            <plugin>
                 <!-- JaCoCo: Java Code Coverage
                      Generates code coverage reports and enforces minimum coverage thresholds.
 
@@ -156,8 +183,8 @@
                      - check: Verify minimum line coverage threshold (80% via COVEREDRATIO)
 
                      Threshold: 80% line coverage across default production classes
-                     (excludes the opt-in V3 PostgreSQL relational adapter covered
-                     by isolated integration tests)
+                     (excludes the PostgreSQL relational adapter covered by the
+                     required isolated integration suite)
 
                      Reports available at: target/site/jacoco/index.html -->
                 <groupId>org.jacoco</groupId>
@@ -165,7 +192,9 @@
                 <version>${jacoco.version}</version>
                 <configuration>
                     <excludes>
+                        <exclude>com/example/backend/repository/PostgresAccountSessionRepository*</exclude>
                         <exclude>com/example/backend/repository/PostgresFinancialRecordSnapshotAdapter*</exclude>
+                        <exclude>com/example/backend/repository/PostgresWorkspaceSnapshotMigrationRepository*</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -224,6 +253,22 @@
                     <artifactId>spring-boot-devtools</artifactId>
                 </dependency>
             </dependencies>
+        </profile>
+        <profile>
+            <id>postgres-integration</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/*IT.java</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 

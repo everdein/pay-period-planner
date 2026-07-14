@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted - implementation pending
+Accepted - implemented 2026-07-14
 
 ## Context
 
@@ -12,11 +12,11 @@ ADR 0007 introduced that dual model as a temporary migration strategy while a
 clean relational path was designed.
 
 ADR 0010 and ADR 0011 subsequently added and tested the V3/V4
-`financial_record_*` relational adapter. It is still inactive at runtime, and
-both current PostgreSQL snapshot models allow only one globally active
-financial snapshot. Adding account management or user ownership on top of the
-existing dual-store model would multiply authentication, migration, parity,
-and concurrency behavior without creating a scalable ownership boundary.
+`financial_record_*` relational adapter. V5-V7 then added identity, workspace
+ownership, explicit migration, and audit history. The relational adapter is now
+active under the PostgreSQL profile; JSON remains the temporary default profile
+until client authorization, required PostgreSQL verification, and recovery
+evidence complete the transition.
 
 The next product phase needs one production-like startup path, durable account
 and session state, explicit ownership, and a safe migration path for existing
@@ -35,7 +35,7 @@ identity and ownership phase is complete.
   authenticated workspace membership. Replace global active-snapshot
   constraints with workspace-scoped constraints through new migrations; never
   edit an applied migration.
-- Activate the V3/V4 relational financial-record adapter as the single runtime
+- Activate the V3/V4/V6/V7 relational financial-record adapter as the single runtime
   persistence path. Preserve the versioned full-snapshot API and frontend
   draft/save contract initially by assembling the aggregate at the service
   boundary.
@@ -57,9 +57,15 @@ identity and ownership phase is complete.
   and establish Flyway as the single migration authority before adding the new
   schema.
 
-Until this work is complete, current documentation and executable behavior
-remain authoritative: JSON is still the default profile, PostgreSQL still uses
-the JSONB document store at runtime, and V3/V4 remains inactive.
+Implementation outcome (2026-07-14): PostgreSQL is the only runtime persistence
+and startup path. V5-V7 provide account/session ownership, relational workspace
+storage, and explicit migration history. The financial API always authorizes
+`WORKSPACE` sessions, resolves a sole membership or explicit `X-Workspace-ID`,
+enforces CSRF on writes, and reads and writes only relational workspace
+snapshots. The JSON runtime store, profile switch, implicit personal-data seed,
+and duplicate startup instructions are removed. Operator Basic auth remains
+limited to migration-admin and metrics routes. Required local and hosted
+PostgreSQL tests plus browser-level cross-user isolation verify the result.
 
 ## Consequences
 

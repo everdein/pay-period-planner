@@ -7,35 +7,27 @@ changes in a new ADR.
 
 ## Identity, Security, and Privacy
 
-### LIM-001 — Single local Basic-auth application user
+### LIM-001 — Frontend account-session adoption
 
-- **Status:** Partially resolved for isolated local development
-- **Impact:** Financial APIs require HTTP Basic credentials, but the application
-  still has one global user, one global workspace, no tenant ownership, no
-  password rotation workflow, and no production session management. Basic auth
-  credentials are only appropriate for trusted local development unless served
-  over a hardened TLS deployment.
-- **Current mitigation:** Protect every `/api/v1/financials/**` endpoint with
-  the `FINANCIALS` role, keep the backend local, override default credentials
-  with `FINANCIALS_API_USERNAME` and `FINANCIALS_API_PASSWORD` when needed, and
-  do not expose port `8080`. Failed API authentication intentionally omits the
-  browser Basic-auth challenge so the frontend sign-in form can handle errors
-  without opening a native browser prompt.
-- **Revisit when:** Any shared, remote, hosted, or multi-user access is planned.
-- **Planned resolution:** ADR 0014 replaces the shared Basic-auth user with
-  database-backed accounts, server-managed sessions, and workspace-scoped
-  authorization during the PostgreSQL-only transition.
+- **Status:** Resolved on 2026-07-14
+- **Resolution:** The frontend uses PostgreSQL signup, sign-in, session recovery,
+  sign-out, fresh CSRF proof before every mutation, and explicit workspace
+  selection. It stores no password or Basic token; session identity remains in
+  the server-managed `HttpOnly` cookie, and only the selected workspace ID is
+  retained in browser session storage.
+- **Remaining boundary:** Operator Basic authentication remains for migration
+  administration and protected metrics; it grants no financial workspace access.
 
-### LIM-002 — No user or tenant isolation
+### LIM-002 — Browser user and workspace isolation
 
-- **Status:** Accepted
-- **Impact:** The application has one global active workspace and cannot
-  separate records by person, household, or tenant.
-- **Current mitigation:** One local operator and one storage target.
-- **Revisit when:** Authentication, collaboration, or multiple workspaces are
-  introduced.
-- **Planned resolution:** ADR 0014 adds users, workspaces, memberships, and
-  cross-user isolation tests before shared or hosted use.
+- **Status:** Resolved for the current PostgreSQL browser workflow on 2026-07-14
+- **Resolution:** Every PostgreSQL financial operation resolves a current
+  database-derived membership and workspace-scoped snapshot. The live browser
+  test creates two accounts with distinct relational snapshots, changes one,
+  proves the other cannot observe it, and then recovers the first session and
+  value. Redux clears the prior snapshot during every identity/workspace switch.
+- **Remaining boundary:** Collaboration and membership-management UX are not
+  implemented.
 
 ### LIM-003 — Dependency scanning is not a complete security program
 
@@ -130,32 +122,33 @@ changes in a new ADR.
 
 ## Storage and Recovery
 
-### LIM-011 — JSON is a single-process local store
+### LIM-011 — JSON was a single-process local store
 
-- **Status:** Temporary current default; retirement accepted in ADR 0014
-- **Impact:** File-backed persistence is unsuitable for concurrent writers,
-  remote filesystems, or production availability.
-- **Current mitigation:** Atomic replacement when supported and one `.bak`
-  recovery copy.
-- **Revisit when:** More than one backend process or production persistence is
-  required.
-- **Planned resolution:** Migrate local data explicitly, then remove the JSON
-  runtime profile and store after the PostgreSQL-only transition is verified.
+- **Status:** Resolved 2026-07-14 by ADR 0014
+- **Resolution:** The JSON runtime profile and snapshot store were removed.
+  PostgreSQL relational workspaces are the only active persistence path.
+- **Remaining boundary:** Ignored personal JSON files may remain as explicit,
+  read-only migration sources until their owners complete backup and migration.
 
-### LIM-012 — PostgreSQL stores one JSONB document
+### LIM-012 — Legacy PostgreSQL JSONB data remains during transition
 
-- **Status:** Accepted transitional design
-- **Impact:** The active runtime path still rewrites the aggregate JSONB
-  document. Relational per-record writes are implemented in the inactive V3/V4
-  adapter path but are not used by the service yet.
-- **Current mitigation:** One active document, version metadata, serialization
-  parity tests, simple load/save behavior, and a tested but inactive V3/V4
-  relational adapter path with granular CRUD operations.
+- **Status:** Runtime JSONB usage resolved; legacy cleanup pending
+- **Impact:** `financial_snapshot_document` remains in the schema as a backed-up
+  migration source, so operators must distinguish it from active relational
+  workspace data.
+- **Current mitigation:** PostgreSQL runtime reads and writes only
+  V3/V4/V6/V7 `financial_record_*` rows. Inspection and migration documentation
+  label V2 JSONB as legacy, and the operator workflow leaves it untouched for
+  recovery evidence.
 - **Revisit when:** Reporting, granular concurrency, audit history, relational
   integrity, or large snapshots are needed. Use ADR 0010 and ADR 0011's
-  V3/V4 relational path, not the inactive V1 tables as-is.
-- **Planned resolution:** ADR 0014 activates the V3/V4 relational path as the
-  workspace-scoped runtime store and retires the active JSONB document path.
+  V3/V4/V6/V7 relational path, not the inactive V1 tables as-is.
+- **Remaining migration boundary:** V6 preserves any preexisting unowned
+  relational snapshot without silently assigning it. New and changed rows must
+  have a workspace; the explicit ownership migration must backfill legacy rows,
+  validate the workspace constraint, and remove its transitional unowned index.
+- **Planned resolution:** Remove the legacy JSONB adapter and eventually archive
+  the V2 source table only after migration and restore evidence passes.
 
 ### LIM-013 — Normalized V1 tables are inactive
 
@@ -163,24 +156,23 @@ changes in a new ADR.
 - **Impact:** Their presence can mislead operators into expecting data; they may
   remain empty while the application is healthy.
 - **Current mitigation:** Storage guide, inspector, and architecture map
-  identify `financial_snapshot_document` as authoritative, identify V3/V4 as
-  the future runtime relational path, and prohibit dual-write/backfill through
-  V1.
-- **Revisit when:** Planning a production schema cleanup or activating the
-  V3/V4 adapter in the runtime service.
+  identify V3/V4/V6/V7 as the PostgreSQL runtime path, V2 JSONB as a legacy
+  migration source, and prohibit dual-write/backfill through V1.
+- **Revisit when:** Planning a production schema cleanup.
 
 ### LIM-014 — Local setup and runtime have dual migration paths
 
-- **Status:** Known development limitation
-- **Impact:** The setup script applies V1/V2/V3/V4 SQL directly, while the
-  runtime enables Flyway. A database can contain schema objects without
-  `flyway_schema_history`, weakening migration-state evidence.
-- **Current mitigation:** Inspect both object presence and Flyway history; keep
-  migrations additive.
-- **Revisit when:** Before adding more migrations or treating PostgreSQL as a
-  production target. Establish one migration authority.
-- **Planned resolution:** Make Flyway the single migration authority before the
-  ADR 0014 identity and ownership migrations are added.
+- **Status:** Resolved by ADR 0015
+- **Historical impact:** The setup script applied V1/V2/V3/V4 SQL directly,
+  while the runtime enabled Flyway. A database could contain schema objects
+  without `flyway_schema_history`, weakening migration-state evidence.
+- **Resolution:** Local setup now delegates versioned DDL to
+  `scripts/migrate-postgres.ps1`; runtime and integration tests use the same
+  Flyway chain. Non-empty legacy schemas fail closed unless an explicit,
+  signature-checked adoption mode is selected.
+- **Remaining boundary:** Personal legacy databases still require a backup and
+  explicit approval before adoption. Mismatched schemas require an additive
+  repair plan rather than fabricated Flyway history.
 
 ### LIM-015 — Broad local application-role privileges
 
@@ -191,34 +183,34 @@ changes in a new ADR.
   read-only role for MCP/reporting.
 - **Revisit when:** Configuring any shared or production database.
 
-### LIM-016 — No automated backup schedule or profile migration
+### LIM-016 — No automated backup schedule or database-native restore drill
 
 - **Status:** Partially mitigated
-- **Impact:** The app can export the saved snapshot as JSON, CSV, or XLSX and
-  can restore from the CSV/XLSX tabular format, but there is still no automated
-  backup schedule, PostgreSQL dump flow, or verified cross-profile migration
-  workflow.
+- **Impact:** The app can export and restore source-shaped artifacts and now has
+  a verified JSON/JSONB-to-workspace transition, but there is still no automated
+  backup schedule, PostgreSQL dump automation, off-host retention policy, or
+  database-native restore drill.
 - **Current mitigation:** Manual `GET /api/v1/financials/export*` downloads,
   explicit `POST /api/v1/financials/import/{csv,xlsx}` restores, PowerShell
-  helpers that avoid printing financial contents, operator backups before risky
-  changes, and metadata-only verification afterward.
+  helpers that avoid printing financial contents, plus explicit
+  `migrate-financial-snapshot-to-workspace.ps1` and
+  `rollback-workspace-snapshot-migration.ps1` commands. The migration command
+  requires an external backup and fingerprint before writing, preserves audit
+  events, names the owner/workspace, and independently verifies metadata. The
+  rollback command refuses changed snapshots.
 - **Revisit when:** Personal data becomes irreplaceable, migrations recur, or a
   deployment is planned.
-- **Planned resolution:** Build an explicit, backed-up JSON/JSONB-to-workspace
-  migration with rollback and metadata-only verification before retiring old
-  stores; production backup automation remains Phase G work.
+- **Remaining boundary:** Keep the source and external backup until relational
+  runtime activation and recovery evidence pass. Production backup automation,
+  retention, and restore drills remain Phase G work.
 
-### LIM-017 — Empty PostgreSQL can seed from personal JSON
+### LIM-017 — Empty PostgreSQL could seed from personal JSON
 
-- **Status:** Intentional but sensitive
-- **Impact:** First PostgreSQL-backed startup is mutating and may copy
-  `financials.local.json` into the database.
-- **Current mitigation:** Explicit profile startup, documented seed order, and
-  local-only data custody.
-- **Revisit when:** Databases are shared, automated, or remotely provisioned.
-- **Planned resolution:** ADR 0014 removes automatic personal-JSON seeding.
-  Account creation starts with an empty workspace unless the user explicitly
-  imports a backup or chooses synthetic demo data.
+- **Status:** Resolved 2026-07-14 by ADR 0014
+- **Resolution:** Startup never reads `financials.local.json` or
+  `financials.example.json`. Account creation starts with an empty workspace;
+  source data enters relational storage only through the explicit, backed-up
+  migration workflow.
 
 ### LIM-018 — Audit history is coarse and storage-envelope scoped
 
@@ -237,29 +229,27 @@ changes in a new ADR.
 
 ## Testing and Delivery
 
-### LIM-019 — PostgreSQL smoke tests are not in hosted CI
+### LIM-019 — PostgreSQL integration tests are required locally and in hosted CI
 
-- **Status:** Known gap
-- **Impact:** CI can pass while PostgreSQL-specific integration behavior is
-  broken.
-- **Current mitigation:** Required local isolated-schema test for persistence
-  changes.
-- **Revisit when:** CI receives an ephemeral PostgreSQL service or Testcontainers
-  strategy.
-- **Planned resolution:** Make PostgreSQL integration tests required in local
-  completion checks and hosted CI before the PostgreSQL-only transition.
+- **Status:** Resolved 2026-07-14
+- **Resolution:** The default local verifier runs every `*IT` class through the
+  `postgres-integration` Maven profile, and hosted CI runs the same profile
+  against an ephemeral PostgreSQL service. Downstream scan jobs depend on that
+  result.
+- **Remaining risk:** Hosted execution remains authoritative for validating the
+  GitHub Actions service-container environment.
 
 ### LIM-020 — Browser workflow coverage is smoke-level
 
 - **Status:** Partially mitigated
-- **Impact:** The Playwright smoke test now proves Vite startup, proxying to a
-  live JSON-profile backend, browser navigation, draft editing, full-snapshot
-  save, refresh persistence, delete confirmation, and post-delete persistence.
-  It still does not cover every tab, PostgreSQL-backed browser workflows,
-  visual regression, authentication, or assistive-technology behavior.
+- **Impact:** The Playwright smoke test proves Vite startup, PostgreSQL/Flyway
+  startup in an isolated schema, signup, sign-in, sign-out, CSRF writes,
+  cross-user workspace isolation, draft editing, full-snapshot save, refresh
+  persistence, delete confirmation, and post-delete persistence. It still does
+  not cover every tab, visual regression, or assistive-technology behavior.
 - **Current mitigation:** Live-backend `scripts/run-browser-checks.ps1`,
-  Testing Library coverage, API/service tests, and manual browser verification
-  for UI changes.
+  deterministic schema cleanup, Testing Library coverage, API/service tests,
+  and manual browser verification for UI changes.
 - **Revisit when:** PostgreSQL browser parity, visual regression, or broader
   release confidence is required.
 

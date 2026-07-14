@@ -9,7 +9,7 @@ focused on:
 - REST API design
 - layered architecture
 - DTO usage
-- file-backed local persistence with a PostgreSQL migration path
+- workspace-scoped PostgreSQL persistence
 - local development workflows
 - backend tooling and CI integration
 
@@ -47,8 +47,7 @@ engineering patterns and workflows that can scale over time.
 
 - Java 21+
 - Maven Wrapper through `mvnw.cmd`
-- No database required for the default JSON-backed profile
-- PostgreSQL required only for the `postgres` profile
+- PostgreSQL 18 with the local application database and role
 
 Verify Java installation:
 
@@ -98,19 +97,14 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ## Running the backend
 
-The backend has two local storage modes. Choose one backend startup path, then
-run the frontend separately.
-
-| Path | Storage                   | Best for                            |
-| ---- | ------------------------- | ----------------------------------- |
-| A    | Local JSON file           | Fastest startup without PostgreSQL  |
-| B    | PostgreSQL JSONB snapshot | Testing database-backed persistence |
+The backend always uses PostgreSQL relational workspace persistence. Run the
+frontend separately after the backend is healthy.
 
 A running backend should keep its terminal open. If the command returns to the
 PowerShell prompt, the backend stopped during startup; check the last Spring Boot
 log lines before `BUILD SUCCESS` or `BUILD FAILURE`.
 
-Local API sign-in defaults:
+Local operator credential defaults:
 
 ```text
 Username: financial_app
@@ -118,9 +112,8 @@ Password: financial_app_local_password
 ```
 
 Override these with `FINANCIALS_API_USERNAME` and `FINANCIALS_API_PASSWORD`
-before starting the backend. These credentials protect every
-`/api/v1/financials/**` endpoint during local development; do not reuse them for
-real deployment.
+before starting the backend. They protect migration-admin and metrics routes.
+Financial workspace routes use account sessions.
 
 Runtime guardrails:
 
@@ -134,8 +127,15 @@ Runtime guardrails:
   before controller handling; default is `1048576`
 - cross-origin browser calls are denied unless `FINANCIALS_ALLOWED_ORIGINS`
   names exact allowed origins
-- activating `prod` requires the `postgres` profile, non-default API
-  credentials, and no wildcard CORS origin
+- activating `prod` requires non-default operator credentials, no wildcard
+  CORS origin, and
+  `FINANCIALS_SESSION_COOKIE_SECURE=true`
+
+The backend exposes account and session endpoints under `/api/v1/auth`.
+`FINANCIALS_SESSION_DURATION` controls the session lifetime and
+defaults to `7d`; `FINANCIALS_SESSION_COOKIE_SECURE` defaults to `false` for
+local HTTP and must be `true` with the `prod` profile. These sessions authorize
+financial routes through database-derived workspace memberships.
 
 See `../docs/observability-guide.md` for request correlation, protected metric
 inspection, production JSON logs, frontend error containment, and data-safety
@@ -143,44 +143,9 @@ rules.
 
 ---
 
-## Path A: Default JSON-backed startup
+## PostgreSQL-backed startup
 
-Use this when you want the backend to run without PostgreSQL.
-
-From the `backend` directory:
-
-```powershell
-.\mvnw.cmd spring-boot:run
-```
-
-Backend URL:
-
-```text
-http://localhost:8080
-```
-
-In this mode, the backend stores data in:
-
-```text
-backend/data/financials.local.json
-```
-
-If that file does not exist, the backend creates it from:
-
-```text
-backend/data/financials.example.json
-```
-
-This is the fastest path after a fresh clone.
-
----
-
-## Path B: PostgreSQL-backed startup
-
-Use this when testing or developing the database-backed persistence path.
-
-The `postgres` Spring profile enables PostgreSQL persistence using the dedicated
-database user:
+The backend uses the dedicated database user:
 
 ```text
 financial_app_user
@@ -192,7 +157,6 @@ frontend application login.
 Connection settings:
 
 ```properties
-SPRING_PROFILES_ACTIVE=postgres
 DATABASE_URL=jdbc:postgresql://localhost:5432/financial_app
 DATABASE_USERNAME=financial_app_user
 DATABASE_PASSWORD=financial_app_password
@@ -205,20 +169,19 @@ cd C:\Users\<you>\dev\end-to-end-app
 .\scripts\setup-local-postgres.ps1
 ```
 
-Then start the PostgreSQL-backed backend from the repository root with:
+Then start the backend from the repository root with:
 
 ```powershell
-.\scripts\start-backend-postgres.ps1
+.\scripts\start-backend.ps1
 ```
 
-The script starts Spring Boot with the `postgres` profile and the dedicated
-database user `financial_app_user`; it does not run the application as the
-PostgreSQL admin user.
+The script starts Spring Boot with the dedicated database user
+`financial_app_user`; it does not run the application as the PostgreSQL admin
+user.
 
 Or run manually from the `backend` directory:
 
 ```powershell
-$env:SPRING_PROFILES_ACTIVE="postgres"
 $env:DATABASE_URL="jdbc:postgresql://localhost:5432/financial_app"
 $env:DATABASE_USERNAME="financial_app_user"
 $env:DATABASE_PASSWORD="financial_app_password"
@@ -229,7 +192,6 @@ $env:DATABASE_PASSWORD="financial_app_password"
 To include the Maven `dev` profile and Spring Boot DevTools:
 
 ```powershell
-$env:SPRING_PROFILES_ACTIVE="postgres"
 $env:DATABASE_URL="jdbc:postgresql://localhost:5432/financial_app"
 $env:DATABASE_USERNAME="financial_app_user"
 $env:DATABASE_PASSWORD="financial_app_password"
@@ -253,9 +215,8 @@ http://localhost:3000/
 
 ## Local PostgreSQL setup
 
-PostgreSQL is the planned production persistence path. The default backend mode
-still uses JSON-backed local storage, but the `postgres` profile and initial
-schema migrations are available for database-backed development.
+PostgreSQL is the only runtime persistence path. The application requires a
+reachable migrated database before startup completes.
 
 The preferred setup path is the repository setup script, run from the repository
 root:
@@ -275,29 +236,31 @@ Database user: financial_app_user
 Database password: financial_app_password
 ```
 
-It also applies the local migration SQL files from:
+It delegates the ordered migration files under this directory to Flyway:
 
 ```text
 backend/src/main/resources/db/migration/V1__create_financials_schema.sql
 backend/src/main/resources/db/migration/V2__create_financial_snapshot_document.sql
 backend/src/main/resources/db/migration/V3__create_financial_record_snapshot_schema.sql
 backend/src/main/resources/db/migration/V4__add_financial_record_app_id_constraints.sql
+backend/src/main/resources/db/migration/V5__create_identity_workspace_session_schema.sql
+backend/src/main/resources/db/migration/V6__scope_financial_record_snapshots_to_workspace.sql
+backend/src/main/resources/db/migration/V7__add_workspace_snapshot_migration_history.sql
 ```
 
-The script is idempotent and can be safely rerun. If the database already
-exists, it skips database creation. If the target tables already exist, it skips
-the SQL file application and verifies the `financial_snapshot_document` and
-`financial_record_snapshot` tables.
+The script is idempotent on a Flyway-managed database. If the database already
+exists, it skips database creation. Flyway validates migration history, applies
+only pending migrations, and the script verifies `flyway_schema_history` plus
+the snapshot tables.
 
-After setup completes, start the PostgreSQL-backed backend from the repository
-root:
+After setup completes, start the backend from the repository root:
 
 ```powershell
-.\scripts\start-backend-postgres.ps1
+.\scripts\start-backend.ps1
 ```
 
-Manual pgAdmin and `psql` setup steps below are kept as a fallback for
-troubleshooting or learning purposes.
+Manual pgAdmin role/database steps below are kept for troubleshooting or
+learning purposes. Versioned migration files must still be executed by Flyway.
 
 ---
 
@@ -329,7 +292,7 @@ it against a throwaway database:
 ```
 
 Run it a second time to verify it is repeatable/idempotent. The second run
-should skip database creation and existing migrations.
+should skip database creation and report that the Flyway schema is up to date.
 
 Clean up the throwaway database:
 
@@ -400,7 +363,7 @@ financial_app | financial_app_user
 
 ---
 
-## Manual database migrations
+## Database migrations
 
 The initial schema is managed in:
 
@@ -409,43 +372,44 @@ src/main/resources/db/migration/V1__create_financials_schema.sql
 src/main/resources/db/migration/V2__create_financial_snapshot_document.sql
 src/main/resources/db/migration/V3__create_financial_record_snapshot_schema.sql
 src/main/resources/db/migration/V4__add_financial_record_app_id_constraints.sql
+src/main/resources/db/migration/V5__create_identity_workspace_session_schema.sql
+src/main/resources/db/migration/V6__scope_financial_record_snapshots_to_workspace.sql
+src/main/resources/db/migration/V7__add_workspace_snapshot_migration_history.sql
 ```
 
-The preferred path is still:
+The full setup path creates the role/database and invokes Flyway:
 
 ```powershell
 .\scripts\setup-local-postgres.ps1
 ```
 
-If `psql` is available on the PATH, run from the repository root:
+When the role and database already exist, run Flyway directly from the
+repository root:
 
 ```powershell
-psql -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V1__create_financials_schema.sql
-
-psql -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V2__create_financial_snapshot_document.sql
-
-psql -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V3__create_financial_record_snapshot_schema.sql
-
-psql -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V4__add_financial_record_app_id_constraints.sql
+.\scripts\migrate-postgres.ps1
 ```
 
-If `psql` is not recognized on Windows, use the full path:
+The runner invokes `flyway:migrate` and `flyway:validate` with the same
+migration directory used at application startup. Do not execute these files
+directly with `psql -f`. Explicit `-DatabaseUrl`, `-DatabaseUsername`, and
+`-DatabasePassword` parameters take precedence over matching `DATABASE_*`
+variables and the documented local defaults.
+
+A non-empty schema without `flyway_schema_history` fails closed. After a backup
+and read-only inspection, the setup script supports two explicit adoption
+modes:
 
 ```powershell
-& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V1__create_financials_schema.sql
-
-& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V2__create_financial_snapshot_document.sql
-
-& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V3__create_financial_record_snapshot_schema.sql
-
-& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V4__add_financial_record_app_id_constraints.sql
+.\scripts\setup-local-postgres.ps1 -AdoptLegacySnapshotDocumentSchema
+.\scripts\setup-local-postgres.ps1 -AdoptLegacyV4Schema
 ```
 
-When prompted for the password, use:
-
-```text
-financial_app_password
-```
+The first accepts a V2 document-only schema with the expected columns and no
+duplicate active rows, then baselines at version 0 so Flyway still executes
+V1-V4 and restores the unique-active index when absent. The second requires the
+expected V1-V4 table/index signature and baselines at version 4. Signature
+mismatches are refused.
 
 Verify the schema:
 
@@ -509,53 +473,38 @@ UNION ALL SELECT 'monthly_withdrawal', count(*) FROM monthly_withdrawal
 ORDER BY table_name;
 ```
 
-Expected for the current JSONB-backed runtime implementation: the inactive V1
-tables and inactive V3/V4 `financial_record_*` tables can have `0` rows while
-`financial_snapshot_document` has `0` rows before first startup or `1` active
-row after the backend seeds/saves a snapshot.
+Expected for the relational PostgreSQL runtime: V1 tables may remain empty,
+`financial_snapshot_document` may contain a retained legacy source, and
+V3/V4/V6/V7 `financial_record_*` rows exist only after explicit workspace
+migration or creation. The V5 identity, workspace, membership, and session
+tables have `0` rows until the account API is used. Creating an account does not
+silently assign or seed financial data.
 
 ---
 
 ## Financial data storage
 
-Financial data is stored in a local JSON file by default:
+The backend stores financial snapshots in workspace-scoped PostgreSQL
+relational tables:
 
 ```text
-backend/data/financials.local.json
+financial_record_snapshot and financial_record_*
 ```
 
-That file is ignored by Git and should contain real local financial data only on
-the developer's machine.
-
-The committed safe template lives at:
+The ignored `backend/data/financials.local.json` file is a legacy migration
+source only. Startup never reads, creates, or updates it. The committed
+synthetic example remains available for tests and explicit migration exercises:
 
 ```text
 backend/data/financials.example.json
 ```
 
-On startup, `FinancialsRepository` creates `financials.local.json` from the
-example file when the local file does not already exist. This keeps the feature
-usable after a fresh clone without committing personal data.
-
-The storage path can be overridden with Spring configuration:
-
-```properties
-financials.data.path=data/financials.local.json
-financials.example-data.path=data/financials.example.json
-```
-
-When the `postgres` profile is active, the backend stores the full financial
-snapshot in PostgreSQL as a `jsonb` document:
-
-```text
-financial_snapshot_document.snapshot_json
-```
-
 This intentionally keeps the frontend API contract unchanged. The browser still
 loads one snapshot, edits a local draft, and saves one snapshot back to the API.
 
-The active repository implementation reads and writes only
-`financial_snapshot_document`. The normalized V1 tables
+The active PostgreSQL repository reads and writes only V3/V4/V6/V7
+`financial_record_*` tables. `financial_snapshot_document` is retained as a
+legacy migration source. The normalized V1 tables
 (`financial_snapshot`, `monthly_withdrawal`, `annual_withdrawal`,
 `asset_account`, `debt_account`, `income_summary_item`, `income_event`, and
 `important_date`) are inactive historical groundwork. They are not the planned
@@ -566,27 +515,21 @@ V3 adds a clean relational path through the `financial_record_*` table family
 and `PostgresFinancialRecordSnapshotAdapter`. V4 adds per-snapshot
 `app_record_id` uniqueness indexes for granular updates and deletes. That
 adapter can save/load the backend `FinancialSnapshot` domain aggregate in
-relational form and perform record-level CRUD operations. It is covered by the
-opt-in PostgreSQL integration test. It is not wired into the active runtime
-service yet, so `financial_record_*` tables may also remain empty in a healthy
-database until the service is intentionally wired to the relational adapter.
+relational form and perform record-level CRUD operations. V6 links relational
+snapshots to a workspace, permits one active snapshot per workspace, and makes
+every adapter operation require a workspace ID. The runtime store resolves an
+authenticated membership, loads through this adapter, and performs optimistic
+replacement writes under a workspace-row lock. Relational and HTTP integration
+tests cover cross-workspace isolation and audit continuity.
 
 The local `financial_app_user` account is intentionally write-capable because
 it is the backend application user. For read-only inspection, use `SELECT`
 queries or create a separate PostgreSQL role with only `CONNECT`, `USAGE`, and
 `SELECT` privileges.
 
-When PostgreSQL is empty, the backend seeds the first active snapshot from:
-
-```text
-backend/data/financials.local.json
-```
-
-If no local file is available, it falls back to:
-
-```text
-backend/data/financials.example.json
-```
+An empty PostgreSQL workspace is not seeded implicitly. Use the explicit
+migration workflow for existing data; a financial request returns `404` until a
+relational snapshot exists.
 
 ---
 
@@ -594,6 +537,57 @@ backend/data/financials.example.json
 
 The current API is organized around a versioned financial snapshot aggregate.
 The main read and save endpoints operate on the full financial workspace.
+
+### Account and session foundation
+
+These endpoints are part of the required runtime:
+
+```http
+GET  /api/v1/auth/csrf
+POST /api/v1/auth/signup
+POST /api/v1/auth/signin
+GET  /api/v1/auth/session
+POST /api/v1/auth/signout
+```
+
+Signup creates an application user, a default `Personal` workspace, an owner
+membership, and a server-managed session in one transaction. Sign-in verifies
+the adaptive password hash. The raw opaque session token is returned only in
+an `HttpOnly`, `SameSite=Strict` cookie; PostgreSQL stores its SHA-256 hash.
+Session recovery returns account metadata and current workspace memberships,
+and sign-out revokes the server-side session before expiring the cookie.
+Clients first bootstrap CSRF protection with `GET /api/v1/auth/csrf` and send
+its token in `X-XSRF-TOKEN` for every account or financial write.
+
+The account session has `WORKSPACE` authority for `/api/v1/financials/**`. A
+sole membership is selected automatically; multi-workspace accounts send
+`X-Workspace-ID`. The frontend signs up, signs in, restores the session, and
+selects its workspace through this flow.
+
+### Workspace migration operations
+
+These operator endpoints require the configured Basic-auth authority and exact
+`X-Confirm-Financial-Migration` confirmation headers:
+
+```http
+GET  /api/v1/admin/workspace-migrations/legacy-jsonb-backup
+POST /api/v1/admin/workspace-migrations/apply/json-file
+POST /api/v1/admin/workspace-migrations/apply/jsonb-document
+GET  /api/v1/admin/workspace-migrations/{migrationId}
+POST /api/v1/admin/workspace-migrations/{migrationId}/rollback
+```
+
+Use the repository scripts rather than calling these operator endpoints by
+hand. `migrate-financial-snapshot-to-workspace.ps1` writes the exact source to
+an external backup first, computes its SHA-256 fingerprint, names the owner
+email and empty destination workspace, applies the migration, and independently
+reads back version and record-count metadata. V7 preserves source audit events
+and records migration history without storing another snapshot copy.
+
+`rollback-workspace-snapshot-migration.ps1` deactivates the migrated relational
+snapshot only while its ID, version, active state, and record counts still match
+the migration record. It retains relational rows, migration history, the legacy
+source, and the external backup. It refuses rollback after target changes.
 
 ### Get financial snapshot
 
@@ -654,9 +648,14 @@ returns the calculated snapshot response. Treat JSON, CSV, and XLSX files as
 personal financial data.
 
 Local operators can use the repository scripts without printing financial
-contents:
+contents. Set account credentials first; the scripts establish and revoke a
+workspace session for each operation. Use `-WorkspaceId` when the account has
+more than one membership:
 
 ```powershell
+$env:FINANCIALS_ACCOUNT_EMAIL="owner@example.com"
+$env:FINANCIALS_ACCOUNT_PASSWORD="<account-password>"
+
 .\scripts\export-financial-snapshot.ps1 -Format xlsx -OutputPath "$HOME\Downloads\financial-snapshot.xlsx"
 .\scripts\import-financial-snapshot.ps1 -InputPath "$HOME\Downloads\financial-snapshot.xlsx" -ConfirmRestore
 ```
@@ -719,7 +718,7 @@ This avoids local CORS configuration requirements during development.
 backend/
 |-- data/
 |   |-- financials.example.json
-|   `-- financials.local.json        # ignored by Git
+|   `-- financials.local.json        # ignored legacy migration source
 |-- src/main/java/
 |   |-- com/example/backend/api/
 |   |-- com/example/backend/domain/
@@ -734,7 +733,10 @@ backend/
 |       |-- V1__create_financials_schema.sql
 |       |-- V2__create_financial_snapshot_document.sql
 |       |-- V3__create_financial_record_snapshot_schema.sql
-|       `-- V4__add_financial_record_app_id_constraints.sql
+|       |-- V4__add_financial_record_app_id_constraints.sql
+|       |-- V5__create_identity_workspace_session_schema.sql
+|       |-- V6__scope_financial_record_snapshots_to_workspace.sql
+|       `-- V7__add_workspace_snapshot_migration_history.sql
 |-- src/test/java/
 |-- pom.xml
 `-- README.md
@@ -781,12 +783,11 @@ Persistence-facing data models and storage adapters.
 
 Responsibilities:
 
-- loading local JSON data
-- writing local JSON data
-- loading PostgreSQL-backed snapshot data
-- writing PostgreSQL-backed snapshot data
-- saving/loading and granular CRUD in the V3/V4 relational record adapter path
-- assigning IDs for new local rows
+- loading and writing PostgreSQL-backed snapshot data
+- reading legacy JSON/JSONB only through explicit migration operations
+- workspace-scoped saving/loading and granular CRUD in the V3/V4/V6/V7 relational
+  record adapter path
+- assigning IDs for new relational rows
 - keeping persistence concerns out of controllers
 - translating the storage envelope to and from the backend domain aggregate
 
@@ -837,10 +838,8 @@ asset accounts, debt accounts, income summary source items, income calendar
 events, and important dates. Derived income summary rows are calculated by the
 frontend.
 
-The default mode stores this aggregate in a local JSON file. The `postgres`
-profile stores the same aggregate as a PostgreSQL `jsonb` document. A tested
-V3/V4 relational adapter supports internal granular CRUD, but the runtime
-service is not wired to it yet.
+The runtime stores this aggregate in V3/V4/V6/V7 relational workspace tables
+and authorizes access from account-session memberships.
 
 ---
 
@@ -903,25 +902,33 @@ Verify `pom.xml` formatting:
 .\mvnw.cmd clean verify
 ```
 
-## PostgreSQL profile smoke test
+## Required PostgreSQL integration tests
 
-After local PostgreSQL setup, this command verifies that the Spring Boot test
-context can start with the `postgres` profile and connect to
-`financial_app`:
+After local PostgreSQL setup, this command runs the required integration tests
+against `financial_app`:
 
 ```powershell
-$env:SPRING_PROFILES_ACTIVE="postgres"
-.\mvnw.cmd -B test
+$env:RUN_POSTGRES_INTEGRATION_TESTS="true"
+$env:DATABASE_URL="jdbc:postgresql://localhost:5432/financial_app"
+$env:DATABASE_USERNAME="financial_app_user"
+$env:DATABASE_PASSWORD="financial_app_password"
+
+.\mvnw.cmd -B test "--activate-profiles=postgres-integration" "-Djacoco.skip=true"
 ```
 
 ---
 
 ## PostgreSQL integration test
 
-The PostgreSQL snapshot store and V3/V4 relational record adapter have opt-in
-integration tests so normal builds do not require a local database. The tests
-create and drop isolated schemas named `financial_snapshot_store_test` and
-`financial_record_snapshot_adapter_test` inside the configured database.
+The PostgreSQL snapshot store, V3/V4/V6/V7 workspace-scoped relational record
+adapter, V5 identity schema, V6 legacy-upgrade boundary, account/session flows,
+and explicit migration/rollback API have a required repository integration
+gate. Focused Maven unit builds remain database-independent, while
+`.\scripts\verify-local.ps1` and hosted CI run the integration profile. The tests
+create and drop isolated schemas named `financial_snapshot_store_test`,
+`financial_record_snapshot_adapter_test`, `identity_schema_test`, and
+`workspace_ownership_schema_test`, plus isolated account/session and workspace
+migration schemas, inside the configured database.
 
 PowerShell:
 
@@ -931,11 +938,12 @@ $env:DATABASE_URL="jdbc:postgresql://localhost:5432/financial_app"
 $env:DATABASE_USERNAME="financial_app_user"
 $env:DATABASE_PASSWORD="financial_app_password"
 
-.\mvnw.cmd test "-Dtest=PostgresFinancialsSnapshotStoreIT,PostgresFinancialRecordSnapshotAdapterIT" "-Djacoco.skip=true"
+.\mvnw.cmd -B test "--activate-profiles=postgres-integration" "-Djacoco.skip=true"
 ```
 
-The `jacoco.skip` flag keeps this local database smoke test focused and avoids
-Java agent noise when running on newer local JDKs.
+The `postgres-integration` profile discovers every `*IT` class. The
+`jacoco.skip` flag keeps this database integration run focused and avoids Java
+agent noise when running on newer local JDKs.
 
 ---
 
@@ -985,17 +993,14 @@ Preferred fix from the repository root:
 .\scripts\setup-local-postgres.ps1
 ```
 
-Manual fallback:
+Run the Flyway migration command directly if the role and database already
+exist:
 
 ```powershell
-& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V1__create_financials_schema.sql
-
-& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V2__create_financial_snapshot_document.sql
-
-& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V3__create_financial_record_snapshot_schema.sql
-
-& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U financial_app_user -d financial_app -f .\backend\src\main\resources\db\migration\V4__add_financial_record_app_id_constraints.sql
+.\scripts\migrate-postgres.ps1
 ```
+
+Do not repair this error by executing versioned SQL files with `psql -f`.
 
 ---
 
@@ -1019,8 +1024,7 @@ C:\Program Files\PostgreSQL\18\bin
 
 ### `financial_snapshot_document` exists but has `0` rows
 
-The schema exists, but no active financial snapshot has been stored in
-PostgreSQL yet.
+The legacy source table exists but contains no pre-activation JSONB snapshot.
 
 Check:
 
@@ -1028,13 +1032,11 @@ Check:
 SELECT count(*) FROM financial_snapshot_document;
 ```
 
-A count of `0` is expected before the first PostgreSQL-backed backend startup.
-After the backend starts with `SPRING_PROFILES_ACTIVE=postgres`, it should seed
-one active row from `backend/data/financials.local.json` or fall back to
-`backend/data/financials.example.json`.
+A count of `0` is healthy. PostgreSQL startup no longer seeds this table or any
+workspace from local/example JSON.
 
-If data from another machine is required, explicitly migrate it by copying the
-ignored local JSON file or exporting/importing the old PostgreSQL data.
+If data from another machine is required, create the destination account and
+use the explicit workspace migration workflow with an external backup.
 
 ---
 
@@ -1054,12 +1056,10 @@ The backend participates in repository CI pipelines for:
 
 Intentional simplifications:
 
-- JSON remains the default local fallback
-- PostgreSQL stores the active runtime snapshot as `jsonb`; granular
-  database-backed CRUD is implemented in the V3/V4 relational adapter path, but
-  the runtime service is not wired to it yet
-- single local Basic-auth application user; no multi-user identity or tenant
-  ownership model yet
+- PostgreSQL is the only runtime persistence path; V2 JSONB and local JSON are
+  retained only as explicit legacy migration sources
+- financial routes require account sessions and workspace membership; operator
+  Basic auth is limited to migration administration and protected metrics
 - no external APIs
 - no production deployment infrastructure
 

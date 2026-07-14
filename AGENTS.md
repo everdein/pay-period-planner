@@ -9,9 +9,10 @@ subproject README before changing frontend, backend, database, or CI behavior.
 
 - `frontend/`: React 19, TypeScript, Redux Toolkit, Vite, and Vitest.
 - `backend/`: Java 21, Spring Boot 4, Maven, Spring JDBC, and JaCoCo.
-- `backend/data/financials.example.json`: committed mock seed data.
+- `backend/data/financials.example.json`: committed synthetic test/demo and
+  explicit migration input.
 - `backend/data/financials.local.json` plus `.bak`/`.tmp` siblings: ignored
-  local data; never commit them.
+  legacy local data; never commit them or treat them as runtime storage.
 - `backend/src/main/resources/db/migration/`: PostgreSQL schema migrations.
 - `.github/workflows/ci.yml`: build, test, coverage, and Snyk pipeline.
 - `.github/workflows/codeql.yml`: hosted Java and JavaScript/TypeScript code
@@ -20,13 +21,16 @@ subproject README before changing frontend, backend, database, or CI behavior.
   vulnerability gate.
 - `scripts/`: repeatable local setup, verification, and inspection commands.
 
-The application edits and saves one financial snapshot aggregate. The default
-profile stores local JSON. The `postgres` profile stores that aggregate in
-`financial_snapshot_document.snapshot_json`. The V1 normalized tables are
-inactive historical groundwork and are not the active or planned runtime
-persistence path as-is. The V3/V4 `financial_record_*` tables and adapter are
-the tested future relational path, including internal granular CRUD support,
-but runtime persistence still uses the JSONB document store.
+The application edits and saves one financial snapshot aggregate in the
+V3/V4/V6/V7 PostgreSQL `financial_record_*` relational tables, scoped to the workspace
+selected from a V5 account session. The V1 normalized tables are inactive
+historical groundwork and are not the runtime persistence path. V2
+`financial_snapshot_document` is now a legacy migration source only. The
+PostgreSQL financial API requires `WORKSPACE` session authority, enforces CSRF
+on writes, and isolates every operation by current database-derived membership.
+The frontend uses signup, sign-in, session recovery, sign-out, CSRF bootstrap,
+and explicit workspace selection against that PostgreSQL API. Legacy Basic
+authentication remains only for operator migration and metrics routes.
 
 ## Directory Ownership
 
@@ -39,7 +43,8 @@ but runtime persistence still uses the JSONB document store.
   the saved snapshot aggregate used inside the backend.
 - `backend/src/main/java/.../service/`: validation, calculations, and domain
   orchestration.
-- `backend/src/main/java/.../repository/`: JSON and PostgreSQL persistence.
+- `backend/src/main/java/.../repository/`: PostgreSQL persistence and storage
+  boundaries.
 - `backend/src/main/resources/db/migration/`: additive schema history.
 - `scripts/`: deterministic local setup, inspection, security, and verification.
 - `.github/workflows/`: hosted checks, security scans, and deploy placeholders.
@@ -50,7 +55,7 @@ Use `docs/architecture-map.md` for runtime boundaries, data flow, and
 change-routing guidance. Use `docs/domain-glossary.md` for project-specific
 financial, application-state, and persistence terminology. Use
 `docs/api-contract.md` for HTTP methods, payloads, derived fields, and errors.
-Use `docs/database-storage-guide.md` for profile storage, database roles,
+Use `docs/database-storage-guide.md` for storage, database roles,
 migrations, inspection, backup, and recovery boundaries.
 Use `docs/verification-matrix.md` to choose targeted and completion checks by
 change surface.
@@ -67,18 +72,17 @@ review boundaries.
 Use `docs/issue-to-implementation-workflow.md` when turning a GitHub issue into
 a branch, implementation, verification report, or draft PR.
 
-## PostgreSQL Profiles and Setup
+## PostgreSQL Setup
 
-- The default Spring profile is `json`; it requires no database and writes to
-  ignored `backend/data/financials.local.json`.
-- The `postgres` profile uses `DATABASE_URL`, `DATABASE_USERNAME`, and
+- The application always uses PostgreSQL with `DATABASE_URL`, `DATABASE_USERNAME`, and
   `DATABASE_PASSWORD`, with local defaults documented in `backend/README.md`.
 - Initialize local PostgreSQL with
   `.\scripts\bootstrap-local.ps1 -IncludePostgres` or
   `.\scripts\setup-local-postgres.ps1`, then start it with
-  `.\scripts\start-backend-postgres.ps1`.
-- Flyway owns runtime migration order. Keep migrations additive and never edit
-  an applied migration.
+  `.\scripts\start-backend.ps1`.
+- Flyway is the only migration authority. Setup delegates versioned DDL to
+  `.\scripts\migrate-postgres.ps1`; never execute migration files directly.
+  Keep migrations additive and never edit an applied migration.
 - Investigation is read-only. Setup and migration scripts are mutations and
   require an explicit setup task or user approval.
 
@@ -120,9 +124,11 @@ From the repository root:
 .\scripts\check-environment.ps1
 .\scripts\bootstrap-local.ps1
 .\scripts\verify-local.ps1
-.\scripts\verify-local.ps1 -IncludePostgres
 .\scripts\run-security-checks.ps1
 .\scripts\inspect-postgres.ps1
+.\scripts\migrate-postgres.ps1
+.\scripts\migrate-financial-snapshot-to-workspace.ps1 -Source <json-file|jsonb-document> -BackupPath <outside-repo-path> -DestinationEmail <email> -WorkspaceId <id> -ConfirmMigration
+.\scripts\rollback-workspace-snapshot-migration.ps1 -MigrationId <uuid> -ConfirmRollback
 .\scripts\setup-postgres-readonly-role.ps1
 .\scripts\run-browser-checks.ps1
 .\scripts\export-financial-snapshot.ps1 -Format csv -OutputPath <outside-repo-path>
@@ -183,25 +189,25 @@ or security policy from a packet alone.
 
 ## Intentional Limitations
 
-- Financial APIs require a single local Basic-auth application user, but there
-  is no multi-user identity, tenant isolation, production deployment
-  infrastructure, or external API integration.
+- The financial API uses database-backed sessions and relational workspace
+  ownership, and the browser verifies cross-user isolation. Production
+  deployment infrastructure and external API integrations remain incomplete.
 - Full-snapshot saves use optimistic version checks; granular endpoints still
   mutate immediately without client-supplied aggregate versions.
-- PostgreSQL persists one JSONB snapshot. V1 normalized tables are inactive
-  historical groundwork and may remain empty. V3/V4 `financial_record_*`
-  tables provide the tested relational adapter and granular CRUD path but are
-  not the active runtime persistence path yet.
-- JSON is the default local profile. PostgreSQL setup and integration tests are
-  opt-in.
+- PostgreSQL persists active runtime data in the V3/V4/V6/V7
+  `financial_record_*` tables with relational audit history and optimistic
+  workspace writes. V1 normalized tables remain inactive; V2 JSONB is retained
+  only for explicit backup/migration and rollback evidence.
+- PostgreSQL setup is explicit, while local and hosted completion gates require
+  isolated PostgreSQL integration tests.
 - The deploy workflow is a manual placeholder, not a production release path.
 
 ## Repository Skills
 
 - `$bootstrap-end-to-end-app`: check prerequisites, install dependencies, and
   optionally initialize PostgreSQL.
-- `$verify-end-to-end-app`: run the complete local verification suite and
-  optional isolated PostgreSQL smoke test.
+- `$verify-end-to-end-app`: run the complete local verification suite,
+  including required isolated PostgreSQL integration tests.
 - `$audit-end-to-end-docs`: compare documentation claims with executable
   repository behavior and report drift.
 - `$prepare-end-to-end-pr`: verify, document, commit, push, and prepare a draft

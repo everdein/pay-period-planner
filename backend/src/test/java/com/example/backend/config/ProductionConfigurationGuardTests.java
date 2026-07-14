@@ -13,21 +13,12 @@ class ProductionConfigurationGuardTests {
     assertThatCode(
             () ->
                 ProductionConfigurationGuard.validate(
-                    List.of("json"),
+                    List.of(),
                     FinancialsSecurityDefaults.LOCAL_USERNAME,
                     FinancialsSecurityDefaults.LOCAL_PASSWORD,
-                    List.of("*")))
+                    List.of("*"),
+                    false))
         .doesNotThrowAnyException();
-  }
-
-  @Test
-  void requiresPostgresProfileWhenProductionProfileIsActive() {
-    assertThatThrownBy(
-            () ->
-                ProductionConfigurationGuard.validate(
-                    List.of("prod"), "financial_owner", "not-local", List.of()))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("prod profile must be combined with the postgres profile");
   }
 
   @Test
@@ -35,10 +26,11 @@ class ProductionConfigurationGuardTests {
     assertThatThrownBy(
             () ->
                 ProductionConfigurationGuard.validate(
-                    List.of("prod", "postgres"),
+                    List.of("prod"),
                     FinancialsSecurityDefaults.LOCAL_USERNAME,
                     FinancialsSecurityDefaults.LOCAL_PASSWORD,
-                    List.of()))
+                    List.of(),
+                    true))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("must override local defaults");
   }
@@ -48,7 +40,7 @@ class ProductionConfigurationGuardTests {
     assertThatThrownBy(
             () ->
                 ProductionConfigurationGuard.validate(
-                    List.of("prod", "postgres"), "financial_owner", "not-local", List.of("*")))
+                    List.of("prod"), "financial_owner", "not-local", List.of("*"), true))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("cannot include '*'");
   }
@@ -58,10 +50,25 @@ class ProductionConfigurationGuardTests {
     assertThatCode(
             () ->
                 ProductionConfigurationGuard.validate(
-                    List.of("prod", "postgres"),
+                    List.of("prod"),
                     "financial_owner",
                     "not-local",
-                    List.of("https://finance.example.com")))
+                    List.of("https://finance.example.com"),
+                    true))
         .doesNotThrowAnyException();
+  }
+
+  @Test
+  void requiresSecureSessionCookiesWhenProductionProfileIsActive() {
+    assertThatThrownBy(
+            () ->
+                ProductionConfigurationGuard.validate(
+                    List.of("prod"),
+                    "financial_owner",
+                    "not-local",
+                    List.of("https://finance.example.com"),
+                    false))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("SESSION_COOKIE_SECURE must be true");
   }
 }
