@@ -9,6 +9,12 @@ at startup: local JSON by default or PostgreSQL under the `postgres` profile.
 Persisted writes append coarse audit events with version movement and aggregate
 projection summaries.
 
+This map describes the current runtime. ADR 0014 records the accepted target of
+PostgreSQL-only, workspace-scoped relational persistence with account/session
+management. That target is implementation work; until its transition criteria
+are verified, the two current profiles and single-user boundaries below remain
+authoritative.
+
 ```mermaid
 flowchart LR
     User["Local user"] --> UI["React financial workspace"]

@@ -72,45 +72,75 @@ Phase C is complete.
 
 - [x] Add a vendor-neutral observability foundation with structured logs,
       request IDs, frontend error containment, and safe application metrics.
-- [ ] Connect logs, errors, and metrics to a production telemetry provider once
-      the hosting platform and data-retention policy are selected.
 
-The local observability foundation completes the current setup, maintenance,
-security, verification, and operational-readiness program. Selecting a hosted
-telemetry provider remains part of production deployment rather than a blocker
-for product development.
+Phase D is complete for local operational readiness. Hosted telemetry remains
+part of the production-operations phase because provider selection depends on
+hosting, privacy, and retention decisions.
 
-## Post-Observability Product Roadmap
+## Phase E - Consolidate Persistence, Identity, and Ownership
 
-Complete these product phases in order after the local observability foundation:
+ADR 0014 defines one PostgreSQL-only target architecture. Complete these items
+in order without changing current startup documentation until the runtime
+transition is verified:
 
-1. **Reduce frontend complexity.** Split financial draft state, actions,
-   validation, and tests by domain feature while preserving the versioned
-   snapshot save contract.
-2. **Introduce real account management.** Replace the shared local Basic-auth
-   identity with signup, sign-in, sign-out, session recovery, and secure
-   credential lifecycle behavior.
-3. **Enforce per-user financial ownership.** Add an additive ownership schema,
-   migrate existing local data deliberately, scope every repository query and
-   API operation to the authenticated user, and add cross-user isolation tests.
-4. **Make the application product-quality.** Improve onboarding, navigation,
-   dashboards, forms, accessibility, responsive/mobile behavior, and clear
-   empty, loading, success, and error states.
-5. **Complete production operations.** Select hosting and telemetry providers;
-   configure deployment, backups, restore drills, retention, privacy controls,
-   alerting, and incident/recovery procedures.
-6. **Add financial-product enhancements.** Prioritize new planning, reporting,
-   forecasting, and collaboration features only after identity, ownership,
-   privacy, and recovery boundaries are proven.
+- [x] Split financial draft state, actions, validation, coordination, and tests
+      by domain feature while preserving the versioned snapshot save contract.
+- [x] Decide the target persistence and ownership architecture in ADR 0014.
+- [ ] Establish Flyway as the single migration authority before adding the
+      identity and ownership schema.
+- [ ] Add user, workspace, workspace-membership, and server-managed session
+      tables through additive migrations.
+- [ ] Replace global active-snapshot constraints with workspace-scoped
+      ownership and update every repository operation accordingly.
+- [ ] Replace shared Basic authentication with signup, sign-in, sign-out,
+      session recovery, secure credential hashing, and workspace authorization.
+- [ ] Activate the V3/V4 relational adapter as the single runtime financial
+      store while preserving optimistic versioning and the snapshot API.
+- [ ] Add cross-user API, repository, session, and browser isolation tests.
+- [ ] Add an explicit, backed-up JSON/JSONB-to-workspace migration workflow
+      with metadata-only verification and a documented rollback path.
+- [ ] Make PostgreSQL-backed tests required locally and in hosted CI.
+- [ ] Make PostgreSQL the only startup path, then remove the JSON runtime
+      profile, JSON snapshot store, automatic personal-JSON seeding, and
+      duplicate startup scripts and instructions.
+
+Do not silently seed or migrate personal financial data. Keep
+`financials.example.json` as synthetic test/demo input and keep explicit
+JSON/CSV/XLSX backup formats after JSON runtime persistence is retired.
+
+## Phase F - Make the Application Product-Quality
+
+- [ ] Improve onboarding, navigation, dashboards, and financial workflows.
+- [ ] Complete clear empty, loading, success, conflict, and error states.
+- [ ] Expand accessibility automation and manual assistive-technology checks.
+- [ ] Complete responsive and mobile behavior across financial workflows.
+
+## Phase G - Complete Production Operations
+
+- [ ] Select hosting and telemetry providers with approved privacy and data
+      retention policies.
+- [ ] Export logs, metrics, and browser errors to centralized telemetry without
+      exposing financial data.
+- [ ] Configure deployment, health verification, rollback, automated backups,
+      restore drills, alerting, and incident/recovery procedures.
+
+## Phase H - Add Financial-Product Enhancements
+
+- [ ] Prioritize new planning, reporting, forecasting, and collaboration
+      features only after identity, ownership, privacy, and recovery boundaries
+      are proven.
 
 ## Current Priority
 
 Next highest-value items:
 
-1. Split frontend draft state by domain feature.
-2. Add real account management and per-user financial ownership with explicit
-   cross-user authorization tests.
-3. Improve product UX, accessibility, responsive behavior, and financial
-   workflows.
-4. Add production hosting, telemetry export, backups, retention, and incident
-   recovery.
+1. Establish one Flyway migration path and add the user/workspace/session
+   schema.
+2. Make relational snapshots workspace-scoped and implement account/session
+   flows with explicit cross-user authorization tests.
+3. Build and verify the explicit JSON/JSONB-to-workspace migration and rollback
+   workflow.
+4. Activate PostgreSQL relational persistence as the only runtime path and
+   remove the JSON profile after recovery evidence is complete.
+5. Improve product UX and accessibility, then complete hosting, telemetry,
+   backups, retention, and incident recovery.

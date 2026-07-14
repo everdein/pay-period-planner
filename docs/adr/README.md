@@ -23,6 +23,7 @@ as the codebase evolves.
 | [0011](0011-add-granular-postgresql-record-persistence.md)      | Accepted | Add granular PostgreSQL record persistence      |
 | [0012](0012-add-granular-financial-record-apis.md)              | Accepted | Add granular financial record APIs              |
 | [0013](0013-add-tabular-financial-snapshot-import-export.md)    | Accepted | Add tabular snapshot import/export              |
+| [0014](0014-adopt-postgresql-only-workspace-persistence.md)     | Accepted | Adopt PostgreSQL-only workspace persistence     |
 
 ## Template
 

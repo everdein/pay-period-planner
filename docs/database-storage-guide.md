@@ -6,6 +6,12 @@ The backend owns one `domain/financials/FinancialSnapshot` aggregate. A
 profile-specific `FinancialsSnapshotStore` serializes the repository
 `FinancialsData` storage envelope to one of two local storage targets:
 
+This guide describes current executable storage behavior. ADR 0014 records the
+accepted target of PostgreSQL-only, workspace-scoped relational persistence and
+an explicit migration away from runtime JSON/JSONB stores. Do not treat that
+target as active until its migration, recovery, ownership, and transition
+checks are implemented and verified.
+
 ```mermaid
 flowchart TD
     Repo["FinancialsRepository<br/>in-memory aggregate"] --> Store{"FinancialsSnapshotStore"}
@@ -98,14 +104,14 @@ environment.
 
 `financial_snapshot_document` is the active persistence table:
 
-| Column          | Meaning                                             |
-| --------------- | --------------------------------------------------- |
-| `id`            | Database identity                                   |
-| `active`        | Marks the current document                          |
-| `version`       | Current optimistic-concurrency version              |
+| Column          | Meaning                                                                      |
+| --------------- | ---------------------------------------------------------------------------- |
+| `id`            | Database identity                                                            |
+| `active`        | Marks the current document                                                   |
+| `version`       | Current optimistic-concurrency version                                       |
 | `snapshot_json` | Complete `FinancialsData` storage envelope as JSONB, including audit history |
-| `created_at`    | Row creation timestamp                              |
-| `updated_at`    | Latest update timestamp                             |
+| `created_at`    | Row creation timestamp                                                       |
+| `updated_at`    | Latest update timestamp                                                      |
 
 A partial unique index allows at most one row where `active = true`. The store
 loads the first active row, mirrors the row version into `FinancialsData`, maps

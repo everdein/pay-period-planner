@@ -22,6 +22,9 @@ changes in a new ADR.
   browser Basic-auth challenge so the frontend sign-in form can handle errors
   without opening a native browser prompt.
 - **Revisit when:** Any shared, remote, hosted, or multi-user access is planned.
+- **Planned resolution:** ADR 0014 replaces the shared Basic-auth user with
+  database-backed accounts, server-managed sessions, and workspace-scoped
+  authorization during the PostgreSQL-only transition.
 
 ### LIM-002 — No user or tenant isolation
 
@@ -31,6 +34,8 @@ changes in a new ADR.
 - **Current mitigation:** One local operator and one storage target.
 - **Revisit when:** Authentication, collaboration, or multiple workspaces are
   introduced.
+- **Planned resolution:** ADR 0014 adds users, workspaces, memberships, and
+  cross-user isolation tests before shared or hosted use.
 
 ### LIM-003 — Dependency scanning is not a complete security program
 
@@ -127,13 +132,15 @@ changes in a new ADR.
 
 ### LIM-011 — JSON is a single-process local store
 
-- **Status:** Intentional default
+- **Status:** Temporary current default; retirement accepted in ADR 0014
 - **Impact:** File-backed persistence is unsuitable for concurrent writers,
   remote filesystems, or production availability.
 - **Current mitigation:** Atomic replacement when supported and one `.bak`
   recovery copy.
 - **Revisit when:** More than one backend process or production persistence is
   required.
+- **Planned resolution:** Migrate local data explicitly, then remove the JSON
+  runtime profile and store after the PostgreSQL-only transition is verified.
 
 ### LIM-012 — PostgreSQL stores one JSONB document
 
@@ -147,6 +154,8 @@ changes in a new ADR.
 - **Revisit when:** Reporting, granular concurrency, audit history, relational
   integrity, or large snapshots are needed. Use ADR 0010 and ADR 0011's
   V3/V4 relational path, not the inactive V1 tables as-is.
+- **Planned resolution:** ADR 0014 activates the V3/V4 relational path as the
+  workspace-scoped runtime store and retires the active JSONB document path.
 
 ### LIM-013 — Normalized V1 tables are inactive
 
@@ -170,6 +179,8 @@ changes in a new ADR.
   migrations additive.
 - **Revisit when:** Before adding more migrations or treating PostgreSQL as a
   production target. Establish one migration authority.
+- **Planned resolution:** Make Flyway the single migration authority before the
+  ADR 0014 identity and ownership migrations are added.
 
 ### LIM-015 — Broad local application-role privileges
 
@@ -193,6 +204,9 @@ changes in a new ADR.
   changes, and metadata-only verification afterward.
 - **Revisit when:** Personal data becomes irreplaceable, migrations recur, or a
   deployment is planned.
+- **Planned resolution:** Build an explicit, backed-up JSON/JSONB-to-workspace
+  migration with rollback and metadata-only verification before retiring old
+  stores; production backup automation remains Phase G work.
 
 ### LIM-017 — Empty PostgreSQL can seed from personal JSON
 
@@ -202,6 +216,9 @@ changes in a new ADR.
 - **Current mitigation:** Explicit profile startup, documented seed order, and
   local-only data custody.
 - **Revisit when:** Databases are shared, automated, or remotely provisioned.
+- **Planned resolution:** ADR 0014 removes automatic personal-JSON seeding.
+  Account creation starts with an empty workspace unless the user explicitly
+  imports a backup or chooses synthetic demo data.
 
 ### LIM-018 — Audit history is coarse and storage-envelope scoped
 
@@ -229,6 +246,8 @@ changes in a new ADR.
   changes.
 - **Revisit when:** CI receives an ephemeral PostgreSQL service or Testcontainers
   strategy.
+- **Planned resolution:** Make PostgreSQL integration tests required in local
+  completion checks and hosted CI before the PostgreSQL-only transition.
 
 ### LIM-020 — Browser workflow coverage is smoke-level
 
