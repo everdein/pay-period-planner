@@ -2,6 +2,7 @@ param(
     [switch]$InstallBrowsers,
     [switch]$Headed,
     [string]$Project = "chromium",
+    [string]$TestPath = "",
     [string]$DatabaseHost = "localhost",
     [int]$DatabasePort = 5432,
     [string]$DatabaseName = "financial_app",
@@ -66,12 +67,16 @@ try {
         }
     }
 
-    $playwrightArgs = @("--project", $Project)
+    $playwrightArgs = @()
+    if (-not [string]::IsNullOrWhiteSpace($TestPath)) {
+        $playwrightArgs += $TestPath
+    }
+    $playwrightArgs += @("--project", $Project)
     if ($Headed) {
         $playwrightArgs += "--headed"
     }
 
-    Invoke-Step "Run Playwright browser workflow smoke tests" {
+    Invoke-Step "Run Playwright browser checks" {
         npm --prefix frontend run test:e2e -- @playwrightArgs
     }
 }

@@ -226,6 +226,34 @@ describe('App', () => {
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
   });
 
+  it('supports keyboard navigation between the account access tabs', async () => {
+    mockRecover.mockRejectedValue(new ApiError('Unauthorized', 401, 'request-401'));
+
+    await renderAuthenticatedApp();
+
+    const signInTab = screen.getByRole('tab', { name: 'Sign In' });
+    const createAccountTab = screen.getByRole('tab', { name: 'Create Account' });
+    expect(signInTab).toHaveAttribute('aria-controls', 'account-panel');
+    expect(signInTab).toHaveAttribute('tabindex', '0');
+    expect(createAccountTab).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByRole('tabpanel', { name: 'Sign In' })).toContainElement(
+      screen.getByRole('heading', { name: 'Welcome back' })
+    );
+
+    signInTab.focus();
+    fireEvent.keyDown(signInTab, { key: 'ArrowRight' });
+
+    expect(createAccountTab).toHaveFocus();
+    expect(createAccountTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel', { name: 'Create Account' })).toContainElement(
+      screen.getByRole('heading', { name: 'Create your account' })
+    );
+
+    fireEvent.keyDown(createAccountTab, { key: 'Home' });
+    expect(signInTab).toHaveFocus();
+    expect(signInTab).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('signs in through the account session API', async () => {
     vi.useRealTimers();
     mockRecover.mockRejectedValue(new ApiError('Unauthorized', 401, 'request-401'));
@@ -437,7 +465,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /update draft/i }));
 
     expect(screen.getAllByText('$110,700.00')).toHaveLength(2);
-    expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/unsaved changes/i);
   });
 
   it('renders income calendar and important dates tabs', async () => {

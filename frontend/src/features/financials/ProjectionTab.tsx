@@ -1,5 +1,6 @@
 import { currency, formatDate } from './financialsFormatters';
 import type { ProjectionPeriod, ProjectionSummary } from './financialsTypes';
+import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function ProjectionTab({ projection }: { projection: ProjectionSummary }) {
   const currentPeriod = projection.periods[0];
@@ -134,7 +135,7 @@ function ProjectionPeriodCard({ period }: { period: ProjectionPeriod }) {
         </div>
       </dl>
 
-      <div className="table-wrap">
+      <ScrollableTableRegion label="Current paycheck period details">
         <table className="projection-detail-table">
           <colgroup>
             <col className="name-column" />
@@ -174,7 +175,7 @@ function ProjectionPeriodCard({ period }: { period: ProjectionPeriod }) {
             </tr>
           </tbody>
         </table>
-      </div>
+      </ScrollableTableRegion>
     </article>
   );
 }

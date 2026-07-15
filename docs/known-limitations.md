@@ -246,23 +246,28 @@ changes in a new ADR.
 - **Impact:** The Playwright smoke test proves Vite startup, PostgreSQL/Flyway
   startup in an isolated schema, signup, sign-in, sign-out, CSRF writes,
   cross-user workspace isolation, draft editing, full-snapshot save, refresh
-  persistence, delete confirmation, and post-delete persistence. It still does
-  not cover every tab, visual regression, or assistive-technology behavior.
+  persistence, delete confirmation, and post-delete persistence. Focused suites
+  now audit every financial section for WCAG violations and responsive layout,
+  but they do not exercise every CRUD action in every section or provide pixel
+  visual regression and human assistive-technology evidence.
 - **Current mitigation:** Live-backend `scripts/run-browser-checks.ps1`,
   deterministic schema cleanup, Testing Library coverage, API/service tests,
-  and manual browser verification for UI changes.
-- **Revisit when:** PostgreSQL browser parity, visual regression, or broader
+  hosted Accessibility and Responsive jobs, and the manual protocols in
+  `docs/accessibility-verification.md` and `docs/responsive-verification.md`.
+- **Revisit when:** Per-section workflow depth, visual regression, or broader
   release confidence is required.
 
 ### LIM-021 — Accessibility automation is partial
 
-- **Status:** Known gap
-- **Impact:** JSX accessibility linting is limited and some rules are warnings;
-  there is no automated browser audit or assistive-technology test.
-- **Current mitigation:** Review checklist, semantic components, interaction
-  tests, and manual keyboard/focus checks.
-- **Revisit when:** Browser testing is added or the application is prepared for
-  broader use.
+- **Status:** Resolved for the current application workflow on 2026-07-14
+- **Resolution:** The live PostgreSQL browser suite now runs axe WCAG A/AA
+  checks across account access, onboarding, every financial section, and the
+  removal dialog. CI gates the final scan job on this focused audit. Account
+  tabs and modal focus behavior also have keyboard interaction coverage.
+- **Manual boundary:** `docs/accessibility-verification.md` defines the required
+  screen-reader and keyboard protocol. Automated scans do not prove usable
+  announcements, reading order, or workflow comprehension; record a human run
+  when accessibility-critical interaction changes.
 
 ### LIM-022 — Snyk CLI version drift
 

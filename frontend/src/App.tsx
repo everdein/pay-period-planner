@@ -1,10 +1,6 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
-import {
-  accountSessionService,
-  type ActiveAccountSession,
-  clearAccountSession,
-} from './api/auth';
+import { accountSessionService, type ActiveAccountSession, clearAccountSession } from './api/auth';
 import { ApiError, setUnauthorizedHandler } from './api/client';
 import { useAppDispatch } from './app/hooks';
 import FinancialsPage from './features/financials/FinancialsPage';
@@ -24,6 +20,8 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const signInTabRef = useRef<HTMLButtonElement>(null);
+  const signUpTabRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
@@ -130,6 +128,26 @@ export default function App() {
     setConfirmPassword('');
   }
 
+  function handleAuthTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, mode: AuthMode) {
+    let nextMode: AuthMode | null = null;
+
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      nextMode = mode === 'sign-in' ? 'sign-up' : 'sign-in';
+    } else if (event.key === 'Home') {
+      nextMode = 'sign-in';
+    } else if (event.key === 'End') {
+      nextMode = 'sign-up';
+    }
+
+    if (!nextMode) {
+      return;
+    }
+
+    event.preventDefault();
+    switchAuthMode(nextMode);
+    (nextMode === 'sign-in' ? signInTabRef : signUpTabRef).current?.focus();
+  }
+
   if (recoveringSession) {
     return (
       <main className="expenses-shell auth-shell">
@@ -152,89 +170,105 @@ export default function App() {
           <h1>Financials</h1>
           <div className="auth-tabs" role="tablist" aria-label="Account access">
             <button
+              aria-controls="account-panel"
               aria-selected={!signingUp}
               className={!signingUp ? 'active' : ''}
+              id="sign-in-tab"
               onClick={() => switchAuthMode('sign-in')}
+              onKeyDown={(event) => handleAuthTabKeyDown(event, 'sign-in')}
+              ref={signInTabRef}
               role="tab"
+              tabIndex={signingUp ? -1 : 0}
               type="button"
             >
               Sign In
             </button>
             <button
+              aria-controls="account-panel"
               aria-selected={signingUp}
               className={signingUp ? 'active' : ''}
+              id="sign-up-tab"
               onClick={() => switchAuthMode('sign-up')}
+              onKeyDown={(event) => handleAuthTabKeyDown(event, 'sign-up')}
+              ref={signUpTabRef}
               role="tab"
+              tabIndex={signingUp ? 0 : -1}
               type="button"
             >
               Create Account
             </button>
           </div>
-          <h2 id="account-heading">{signingUp ? 'Create your account' : 'Welcome back'}</h2>
-          <form className="auth-form" onSubmit={(event) => void submitAccount(event)}>
-            {signingUp && (
+          <div
+            aria-labelledby={signingUp ? 'sign-up-tab' : 'sign-in-tab'}
+            id="account-panel"
+            role="tabpanel"
+          >
+            <h2 id="account-heading">{signingUp ? 'Create your account' : 'Welcome back'}</h2>
+            <form className="auth-form" onSubmit={(event) => void submitAccount(event)}>
+              {signingUp && (
+                <label>
+                  Display name
+                  <input
+                    autoComplete="name"
+                    disabled={submitting}
+                    maxLength={120}
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    required
+                    type="text"
+                    value={displayName}
+                  />
+                </label>
+              )}
               <label>
-                Display name
+                Email
                 <input
-                  autoComplete="name"
+                  autoComplete="email"
                   disabled={submitting}
-                  maxLength={120}
-                  onChange={(event) => setDisplayName(event.target.value)}
+                  maxLength={320}
+                  onChange={(event) => setEmail(event.target.value)}
                   required
-                  type="text"
-                  value={displayName}
+                  type="email"
+                  value={email}
                 />
               </label>
-            )}
-            <label>
-              Email
-              <input
-                autoComplete="email"
-                disabled={submitting}
-                maxLength={320}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                type="email"
-                value={email}
-              />
-            </label>
-            <label>
-              Password
-              <input
-                autoComplete={signingUp ? 'new-password' : 'current-password'}
-                disabled={submitting}
-                maxLength={72}
-                minLength={signingUp ? 12 : undefined}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                type="password"
-                value={password}
-              />
-            </label>
-            {signingUp && (
               <label>
-                Confirm password
+                Password
                 <input
-                  autoComplete="new-password"
+                  autoComplete={signingUp ? 'new-password' : 'current-password'}
                   disabled={submitting}
                   maxLength={72}
-                  minLength={12}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  minLength={signingUp ? 12 : undefined}
+                  onChange={(event) => setPassword(event.target.value)}
                   required
                   type="password"
-                  value={confirmPassword}
+                  value={password}
                 />
               </label>
-            )}
-            {authError && (
-              <p className="auth-error" role="alert">
-                {authError}
-              </p>
-            )}
-            <button disabled={submitting} type="submit">
-              {submitting ? 'Please wait...' : signingUp ? 'Create Account' : 'Sign In'}
-            </button>
-          </form>
+              {signingUp && (
+                <label>
+                  Confirm password
+                  <input
+                    autoComplete="new-password"
+                    disabled={submitting}
+                    maxLength={72}
+                    minLength={12}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    required
+                    type="password"
+                    value={confirmPassword}
+                  />
+                </label>
+              )}
+              {authError && (
+                <p className="auth-error" role="alert">
+                  {authError}
+                </p>
+              )}
+              <button disabled={submitting} type="submit">
+                {submitting ? 'Please wait...' : signingUp ? 'Create Account' : 'Sign In'}
+              </button>
+            </form>
+          </div>
         </section>
       </main>
     );

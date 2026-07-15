@@ -9,6 +9,7 @@ import type {
   RecurringPaydayFormState,
 } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
+import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function IncomeCalendarTab({
   cancelIncomeEventEdit,
@@ -54,7 +55,7 @@ export function IncomeCalendarTab({
         </div>
       </section>
       <section className="expenses-layout">
-        <div className="table-wrap">
+        <ScrollableTableRegion label="Income calendar">
           <table className="calendar-table">
             <colgroup>
               <col className="date-column" />
@@ -112,7 +113,7 @@ export function IncomeCalendarTab({
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollableTableRegion>
 
         <div className="side-forms">
           <form className="bill-form" onSubmit={submitRecurringPaydays}>
