@@ -40,6 +40,9 @@ try {
             -IncludePostgres
     }
     Invoke-Step "Spell check" { npm run spell }
+    Invoke-Step "Public corpus validation" {
+        & (Join-Path $PSScriptRoot "check-public-corpus.ps1")
+    }
     Invoke-Step "Frontend dependency compatibility" {
         npm --prefix frontend run check:dependency-compat
     }

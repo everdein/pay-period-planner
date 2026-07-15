@@ -153,7 +153,7 @@ export default function App() {
       <main className="expenses-shell auth-shell">
         <section className="auth-card auth-status" aria-live="polite">
           <p className="eyebrow">Household planning</p>
-          <h1>Financials</h1>
+          <h1>Pay Period Planner</h1>
           <p>Checking your session...</p>
         </section>
       </main>
@@ -167,7 +167,7 @@ export default function App() {
       <main className="expenses-shell auth-shell">
         <section className="auth-card" aria-labelledby="account-heading">
           <p className="eyebrow">Household planning</p>
-          <h1>Financials</h1>
+          <h1>Pay Period Planner</h1>
           <div className="auth-tabs" role="tablist" aria-label="Account access">
             <button
               aria-controls="account-panel"

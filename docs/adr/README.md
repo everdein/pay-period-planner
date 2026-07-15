@@ -17,8 +17,8 @@ as the codebase evolves.
 | [0005](0005-enforce-domain-invariants-with-ensure-functions.md)        | Superseded           | Enforce domain invariants with ensure functions  |
 | [0006](0006-add-backend-production-readiness-guardrails.md)            | Accepted             | Add backend production readiness guardrails      |
 | [0007](0007-introduce-postgresql-for-financial-persistence.md)         | Accepted             | Introduce PostgreSQL for financial persistence   |
-| [0008](0008-add-snapshot-version-concurrency-control.md)               | Accepted             | Add snapshot version concurrency control         |
-| [0009](0009-keep-v1-normalized-tables-inactive.md)                     | Accepted             | Keep V1 normalized tables inactive               |
+| [0008](0008-add-snapshot-version-concurrency-control.md)               | Partially superseded | Add snapshot version concurrency control         |
+| [0009](0009-keep-v1-normalized-tables-inactive.md)                     | Partially superseded | Keep V1 normalized tables inactive               |
 | [0010](0010-add-v3-relational-financial-record-path.md)                | Accepted             | Add V3 relational financial record path          |
 | [0011](0011-add-granular-postgresql-record-persistence.md)             | Partially superseded | Add granular PostgreSQL record persistence       |
 | [0012](0012-add-granular-financial-record-apis.md)                     | Superseded           | Add granular financial record APIs               |
@@ -37,6 +37,9 @@ as the codebase evolves.
 | [0025](0025-use-one-canonical-frontend-financial-draft.md)             | Accepted             | Use one canonical frontend financial draft       |
 | [0026](0026-use-versioned-record-ids-for-projection-roles.md)          | Accepted             | Use versioned record IDs for projection roles    |
 | [0027](0027-store-pay-cadence-and-planning-time-zone.md)               | Accepted             | Store cadence and planning time zone             |
+
+The table summarizes each record. Open the ADR's `Status` section for the
+specific successor and which part of the original decision remains in force.
 
 ## Template
 

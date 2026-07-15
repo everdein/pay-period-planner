@@ -1,20 +1,19 @@
-# Backend (Spring Boot)
+# Pay Period Planner API
 
-Modern Spring Boot backend API used by the frontend reference application.
+Spring Boot API for the Pay Period Planner household cash-flow workspace. It
+owns account sessions, workspace authorization, the versioned financial
+snapshot contract, planning calculations, PostgreSQL persistence, and safe
+operational boundaries.
 
-This backend is intentionally designed as a lightweight instructional service
-focused on:
+The backend demonstrates:
 
-- frontend/backend communication
-- REST API design
-- layered architecture
-- DTO usage
-- workspace-scoped PostgreSQL persistence
-- local development workflows
-- backend tooling and CI integration
-
-The goal is not production complexity. The goal is to establish clean backend
-engineering patterns and workflows that can scale over time.
+- thin HTTP controllers and explicit request/response mapping
+- framework-neutral workspace query, command, normalization, and calculation
+  services
+- PostgreSQL-backed account, membership, session, snapshot, and audit data
+- optimistic concurrency around the complete financial workspace aggregate
+- additive Flyway migrations plus explicit legacy migration and recovery tools
+- focused unit, controller, security, and isolated PostgreSQL integration tests
 
 ---
 

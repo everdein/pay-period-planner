@@ -28,7 +28,8 @@ export type AccountSignUpRequest = AccountSignInRequest & {
   displayName: string;
 };
 
-const WORKSPACE_STORAGE_KEY = 'end-to-end-app.auth.workspaceId';
+const WORKSPACE_STORAGE_KEY = 'pay-period-planner.auth.workspaceId';
+const LEGACY_WORKSPACE_STORAGE_KEY = 'end-to-end-app.auth.workspaceId';
 
 export const accountSessionService = {
   recover: async () =>
@@ -63,7 +64,9 @@ export const accountSessionService = {
 };
 
 export function clearAccountSession() {
-  storage()?.removeItem(WORKSPACE_STORAGE_KEY);
+  const browserStorage = storage();
+  browserStorage?.removeItem(WORKSPACE_STORAGE_KEY);
+  browserStorage?.removeItem(LEGACY_WORKSPACE_STORAGE_KEY);
   clearApiSessionContext();
 }
 
@@ -83,13 +86,24 @@ function activateSession(account: AccountSession): ActiveAccountSession {
 }
 
 function storedWorkspaceId() {
-  const value = storage()?.getItem(WORKSPACE_STORAGE_KEY);
+  const browserStorage = storage();
+  const currentValue = browserStorage?.getItem(WORKSPACE_STORAGE_KEY);
+  const value = currentValue ?? browserStorage?.getItem(LEGACY_WORKSPACE_STORAGE_KEY);
   if (!value) {
     return null;
   }
 
   const workspaceId = Number(value);
-  return Number.isSafeInteger(workspaceId) && workspaceId > 0 ? workspaceId : null;
+  if (!Number.isSafeInteger(workspaceId) || workspaceId <= 0) {
+    return null;
+  }
+
+  if (!currentValue) {
+    browserStorage?.setItem(WORKSPACE_STORAGE_KEY, value);
+    browserStorage?.removeItem(LEGACY_WORKSPACE_STORAGE_KEY);
+  }
+
+  return workspaceId;
 }
 
 function persistWorkspaceId(workspaceId: number) {

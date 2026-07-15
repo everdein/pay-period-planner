@@ -12,26 +12,29 @@ This runs:
 
 1. Environment checks
 2. Spell checking
-3. Frontend dependency compatibility checking
-4. Frontend TypeScript checking
-5. Frontend linting
-6. Frontend tests with coverage thresholds
-7. Frontend production build
-8. Backend formatting and POM ordering checks
-9. Backend clean build, tests, JaCoCo coverage, and packaging
-10. Required isolated PostgreSQL integration tests
+3. Public portfolio corpus validation
+4. Frontend dependency compatibility checking
+5. Frontend TypeScript checking
+6. Frontend linting
+7. Frontend tests with coverage thresholds
+8. Frontend production build
+9. Backend formatting and POM ordering checks
+10. Backend clean build, tests, JaCoCo coverage, and packaging
+11. Required isolated PostgreSQL integration tests
 
 Use targeted commands while iterating, then run the aggregate gate before
 declaring implementation work complete. Report checks as passed, failed, or
 skipped; never silently omit a relevant row. Set `DATABASE_USERNAME` and
 `DATABASE_PASSWORD` for the dedicated local application role before running the
-gate.
+gate. The latest portfolio-facing results and their limitations are recorded in
+`docs/engineering-evidence.md`; this matrix remains the source of truth for how
+to reproduce and qualify them.
 
 ## Change-to-Check Matrix
 
 | Change surface                  | Targeted iteration checks                              | Completion checks                                         | Additional evidence                                                      |
 | ------------------------------- | ------------------------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Markdown/docs                   | `npm run spell`                                        | Spell check plus referenced paths/commands                | State whether runtime claims were executed or statically verified        |
+| Markdown/docs                   | `npm run spell`; corpus validator for approved files   | Spell check plus referenced paths/commands                | State whether runtime claims were executed or statically verified        |
 | Repository skill                | YAML metadata and linked-reference validation          | `npm run spell`, `git diff --check`                       | Confirm UI metadata names the skill                                      |
 | Frontend helper/calculation     | Relevant Vitest file                                   | Full local verification                                   | Boundary/date/financial cases and coverage                               |
 | React component/workflow        | Relevant Testing Library tests, typecheck, lint        | Full local verification                                   | Keyboard, labels, focus, error/empty/loading states                      |
@@ -226,6 +229,20 @@ Vite proxy behavior, save/load interaction paths, or the Playwright harness. It
 does not replace backend API, unit/service, PostgreSQL integration, or full
 local verification.
 
+### Portfolio visual evidence
+
+```powershell
+.\scripts\capture-portfolio-evidence.ps1
+```
+
+This is a publication workflow, not a release gate. It uses a dedicated
+Playwright configuration and ports, creates and drops an isolated PostgreSQL
+schema, and deliberately overwrites the three committed PNG files under
+`docs/images/portfolio`. The capture spec must load only the committed synthetic
+example and a synthetic `example.test` account. Review all generated images
+before publication; never point this workflow at personal JSON or an existing
+workspace.
+
 ### Security
 
 ```powershell
@@ -271,6 +288,7 @@ npm run spell
 git diff --check
 git status --short
 .\scripts\write-coverage-summary.ps1
+.\scripts\check-public-corpus.ps1
 .\scripts\check-documentation-drift.ps1
 .\scripts\triage-dependency-updates.ps1
 .\scripts\generate-engineering-status.ps1
@@ -290,9 +308,11 @@ against the source map and executable sources before posting or changing docs.
 | `inspect-postgres.ps1`                        | None                                                               | Explicit read-only transactions                      | Local database credentials                         |
 | `export-financial-snapshot.ps1`               | Writes the requested export file outside the repository by default | Creates and revokes a temporary account session      | Account credential and selected workspace          |
 | `restore-financial-snapshot.ps1`              | None                                                               | Replaces the saved snapshot; creates/revokes session | Account credential and selected workspace          |
-| `run-browser-checks.ps1`                      | Playwright reports/traces in ignored paths                         | None                                                 | May install browser binaries with flag             |
+| `run-browser-checks.ps1`                      | Playwright reports/traces in ignored paths                         | Creates and drops an isolated test schema            | May install browser binaries with flag             |
+| `capture-portfolio-evidence.ps1`              | Overwrites committed synthetic PNG evidence                        | Creates and drops an isolated capture schema         | May install browser binaries with flag             |
 | `run-security-checks.ps1`                     | Tool caches/reporting side effects                                 | None                                                 | Network and Snyk token                             |
 | `write-coverage-summary.ps1`                  | Optional GitHub job summary output                                 | None                                                 | None                                               |
+| `check-public-corpus.ps1`                     | None                                                               | None                                                 | None                                               |
 | `check-documentation-drift.ps1`               | Optional GitHub job summary output                                 | None                                                 | None                                               |
 | `triage-dependency-updates.ps1`               | Optional GitHub job summary output                                 | None                                                 | None                                               |
 | `generate-engineering-status.ps1`             | Optional GitHub job summary output                                 | None                                                 | None                                               |
@@ -312,7 +332,7 @@ complete. Explain why they were required and what target they used.
 | ---------------------- | ------------------------------------ | ------------------------------------------------------------------------- |
 | Code Coverage          | Frontend test with `--coverage`      | Artifact upload                                                           |
 | Code Quality           | Dependency compatibility plus lint   | Clean Linux install and runner behavior                                   |
-| Spell Check            | Root spell command                   | Clean checkout/install                                                    |
+| Spell Check            | Root spell plus corpus validation    | Clean checkout/install and exact approved-file resolution                 |
 | Type Check             | Frontend typecheck                   | Clean checkout/install                                                    |
 | Build & Test Backend   | Formatting plus Maven `clean verify` | Linux/JDK action/cache                                                    |
 | PostgreSQL Integration | Maven `postgres-integration` profile | Ephemeral PostgreSQL service container and Linux/JDK action/cache         |

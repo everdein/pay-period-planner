@@ -26,7 +26,8 @@ description: Audit end-to-end-app documentation against executable repository be
    source.
 7. Update documentation only when requested. Preserve historical ADR decisions;
    supersede them with a new ADR rather than rewriting history.
-8. Run `npm run spell` and validate referenced commands/paths after edits.
+8. Run `npm run spell`, run `scripts/check-public-corpus.ps1` when approved
+   public material changes, and validate referenced commands/paths after edits.
    Report claims that remain runtime-, credential-, database-, or hosted-only.
 
 Never infer that a command works because it appears in another document. Never

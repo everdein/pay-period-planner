@@ -30,7 +30,7 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
         <main className="error-boundary-shell">
           <section className="error-boundary-card" aria-labelledby="error-heading" role="alert">
             <p className="error-boundary-eyebrow">Application error</p>
-            <h1 id="error-heading">Financials could not continue</h1>
+            <h1 id="error-heading">Pay Period Planner could not continue</h1>
             <p>
               Reload the application and try again. If the problem continues, share the reference
               below without sharing financial data or credentials.

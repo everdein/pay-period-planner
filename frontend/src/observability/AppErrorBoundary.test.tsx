@@ -21,7 +21,7 @@ describe('AppErrorBoundary', () => {
       </AppErrorBoundary>
     );
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Financials could not continue');
+    expect(screen.getByRole('alert')).toHaveTextContent('Pay Period Planner could not continue');
     expect(screen.getByText(/Reference:/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reload Application' })).toBeInTheDocument();
 

@@ -6,7 +6,8 @@ import { defineConfig, devices } from '@playwright/test';
 const frontendDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(frontendDir, '..');
 const backendDir = path.join(repoRoot, 'backend');
-const backendPort = 18080;
+const backendPort = Number(process.env.BROWSER_TEST_BACKEND_PORT ?? 18080);
+const frontendPort = Number(process.env.BROWSER_TEST_FRONTEND_PORT ?? 3000);
 const backendTarget = `http://127.0.0.1:${backendPort}`;
 const browserTestSchema = process.env.BROWSER_TEST_SCHEMA ?? `financials_browser_${process.pid}`;
 const browserDatabaseUrl =
@@ -34,7 +35,7 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
   use: {
-    baseURL: 'http://127.0.0.1:3000',
+    baseURL: `http://127.0.0.1:${frontendPort}`,
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
   },
@@ -57,7 +58,7 @@ export default defineConfig({
       url: `${backendTarget}/actuator/health`,
     },
     {
-      command: 'npm run dev -- --host 127.0.0.1',
+      command: `npm run dev -- --host 127.0.0.1 --port ${frontendPort}`,
       cwd: frontendDir,
       env: {
         VITE_BACKEND_TARGET: backendTarget,
@@ -66,7 +67,7 @@ export default defineConfig({
       stderr: 'pipe',
       stdout: 'pipe',
       timeout: 120_000,
-      url: 'http://127.0.0.1:3000',
+      url: `http://127.0.0.1:${frontendPort}`,
     },
   ],
 });
