@@ -6,6 +6,7 @@ import com.example.backend.domain.financials.DebtAccount;
 import com.example.backend.domain.financials.ExpenseBill;
 import com.example.backend.domain.financials.FinancialAuditEvent;
 import com.example.backend.domain.financials.FinancialProjectionSummary;
+import com.example.backend.domain.financials.FinancialSnapshot;
 import com.example.backend.domain.financials.ImportantDate;
 import com.example.backend.domain.financials.IncomeEvent;
 import com.example.backend.domain.financials.IncomeSummaryItem;
@@ -50,13 +51,15 @@ public class WorkspaceSnapshotMigrationService implements WorkspaceSnapshotMigra
   private final WorkspaceFinancialSnapshotStore snapshotStore;
   private final ObjectMapper objectMapper;
   private final Clock clock;
+  private final FinancialSnapshotNormalizer normalizer;
 
   @Autowired
   public WorkspaceSnapshotMigrationService(
       WorkspaceSnapshotMigrationRepository repository,
       WorkspaceFinancialSnapshotStore snapshotStore,
-      ObjectMapper objectMapper) {
-    this(repository, snapshotStore, objectMapper, Clock.systemUTC());
+      ObjectMapper objectMapper,
+      FinancialSnapshotNormalizer normalizer) {
+    this(repository, snapshotStore, objectMapper, Clock.systemUTC(), normalizer);
   }
 
   WorkspaceSnapshotMigrationService(
@@ -64,10 +67,20 @@ public class WorkspaceSnapshotMigrationService implements WorkspaceSnapshotMigra
       WorkspaceFinancialSnapshotStore snapshotStore,
       ObjectMapper objectMapper,
       Clock clock) {
+    this(repository, snapshotStore, objectMapper, clock, new FinancialSnapshotNormalizer());
+  }
+
+  WorkspaceSnapshotMigrationService(
+      WorkspaceSnapshotMigrationRepository repository,
+      WorkspaceFinancialSnapshotStore snapshotStore,
+      ObjectMapper objectMapper,
+      Clock clock,
+      FinancialSnapshotNormalizer normalizer) {
     this.repository = repository;
     this.snapshotStore = snapshotStore;
     this.objectMapper = objectMapper;
     this.clock = clock;
+    this.normalizer = normalizer;
   }
 
   @Transactional(readOnly = true)
@@ -181,9 +194,13 @@ public class WorkspaceSnapshotMigrationService implements WorkspaceSnapshotMigra
           "The destination workspace already has an active financial snapshot");
     }
 
+    FinancialSnapshot migratedSnapshot = normalizer.normalize(source.data().toSnapshot());
+    FinancialSnapshotCounts expectedCounts =
+        FinancialSnapshotCounts.from(migratedSnapshot, source.data().auditEvents().size());
+
     long snapshotId;
     try {
-      snapshotId = snapshotStore.createInitialSnapshot(workspaceId, source.data().toSnapshot());
+      snapshotId = snapshotStore.createInitialSnapshot(workspaceId, migratedSnapshot);
     } catch (DuplicateKeyException exception) {
       throw new WorkspaceMigrationConflictException(
           "The destination workspace changed while migration was starting");
@@ -195,7 +212,7 @@ public class WorkspaceSnapshotMigrationService implements WorkspaceSnapshotMigra
     SnapshotMetadata metadata = repository.snapshotMetadata(snapshotId);
     if (!metadata.active()
         || metadata.version() != source.data().version()
-        || !metadata.counts().equals(source.counts())) {
+        || !metadata.counts().equals(expectedCounts)) {
       throw new IllegalStateException("Relational migration metadata did not match the source");
     }
 
@@ -213,7 +230,7 @@ public class WorkspaceSnapshotMigrationService implements WorkspaceSnapshotMigra
             destination.workspaceId(),
             destination.workspaceName(),
             snapshotId,
-            source.counts(),
+            expectedCounts,
             "applied",
             appliedAt,
             null));

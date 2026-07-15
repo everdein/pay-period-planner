@@ -68,6 +68,12 @@ function cashSavings(amount: number): DraftAssetCategory {
   };
 }
 
+const projectionRoles = {
+  primaryPaycheckIncomeSummaryItemId: 7,
+  rentBillId: 1,
+  rentReserveAssetAccountId: 1,
+};
+
 describe('financialsProjection', () => {
   it('uses rent savings for rent due and sets aside the next rent contribution', () => {
     const result = buildProjectionPeriod(
@@ -99,10 +105,11 @@ describe('financialsProjection', () => {
         }),
       ],
       annualWithdrawalsInPayPeriod: [],
-      cashSavings: cashSavings(1300),
+      assetCategories: [cashSavings(1300)],
       paycheckIncome: 3396.25,
       payPeriodEnd: '2026-12-29',
       payPeriodStart: '2026-12-16',
+      projectionRoles,
       sortedBills: [
         bill({
           amount: 2600,
@@ -120,14 +127,15 @@ describe('financialsProjection', () => {
     expect(projection.nextPayPeriodCashAfterBills).toBe(1997.25);
   });
 
-  it('applies next pay period cash to debt before HYSA transfers', () => {
+  it('applies next pay period cash to debt before savings transfers', () => {
     const projection = buildProjectionSummary({
       annualWithdrawals: [],
       annualWithdrawalsInPayPeriod: [],
-      cashSavings: cashSavings(1300),
+      assetCategories: [cashSavings(1300)],
       paycheckIncome: 3396.25,
       payPeriodEnd: '2026-06-25',
       payPeriodStart: '2026-06-12',
+      projectionRoles,
       sortedBills: [
         bill({
           amount: 2600,
@@ -136,7 +144,7 @@ describe('financialsProjection', () => {
           id: 1,
           inPayPeriod: false,
         }),
-        bill({ amount: 148, bill: 'T-Mobile', dueDay: 28, id: 2, inPayPeriod: false }),
+        bill({ amount: 148, bill: 'Mobile Service', dueDay: 28, id: 2, inPayPeriod: false }),
       ],
       totalDebt: 2130.03,
     });
@@ -144,17 +152,18 @@ describe('financialsProjection', () => {
     expect(projection.nextPayPeriodCashAfterBills).toBe(1948.25);
     expect(projection.nextPayPeriodDebtPayment).toBe(1948.25);
     expect(projection.nextPayPeriodDebtRemaining).toBeCloseTo(181.78);
-    expect(projection.nextPayPeriodHysaTransfer).toBe(0);
+    expect(projection.nextPayPeriodSavingsTransfer).toBe(0);
   });
 
-  it('shows possible HYSA transfer only after debt is covered', () => {
+  it('shows a possible savings transfer only after debt is covered', () => {
     const projection = buildProjectionSummary({
       annualWithdrawals: [],
       annualWithdrawalsInPayPeriod: [],
-      cashSavings: cashSavings(1300),
+      assetCategories: [cashSavings(1300)],
       paycheckIncome: 3396.25,
       payPeriodEnd: '2026-06-25',
       payPeriodStart: '2026-06-12',
+      projectionRoles,
       sortedBills: [
         bill({
           amount: 2600,
@@ -169,7 +178,7 @@ describe('financialsProjection', () => {
 
     expect(projection.nextPayPeriodDebtPayment).toBe(500);
     expect(projection.nextPayPeriodDebtRemaining).toBe(0);
-    expect(projection.nextPayPeriodHysaTransfer).toBe(1596.25);
+    expect(projection.nextPayPeriodSavingsTransfer).toBe(1596.25);
   });
 
   it('rolls the next pay period across month and year boundaries', () => {
@@ -201,7 +210,9 @@ describe('financialsProjection', () => {
           interval: 'Bi-Weekly',
         },
       ],
-      4890.92
+      4890.92,
+      7,
+      'BIWEEKLY'
     );
 
     expect(items).toContainEqual({
@@ -211,7 +222,7 @@ describe('financialsProjection', () => {
       interval: 'Annual',
     });
     expect(items).toContainEqual({
-      amount: 6792.5,
+      amount: 7358.541666666667,
       category: 'Net Income',
       id: -100004,
       interval: 'Month',
@@ -225,11 +236,11 @@ describe('financialsProjection', () => {
     expect(
       items.find((item) => item.category === 'Disposable Income' && item.interval === 'Month')
         ?.amount
-    ).toBeCloseTo(1901.58);
+    ).toBeCloseTo(2467.62);
     expect(
       items.find((item) => item.category === 'Disposable Income' && item.interval === 'Weekly')
         ?.amount
-    ).toBeCloseTo(475.4);
+    ).toBeCloseTo(569.45);
   });
 
   it('preserves source income summary rows when building a save payload', () => {
@@ -267,7 +278,9 @@ describe('financialsProjection', () => {
       {
         firstPayDate: '2026-01-09',
         label: 'Paycheck',
+        payCadence: 'BIWEEKLY',
         replaceExistingYear: true,
+        secondPayDate: '',
         startingCheckNumber: '1',
         type: 'Paycheck',
         year: '2026',
@@ -296,6 +309,71 @@ describe('financialsProjection', () => {
       date: '2026-12-25',
       id: -26,
     });
+  });
+
+  it.each([
+    ['WEEKLY', 52, 52_000],
+    ['BIWEEKLY', 26, 26_000],
+    ['SEMIMONTHLY', 24, 24_000],
+    ['MONTHLY', 12, 12_000],
+  ] as const)('annualizes %s primary income across %i pay periods', (payCadence, _, annual) => {
+    const items = buildDerivedIncomeSummaryItems(
+      [{ amount: 1000, category: 'Primary', id: 1, interval: 'Pay period' }],
+      0,
+      1,
+      payCadence
+    );
+
+    expect(items).toContainEqual({
+      amount: annual,
+      category: 'Primary',
+      id: -100003,
+      interval: 'Annual',
+    });
+  });
+
+  it('generates twice-monthly paydays with month-end clamping', () => {
+    const paydays = generateRecurringPaydays(
+      {
+        firstPayDate: '2026-01-15',
+        label: 'Paycheck',
+        payCadence: 'SEMIMONTHLY',
+        replaceExistingYear: true,
+        secondPayDate: '2026-01-31',
+        startingCheckNumber: '1',
+        type: 'Paycheck',
+        year: '2026',
+      },
+      -1
+    );
+
+    expect(paydays).toHaveLength(24);
+    expect(paydays[2]).toMatchObject({ date: '2026-02-15', checksInMonth: 2 });
+    expect(paydays[3]).toMatchObject({ date: '2026-02-28', checksInMonth: 2 });
+    expect(paydays.at(-1)).toMatchObject({ date: '2026-12-31', checkNumber: 24 });
+  });
+
+  it('preserves the configured calendar day for monthly paydays', () => {
+    const paydays = generateRecurringPaydays(
+      {
+        firstPayDate: '2026-01-31',
+        label: 'Paycheck',
+        payCadence: 'MONTHLY',
+        replaceExistingYear: true,
+        secondPayDate: '',
+        startingCheckNumber: '1',
+        type: 'Paycheck',
+        year: '2026',
+      },
+      -1
+    );
+
+    expect(paydays).toHaveLength(12);
+    expect(paydays.slice(0, 3).map(({ date }) => date)).toEqual([
+      '2026-01-31',
+      '2026-02-28',
+      '2026-03-31',
+    ]);
   });
 
   it('identifies numbered income events in a year without matching one-time income', () => {
@@ -339,6 +417,12 @@ describe('financialsProjection', () => {
       importantDates: [],
       payPeriodEnd: '2026-06-26',
       payPeriodStart: '2026-06-12',
+      planningSettings: { payCadence: 'BIWEEKLY', timeZone: 'UTC' },
+      projectionRoles: {
+        primaryPaycheckIncomeSummaryItemId: 8,
+        rentBillId: -1,
+        rentReserveAssetAccountId: 1,
+      },
       version: 7,
     });
 
@@ -346,7 +430,8 @@ describe('financialsProjection', () => {
       version: 7,
       payPeriodEnd: '2026-06-26',
       payPeriodStart: '2026-06-12',
-      bills: [{ amount: 25, bill: 'Internet', id: null }],
+      bills: [{ amount: 25, bill: 'Internet', id: -1 }],
+      projectionRoles: expect.objectContaining({ rentBillId: -1 }),
       incomeSummaryItems: expect.arrayContaining([
         {
           amount: 125,
@@ -391,6 +476,7 @@ describe('financialsProjection', () => {
           paid: false,
         },
       ],
+      currentDate: '2026-06-18',
       debtAccounts: [],
       importantDates: [],
       incomeEvents: [
@@ -423,6 +509,12 @@ describe('financialsProjection', () => {
       paidTotal: 0,
       payPeriodEnd: '2026-06-26',
       payPeriodStart: '2026-06-12',
+      planningSettings: { payCadence: 'BIWEEKLY', timeZone: 'UTC' },
+      projectionRoles: {
+        primaryPaycheckIncomeSummaryItemId: -100002,
+        rentBillId: -100000,
+        rentReserveAssetAccountId: -100001,
+      },
       payPeriodTotal: 0,
       totalAnnualWithdrawals: 0,
       totalDebt: 0,
@@ -432,22 +524,18 @@ describe('financialsProjection', () => {
     });
 
     expect(draft.payPeriodStart).toBe('2026-06-12');
-    expect(draft.draftBills).toContainEqual(expect.objectContaining({ bill: 'Rent', id: -100000 }));
-    expect(draft.draftAssetCategories[0]?.accounts).toContainEqual(
+    expect(draft.projectionRoles.rentBillId).toBe(-100000);
+    expect(draft.bills).toContainEqual(expect.objectContaining({ bill: 'Rent', id: -100000 }));
+    expect(draft.assetCategories[0]?.accounts).toContainEqual(
       expect.objectContaining({ account: 'Rent Reserve', id: -100001 })
     );
-    expect(draft.draftIncomeSummaryItems).toContainEqual({
+    expect(draft.incomeSummaryItems).toContainEqual({
       amount: 0,
       category: 'Net Income',
       id: -100002,
       interval: 'Bi-Weekly',
     });
-    expect(draft.incomeSummaryForm).toMatchObject({
-      amount: '0',
-      category: 'Net Income',
-      interval: 'Bi-Weekly',
-    });
-    expect(draft.draftIncomeEvents).toEqual([
+    expect(draft.incomeEvents).toEqual([
       expect.objectContaining({ checksInMonth: 2, id: 1 }),
       expect.objectContaining({ checksInMonth: 2, id: 2 }),
     ]);

@@ -8,22 +8,23 @@ import type {
   ExpenseBillSnapshotRequest,
   ExpenseSnapshot,
   ExpenseSnapshotRequest,
+  FinancialPlanningSettings,
+  FinancialProjectionRoles,
   ImportantDateSnapshotRequest,
   IncomeEventSnapshotRequest,
   IncomeSummaryItemSnapshotRequest,
+  PayCadence,
 } from '../../api/endpoints/financials';
-import {
-  isPrimaryPaycheck,
-  PRIMARY_PAYCHECK_CATEGORY,
-  PRIMARY_PAYCHECK_INTERVAL,
-} from './financialsAnchors';
 import {
   addDaysIso,
   annualDateLabel,
   annualDueDateForPeriod,
   annualInputDate,
+  dateInMonthIso,
   monthlyDueDateForPeriod,
   parseAnnualDate,
+  payCadenceLabel,
+  payPeriodsPerYear,
   todayIso,
 } from './financialsDatePolicy';
 import type {
@@ -45,31 +46,19 @@ import type {
   RecurringPaydayFormState,
 } from './financialsTypes';
 
-type BuildExpenseSnapshotInput = {
+export type FinancialsDraft = {
   annualWithdrawals: DraftAnnualWithdrawal[];
   assetCategories: DraftAssetCategory[];
+  bills: DraftBill[];
   debtAccounts: DraftDebtAccount[];
   incomeEvents: DraftIncomeEvent[];
   incomeSummaryItems: DraftIncomeSummaryItem[];
   importantDates: DraftImportantDate[];
   payPeriodEnd: string;
   payPeriodStart: string;
-  bills: DraftBill[];
+  planningSettings: FinancialPlanningSettings;
+  projectionRoles: FinancialProjectionRoles;
   version: number;
-};
-
-export type FinancialsDraftState = {
-  annualWithdrawalForm: AnnualWithdrawalFormState;
-  draftAnnualWithdrawals: DraftAnnualWithdrawal[];
-  draftAssetCategories: DraftAssetCategory[];
-  draftBills: DraftBill[];
-  draftDebtAccounts: DraftDebtAccount[];
-  draftImportantDates: DraftImportantDate[];
-  draftIncomeEvents: DraftIncomeEvent[];
-  draftIncomeSummaryItems: DraftIncomeSummaryItem[];
-  incomeSummaryForm: IncomeSummaryFormState;
-  payPeriodEnd: string;
-  payPeriodStart: string;
 };
 
 export const emptyForm: BillFormState = {
@@ -97,11 +86,16 @@ export const emptyIncomeEventForm: IncomeEventFormState = {
   type: 'Paycheck',
   checkNumber: '',
 };
-export function defaultRecurringPaydayForm(today = todayIso()): RecurringPaydayFormState {
+export function defaultRecurringPaydayForm(
+  today = todayIso(),
+  payCadence: PayCadence = 'BIWEEKLY'
+): RecurringPaydayFormState {
   return {
     firstPayDate: '',
     label: 'Paycheck',
+    payCadence,
     replaceExistingYear: true,
+    secondPayDate: '',
     startingCheckNumber: '1',
     type: 'Paycheck',
     year: today.slice(0, 4),
@@ -118,32 +112,28 @@ export const emptyImportantDateForm: ImportantDateFormState = {
   type: 'Holiday',
 };
 
-export function createFinancialsDraft(snapshot: ExpenseSnapshot): FinancialsDraftState {
-  const draftIncomeSummaryItems = (snapshot.incomeSummaryItems ?? []).map((item) => ({ ...item }));
-  const primaryPaycheck = draftIncomeSummaryItems.find(isPrimaryPaycheck);
-
+export function createFinancialsDraft(snapshot: ExpenseSnapshot): FinancialsDraft {
   return {
-    annualWithdrawalForm: emptyAnnualWithdrawalForm,
-    draftAnnualWithdrawals: (snapshot.annualWithdrawals ?? []).map((withdrawal) =>
+    annualWithdrawals: (snapshot.annualWithdrawals ?? []).map((withdrawal) =>
       toDraftAnnualWithdrawal(withdrawal, snapshot.payPeriodStart, snapshot.payPeriodEnd)
     ),
-    draftAssetCategories: snapshot.assetCategories.map(toDraftAssetCategory),
-    draftBills: snapshot.bills.map((bill) =>
+    assetCategories: snapshot.assetCategories.map(toDraftAssetCategory),
+    bills: snapshot.bills.map((bill) =>
       toDraftBill(bill, snapshot.payPeriodStart, snapshot.payPeriodEnd)
     ),
-    draftDebtAccounts: (snapshot.debtAccounts ?? []).map((account) => ({ ...account })),
-    draftImportantDates: (snapshot.importantDates ?? []).map((importantDate) => ({
+    debtAccounts: (snapshot.debtAccounts ?? []).map((account) => ({ ...account })),
+    importantDates: (snapshot.importantDates ?? []).map((importantDate) => ({
       ...importantDate,
     })),
-    draftIncomeEvents: withIncomeMonthlyCounts(
+    incomeEvents: withIncomeMonthlyCounts(
       (snapshot.incomeEvents ?? []).map((event) => ({ ...event }))
     ),
-    draftIncomeSummaryItems,
-    incomeSummaryForm: primaryPaycheck
-      ? toIncomeSummaryForm(primaryPaycheck)
-      : emptyIncomeSummaryForm,
+    incomeSummaryItems: (snapshot.incomeSummaryItems ?? []).map((item) => ({ ...item })),
     payPeriodEnd: snapshot.payPeriodEnd,
     payPeriodStart: snapshot.payPeriodStart,
+    planningSettings: { ...snapshot.planningSettings },
+    projectionRoles: { ...snapshot.projectionRoles },
+    version: snapshot.version,
   };
 }
 
@@ -157,12 +147,16 @@ export function buildExpenseSnapshotRequest({
   importantDates,
   payPeriodEnd,
   payPeriodStart,
+  planningSettings,
+  projectionRoles,
   version,
-}: BuildExpenseSnapshotInput): ExpenseSnapshotRequest {
+}: FinancialsDraft): ExpenseSnapshotRequest {
   return {
     version,
     payPeriodStart,
     payPeriodEnd,
+    planningSettings,
+    projectionRoles,
     bills: bills.map(toSnapshotBill),
     annualWithdrawals: annualWithdrawals.map(toSnapshotAnnualWithdrawal),
     assetCategories: assetCategories.map(toSnapshotCategory),
@@ -227,7 +221,7 @@ export function formToDraftBill(
 
 export function toSnapshotBill(bill: DraftBill): ExpenseBillSnapshotRequest {
   return {
-    id: bill.id > 0 ? bill.id : null,
+    id: bill.id,
     bill: bill.bill,
     dueDay: bill.dueDay,
     amount: bill.amount,
@@ -345,7 +339,7 @@ export function toSnapshotCategory(category: DraftAssetCategory): AssetCategoryS
     key: category.key,
     label: category.label,
     accounts: category.accounts.map((account) => ({
-      id: account.id > 0 ? account.id : null,
+      id: account.id,
       account: account.account,
       company: account.company,
       amount: account.amount,
@@ -403,7 +397,7 @@ export function toSnapshotIncomeSummaryItem(
   item: DraftIncomeSummaryItem
 ): IncomeSummaryItemSnapshotRequest {
   return {
-    id: item.id > 0 ? item.id : null,
+    id: item.id,
     category: item.category,
     interval: item.interval,
     amount: item.amount,
@@ -418,49 +412,53 @@ export function toSnapshotIncomeSummaryItems(
 
 export function buildDerivedIncomeSummaryItems(
   items: DraftIncomeSummaryItem[],
-  totalMonthlyWithdrawals: number
+  totalMonthlyWithdrawals: number,
+  primaryPaycheckId: number,
+  payCadence: PayCadence = 'BIWEEKLY'
 ) {
-  const primaryPaycheck = items.find(
-    (item) =>
-      item.category === PRIMARY_PAYCHECK_CATEGORY && item.interval === PRIMARY_PAYCHECK_INTERVAL
-  );
-  const biWeeklyNetIncome = primaryPaycheck?.amount ?? 0;
-  const monthlyNetIncome = biWeeklyNetIncome * 2;
-  const annualNetIncome = biWeeklyNetIncome * 26;
-  const monthlyDisposableIncome = monthlyNetIncome - totalMonthlyWithdrawals;
-  const biWeeklyDisposableIncome = monthlyDisposableIncome / 2;
-  const weeklyDisposableIncome = biWeeklyDisposableIncome / 2;
+  const primaryPaycheck = items.find((item) => item.id === primaryPaycheckId);
+  const primaryCategory = primaryPaycheck?.category ?? 'Primary Paycheck';
+  const primaryInterval = primaryPaycheck?.interval ?? 'Pay Period';
+  const payPeriodNetIncome = primaryPaycheck?.amount ?? 0;
+  const periodsPerYear = payPeriodsPerYear(payCadence);
+  const annualNetIncome = payPeriodNetIncome * periodsPerYear;
+  const monthlyNetIncome = annualNetIncome / 12;
+  const weeklyNetIncome = annualNetIncome / 52;
+  const annualDisposableIncome = annualNetIncome - totalMonthlyWithdrawals * 12;
+  const monthlyDisposableIncome = annualDisposableIncome / 12;
+  const payPeriodDisposableIncome = annualDisposableIncome / periodsPerYear;
+  const weeklyDisposableIncome = annualDisposableIncome / 52;
 
   return [
     {
       id: -100003,
-      category: PRIMARY_PAYCHECK_CATEGORY,
+      category: primaryCategory,
       interval: 'Annual',
       amount: annualNetIncome,
     },
     {
       id: -100004,
-      category: PRIMARY_PAYCHECK_CATEGORY,
+      category: primaryCategory,
       interval: 'Month',
       amount: monthlyNetIncome,
     },
     {
       id: primaryPaycheck?.id ?? -100002,
-      category: PRIMARY_PAYCHECK_CATEGORY,
-      interval: PRIMARY_PAYCHECK_INTERVAL,
-      amount: biWeeklyNetIncome,
+      category: primaryCategory,
+      interval: primaryInterval,
+      amount: payPeriodNetIncome,
     },
     {
       id: -100005,
-      category: PRIMARY_PAYCHECK_CATEGORY,
+      category: primaryCategory,
       interval: 'Weekly',
-      amount: biWeeklyNetIncome / 2,
+      amount: weeklyNetIncome,
     },
     {
       id: -100006,
       category: 'Disposable Income',
       interval: 'Annual',
-      amount: monthlyDisposableIncome * 12,
+      amount: annualDisposableIncome,
     },
     {
       id: -100007,
@@ -471,8 +469,8 @@ export function buildDerivedIncomeSummaryItems(
     {
       id: -100008,
       category: 'Disposable Income',
-      interval: 'Bi-Weekly',
-      amount: biWeeklyDisposableIncome,
+      interval: payCadenceLabel(payCadence),
+      amount: payPeriodDisposableIncome,
     },
     {
       id: -100009,
@@ -520,44 +518,72 @@ export function generateRecurringPaydays(
   form: RecurringPaydayFormState,
   nextDraftId: number
 ): DraftIncomeEvent[] {
+  const payCadence = form.payCadence ?? 'BIWEEKLY';
   const year = Number(form.year);
   const firstPayYear = Number(form.firstPayDate.slice(0, 4));
   if (!Number.isInteger(year) || year < 1900 || firstPayYear !== year) {
+    return [];
+  }
+  if (
+    payCadence === 'SEMIMONTHLY' &&
+    (Number(form.secondPayDate.slice(0, 4)) !== year ||
+      form.secondPayDate.slice(8, 10) === form.firstPayDate.slice(8, 10))
+  ) {
     return [];
   }
 
   const label = form.label.trim() || 'Paycheck';
   const type = form.type.trim() || 'Paycheck';
   const startingCheckNumber = Math.max(1, Number(form.startingCheckNumber) || 1);
-  const lastDate = `${year}-12-31`;
-  const paydays: DraftIncomeEvent[] = [];
-  let nextDate = form.firstPayDate;
-  let nextId = nextDraftId;
-  let checkNumber = startingCheckNumber;
-
-  while (nextDate <= lastDate) {
-    paydays.push({
-      checkNumber,
+  const dates = recurringPaydayDates({ ...form, payCadence }, year);
+  return withIncomeMonthlyCounts(
+    dates.map((date, index) => ({
+      checkNumber: startingCheckNumber + index,
       checksInMonth: 0,
-      date: nextDate,
-      id: nextId,
+      date,
+      id: nextDraftId - index,
       label,
       type,
-    });
-    nextDate = addDaysIso(nextDate, 14);
-    nextId -= 1;
-    checkNumber += 1;
+    }))
+  );
+}
+
+function recurringPaydayDates(form: RecurringPaydayFormState, year: number) {
+  const lastDate = `${year}-12-31`;
+  if (form.payCadence === 'WEEKLY' || form.payCadence === 'BIWEEKLY') {
+    const intervalDays = form.payCadence === 'WEEKLY' ? 7 : 14;
+    const dates: string[] = [];
+    let nextDate = form.firstPayDate;
+    while (nextDate <= lastDate) {
+      dates.push(nextDate);
+      nextDate = addDaysIso(nextDate, intervalDays);
+    }
+    return dates;
   }
 
-  return withIncomeMonthlyCounts(paydays);
+  if (form.payCadence === 'MONTHLY') {
+    const firstMonth = Number(form.firstPayDate.slice(5, 7)) - 1;
+    const payday = Number(form.firstPayDate.slice(8, 10));
+    return Array.from({ length: 12 - firstMonth }, (_, index) =>
+      dateInMonthIso(year, firstMonth + index, payday)
+    ).filter((date) => date >= form.firstPayDate);
+  }
+
+  const firstOccurrence =
+    form.firstPayDate < form.secondPayDate ? form.firstPayDate : form.secondPayDate;
+  const paydays = [
+    Number(form.firstPayDate.slice(8, 10)),
+    Number(form.secondPayDate.slice(8, 10)),
+  ].sort((left, right) => left - right);
+  return Array.from({ length: 12 }, (_, monthIndex) =>
+    paydays.map((day) => dateInMonthIso(year, monthIndex, day))
+  )
+    .flat()
+    .filter((date, index, dates) => date >= firstOccurrence && date !== dates[index - 1]);
 }
 
 export function isNumberedIncomeEventInYear(event: DraftIncomeEvent, year: string) {
   return event.checkNumber !== null && event.date.startsWith(`${year}-`);
-}
-
-export function getTodayIso() {
-  return todayIso();
 }
 
 export function getCurrentPaycheck(events: DraftIncomeEvent[], todayIso: string) {

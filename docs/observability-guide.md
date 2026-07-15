@@ -7,7 +7,7 @@ The repository includes a vendor-neutral local observability foundation:
 - backend request IDs and completion logs
 - JSON structured backend logs under the `prod` profile
 - Spring Boot request and JVM metrics
-- snapshot save and import outcome counters
+- snapshot save and restore outcome counters
 - frontend API correlation IDs
 - an accessible frontend render-error recovery screen
 - sanitized browser error reporting to the local console
@@ -23,7 +23,8 @@ underscores, colons, or hyphens. Missing or unsafe IDs are replaced with a new
 UUID. Every backend response includes the final ID in `X-Request-ID`, and
 handled Problem Detail responses also include a `requestId` property.
 
-When an API call fails, the frontend includes the request ID in the displayed
+When an API call fails, the frontend retains status, safe problem detail, and
+request ID as separate fields and formats the structured ID in the displayed
 error. Use that value to find the matching backend completion log. Do not use a
 financial value, user name, email address, or credential as a request ID.
 
@@ -54,13 +55,13 @@ Other Actuator endpoints are denied.
 
 Useful metric names include:
 
-| Metric                        | Purpose                                                           |
-| ----------------------------- | ----------------------------------------------------------------- |
-| `http.server.requests`        | Request count, status, route, and latency                         |
-| `financials.snapshot.saves`   | Full-snapshot outcomes tagged `success`, `conflict`, or `failure` |
-| `financials.snapshot.imports` | CSV/XLSX import outcomes tagged by format and result              |
-| `jvm.memory.used`             | JVM memory use                                                    |
-| `process.uptime`              | Backend process uptime                                            |
+| Metric                         | Purpose                                                           |
+| ------------------------------ | ----------------------------------------------------------------- |
+| `http.server.requests`         | Request count, status, route, and latency                         |
+| `financials.snapshot.saves`    | Full-snapshot outcomes tagged `success`, `conflict`, or `failure` |
+| `financials.snapshot.restores` | JSON restore outcomes tagged by format and result                 |
+| `jvm.memory.used`              | JVM memory use                                                    |
+| `process.uptime`               | Backend process uptime                                            |
 
 Custom counters appear only after the corresponding operation has occurred.
 Metrics contain low-cardinality operational labels only; they never include

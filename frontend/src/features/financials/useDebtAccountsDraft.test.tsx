@@ -2,13 +2,16 @@ import { act, renderHook } from '@testing-library/react';
 import { type FormEvent } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { FinancialsDraft } from './financialsDraft';
+import {
+  createTestFinancialsDraft,
+  useCanonicalDraftTestState,
+} from './financialsDraftTestSupport';
 import type { DraftDebtAccount } from './financialsTypes';
 import { useDebtAccountsDraft } from './useDebtAccountsDraft';
 
 const preventDefault = vi.fn();
 const submitEvent = { preventDefault } as unknown as FormEvent<HTMLFormElement>;
-
-type DebtAccountsDraftHook = ReturnType<typeof useDebtAccountsDraft>;
 
 function account(overrides: Partial<DraftDebtAccount> = {}): DraftDebtAccount {
   return {
@@ -20,11 +23,13 @@ function account(overrides: Partial<DraftDebtAccount> = {}): DraftDebtAccount {
   };
 }
 
-function loadDraft(
-  result: { readonly current: DebtAccountsDraftHook },
-  draftDebtAccounts: DraftDebtAccount[]
-) {
-  act(() => result.current.loadDraft({ draftDebtAccounts }));
+function useDebtHarness(initialDraft: FinancialsDraft) {
+  const { dispatch, state } = useCanonicalDraftTestState(initialDraft);
+  return {
+    ...useDebtAccountsDraft(state.draft, dispatch, state.resetGeneration),
+    dispatch,
+    state,
+  };
 }
 
 describe('useDebtAccountsDraft', () => {
@@ -32,24 +37,22 @@ describe('useDebtAccountsDraft', () => {
     preventDefault.mockClear();
   });
 
-  it('loads, sorts, and totals debt accounts without marking the draft dirty', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useDebtAccountsDraft(onChange));
-
-    loadDraft(result, [account({ account: 'Loan', amount: 100, id: 1 }), account()]);
+  it('selects, sorts, and totals canonical debt accounts', () => {
+    const draft = createTestFinancialsDraft({
+      debtAccounts: [account({ account: 'Loan', amount: 100, id: 1 }), account()],
+    });
+    const { result } = renderHook(() => useDebtHarness(draft));
 
     expect(result.current.debtAccounts.map(({ account: name }) => name)).toEqual([
       'Credit line',
       'Loan',
     ]);
     expect(result.current.totalDebt).toBe(300);
-    expect(onChange).not.toHaveBeenCalled();
+    expect(result.current.state.revision).toBe(0);
   });
 
-  it('adds a temporary debt account and marks the aggregate draft dirty', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useDebtAccountsDraft(onChange));
-    loadDraft(result, []);
+  it('dispatches a temporary debt account', () => {
+    const { result } = renderHook(() => useDebtHarness(createTestFinancialsDraft()));
 
     act(() => result.current.updateDebtForm('account', ' Personal loan '));
     act(() => result.current.updateDebtForm('company', ' Example lender '));
@@ -67,14 +70,14 @@ describe('useDebtAccountsDraft', () => {
     ]);
     expect(result.current.editingDebtId).toBeNull();
     expect(result.current.totalDebt).toBe(75.5);
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 
   it('edits a debt account and recalculates the total', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useDebtAccountsDraft(onChange));
     const debtAccount = account();
-    loadDraft(result, [debtAccount]);
+    const { result } = renderHook(() =>
+      useDebtHarness(createTestFinancialsDraft({ debtAccounts: [debtAccount] }))
+    );
 
     act(() => result.current.startDebtEdit(debtAccount));
     act(() => result.current.updateDebtForm('amount', '125'));
@@ -84,25 +87,29 @@ describe('useDebtAccountsDraft', () => {
       expect.objectContaining({ amount: 125, id: debtAccount.id }),
     ]);
     expect(result.current.totalDebt).toBe(125);
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 
-  it('removes a debt account and clears an active editor when reloading', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useDebtAccountsDraft(onChange));
+  it('clears an active editor on reset and centrally confirms removal', () => {
     const debtAccount = account();
-    loadDraft(result, [debtAccount]);
+    const { result } = renderHook(() =>
+      useDebtHarness(createTestFinancialsDraft({ debtAccounts: [debtAccount] }))
+    );
 
     act(() => result.current.startDebtEdit(debtAccount));
-    loadDraft(result, [debtAccount]);
-
+    act(() => result.current.dispatch({ type: 'reset' }));
     expect(result.current.editingDebtId).toBeNull();
-    expect(onChange).not.toHaveBeenCalled();
 
-    act(() => result.current.removeDebt(debtAccount.id));
+    act(() =>
+      result.current.dispatch({
+        removal: { id: debtAccount.id, name: debtAccount.account, type: 'debt' },
+        type: 'request-removal',
+      })
+    );
+    act(() => result.current.dispatch({ type: 'confirm-removal' }));
 
     expect(result.current.debtAccounts).toEqual([]);
     expect(result.current.totalDebt).toBe(0);
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 });

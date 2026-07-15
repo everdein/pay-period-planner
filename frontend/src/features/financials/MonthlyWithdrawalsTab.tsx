@@ -2,7 +2,6 @@ import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
 import { EmptyTableRow } from './EmptyTableRow';
-import { isRentWithdrawal, RENT_WITHDRAWAL_NAME } from './financialsAnchors';
 import { currency, formatDate } from './financialsFormatters';
 import type { BillFormState, DraftAnnualWithdrawal, DraftBill } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
@@ -18,6 +17,7 @@ export function MonthlyWithdrawalsTab({
   payPeriodEnd,
   payPeriodStart,
   requestRemoveBill,
+  rentBillId,
   sortedBills,
   startEdit,
   submitBill,
@@ -35,6 +35,7 @@ export function MonthlyWithdrawalsTab({
   payPeriodEnd: string;
   payPeriodStart: string;
   requestRemoveBill: (bill: DraftBill) => void;
+  rentBillId: number;
   sortedBills: DraftBill[];
   startEdit: (bill: DraftBill) => void;
   submitBill: (event: FormEvent<HTMLFormElement>) => void;
@@ -142,7 +143,7 @@ export function MonthlyWithdrawalsTab({
                     <td className="actions">
                       <EditButton label={`Edit ${bill.bill}`} onClick={() => startEdit(bill)} />
                       <RemoveButton
-                        disabled={isRentWithdrawal(bill)}
+                        disabled={bill.id === rentBillId}
                         label={`Remove ${bill.bill}`}
                         onClick={() => requestRemoveBill(bill)}
                       />
@@ -206,7 +207,6 @@ export function MonthlyWithdrawalsTab({
           <label>
             Withdrawal
             <input
-              disabled={editingId !== null && form.bill === RENT_WITHDRAWAL_NAME}
               onChange={(event) => updateForm('bill', event.target.value)}
               required
               value={form.bill}
@@ -250,12 +250,6 @@ export function MonthlyWithdrawalsTab({
             />
             Paid
           </label>
-          {editingId !== null && form.bill === RENT_WITHDRAWAL_NAME && (
-            <p className="helper-text">
-              Rent is required for projections. You can edit the date, amount, account, and paid
-              status, but the name stays fixed.
-            </p>
-          )}
           <div className="form-actions">
             <button type="submit">{editingId ? 'Update Draft' : 'Add to Draft'}</button>
             {editingId && (

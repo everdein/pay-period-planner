@@ -46,9 +46,10 @@ identity and ownership phase is complete.
 - Retire `financials.local.json`, the `json` runtime profile, the JSON snapshot
   store, automatic personal-JSON seeding, and duplicate startup paths only
   after migration and recovery checks pass.
-- Keep `financials.example.json` as synthetic test/demo input. Keep JSON, CSV,
-  and XLSX export/import formats as explicit backup and migration artifacts;
-  retiring JSON persistence does not retire JSON API payloads or exports.
+- Keep `financials.example.json` as synthetic test/demo input. Retiring JSON
+  persistence does not retire JSON API payloads or exports. ADR 0018 later
+  selects the JSON export envelope as the sole application backup/restore
+  artifact and retires the tabular formats.
 - Migrate existing local data only through an explicit, backed-up workflow that
   names the destination user/workspace and verifies counts and versions without
   exposing financial values. Never silently import personal local JSON during

@@ -1,38 +1,59 @@
-import { type FormEvent, useCallback, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  isPrimaryPaycheck,
-  PRIMARY_PAYCHECK_CATEGORY,
-  PRIMARY_PAYCHECK_INTERVAL,
-} from './financialsAnchors';
+import type { PayCadence } from '../../api/endpoints/financials';
 import {
   buildDerivedIncomeSummaryItems,
   emptyIncomeSummaryForm,
-  type FinancialsDraftState,
-  formToIncomeSummaryItem,
+  type FinancialsDraft,
   toIncomeSummaryForm,
 } from './financialsDraft';
+import type { FinancialsDraftDispatch } from './financialsDraftReducer';
 import type { DraftIncomeSummaryItem, IncomeSummaryFormState } from './financialsTypes';
 
-type IncomeSummaryDraftSource = Pick<
-  FinancialsDraftState,
-  'draftIncomeSummaryItems' | 'incomeSummaryForm'
->;
+const emptyIncomeSummaryItems: DraftIncomeSummaryItem[] = [];
 
-export function useIncomeSummaryDraft(onChange: () => void, totalMonthlyWithdrawals: number) {
-  const [draftIncomeSummaryItems, setDraftIncomeSummaryItems] = useState<DraftIncomeSummaryItem[]>(
-    []
-  );
+export function useIncomeSummaryDraft(
+  draft: FinancialsDraft | null,
+  dispatch: FinancialsDraftDispatch,
+  resetGeneration: number,
+  totalMonthlyWithdrawals: number,
+  primaryPaycheckId: number,
+  payCadence: PayCadence = 'BIWEEKLY'
+) {
   const [editingIncomeSummaryItemId, setEditingIncomeSummaryItemId] = useState<number | null>(null);
   const [incomeSummaryForm, setIncomeSummaryForm] =
     useState<IncomeSummaryFormState>(emptyIncomeSummaryForm);
-  const [nextDraftIncomeSummaryItemId, setNextDraftIncomeSummaryItemId] = useState(-1);
+  const [restorePrimaryForm, setRestorePrimaryForm] = useState(false);
+  const draftIncomeSummaryItems = draft?.incomeSummaryItems ?? emptyIncomeSummaryItems;
+  const latestItems = useRef(draftIncomeSummaryItems);
+  const latestPrimaryPaycheckId = useRef(primaryPaycheckId);
+  latestItems.current = draftIncomeSummaryItems;
+  latestPrimaryPaycheckId.current = primaryPaycheckId;
 
-  const loadDraft = useCallback((draft: IncomeSummaryDraftSource) => {
-    setDraftIncomeSummaryItems(draft.draftIncomeSummaryItems);
+  useEffect(() => {
     setEditingIncomeSummaryItemId(null);
-    setIncomeSummaryForm(draft.incomeSummaryForm);
-  }, []);
+    setIncomeSummaryForm(
+      defaultIncomeSummaryForm(latestItems.current, latestPrimaryPaycheckId.current)
+    );
+    setRestorePrimaryForm(false);
+  }, [resetGeneration]);
+
+  useEffect(() => {
+    if (restorePrimaryForm) {
+      setIncomeSummaryForm(defaultIncomeSummaryForm(draftIncomeSummaryItems, primaryPaycheckId));
+      setRestorePrimaryForm(false);
+    }
+  }, [draftIncomeSummaryItems, primaryPaycheckId, restorePrimaryForm]);
+
+  useEffect(() => {
+    if (
+      editingIncomeSummaryItemId !== null &&
+      !draftIncomeSummaryItems.some(({ id }) => id === editingIncomeSummaryItemId)
+    ) {
+      setEditingIncomeSummaryItemId(null);
+      setIncomeSummaryForm(defaultIncomeSummaryForm(draftIncomeSummaryItems, primaryPaycheckId));
+    }
+  }, [draftIncomeSummaryItems, editingIncomeSummaryItemId, primaryPaycheckId]);
 
   const sourceIncomeSummaryItems = useMemo(
     () =>
@@ -43,10 +64,16 @@ export function useIncomeSummaryDraft(onChange: () => void, totalMonthlyWithdraw
     [draftIncomeSummaryItems]
   );
   const derivedIncomeSummaryItems = useMemo(
-    () => buildDerivedIncomeSummaryItems(draftIncomeSummaryItems, totalMonthlyWithdrawals),
-    [draftIncomeSummaryItems, totalMonthlyWithdrawals]
+    () =>
+      buildDerivedIncomeSummaryItems(
+        draftIncomeSummaryItems,
+        totalMonthlyWithdrawals,
+        primaryPaycheckId,
+        payCadence
+      ),
+    [draftIncomeSummaryItems, payCadence, primaryPaycheckId, totalMonthlyWithdrawals]
   );
-  const primaryPaycheckIncome = derivedIncomeSummaryItems.find(isPrimaryPaycheck);
+  const primaryPaycheckIncome = draftIncomeSummaryItems.find(({ id }) => id === primaryPaycheckId);
 
   function updateIncomeSummaryForm<K extends keyof IncomeSummaryFormState>(
     key: K,
@@ -58,41 +85,13 @@ export function useIncomeSummaryDraft(onChange: () => void, totalMonthlyWithdraw
   function submitIncomeSummaryItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const editingSource =
-      editingIncomeSummaryItemId === null
-        ? null
-        : draftIncomeSummaryItems.find((item) => item.id === editingIncomeSummaryItemId);
-    const sourceForm: IncomeSummaryFormState =
-      editingSource && isPrimaryPaycheck(editingSource)
-        ? {
-            ...incomeSummaryForm,
-            category: PRIMARY_PAYCHECK_CATEGORY,
-            interval: PRIMARY_PAYCHECK_INTERVAL,
-          }
-        : {
-            ...incomeSummaryForm,
-            category: incomeSummaryForm.category.trim(),
-            interval: incomeSummaryForm.interval.trim(),
-          };
-    const matchingSource =
-      editingIncomeSummaryItemId === null
-        ? draftIncomeSummaryItems.find((item) => incomeSummarySourceMatches(item, sourceForm))
-        : null;
-    const targetId =
-      editingIncomeSummaryItemId ?? matchingSource?.id ?? nextDraftIncomeSummaryItemId;
-    const updatedSource = formToIncomeSummaryItem(targetId, sourceForm);
-    const hasExistingSource = draftIncomeSummaryItems.some((item) => item.id === targetId);
-    const nextIncomeSummaryItems = hasExistingSource
-      ? draftIncomeSummaryItems.map((item) => (item.id === targetId ? updatedSource : item))
-      : [...draftIncomeSummaryItems, updatedSource];
-
-    setDraftIncomeSummaryItems(nextIncomeSummaryItems);
-    if (!hasExistingSource) {
-      setNextDraftIncomeSummaryItemId((current) => current - 1);
-    }
+    dispatch({
+      editingId: editingIncomeSummaryItemId,
+      form: incomeSummaryForm,
+      type: 'save-income-summary-item',
+    });
     setEditingIncomeSummaryItemId(null);
-    setIncomeSummaryForm(defaultIncomeSummaryForm(nextIncomeSummaryItems));
-    onChange();
+    setRestorePrimaryForm(true);
   }
 
   function startIncomeSummaryItemEdit(item: DraftIncomeSummaryItem) {
@@ -102,17 +101,7 @@ export function useIncomeSummaryDraft(onChange: () => void, totalMonthlyWithdraw
 
   function cancelIncomeSummaryItemEdit() {
     setEditingIncomeSummaryItemId(null);
-    setIncomeSummaryForm(defaultIncomeSummaryForm(draftIncomeSummaryItems));
-  }
-
-  function removeIncomeSummaryItem(id: number) {
-    setDraftIncomeSummaryItems((current) =>
-      current.filter((item) => item.id !== id || isPrimaryPaycheck(item))
-    );
-    if (editingIncomeSummaryItemId === id) {
-      cancelIncomeSummaryItemEdit();
-    }
-    onChange();
+    setIncomeSummaryForm(defaultIncomeSummaryForm(draftIncomeSummaryItems, primaryPaycheckId));
   }
 
   return {
@@ -120,9 +109,7 @@ export function useIncomeSummaryDraft(onChange: () => void, totalMonthlyWithdraw
     draftIncomeSummaryItems,
     editingIncomeSummaryItemId,
     incomeSummaryForm,
-    loadDraft,
     primaryPaycheckIncome,
-    removeIncomeSummaryItem,
     sourceIncomeSummaryItems,
     startIncomeSummaryItemEdit,
     submitIncomeSummaryItem,
@@ -131,17 +118,10 @@ export function useIncomeSummaryDraft(onChange: () => void, totalMonthlyWithdraw
   };
 }
 
-function defaultIncomeSummaryForm(items: DraftIncomeSummaryItem[]): IncomeSummaryFormState {
-  const primaryPaycheck = items.find(isPrimaryPaycheck);
+function defaultIncomeSummaryForm(
+  items: DraftIncomeSummaryItem[],
+  primaryPaycheckId: number
+): IncomeSummaryFormState {
+  const primaryPaycheck = items.find(({ id }) => id === primaryPaycheckId);
   return primaryPaycheck ? toIncomeSummaryForm(primaryPaycheck) : emptyIncomeSummaryForm;
-}
-
-function incomeSummarySourceMatches(
-  item: Pick<DraftIncomeSummaryItem, 'category' | 'interval'>,
-  form: Pick<IncomeSummaryFormState, 'category' | 'interval'>
-) {
-  return (
-    item.category.trim().toLowerCase() === form.category.trim().toLowerCase() &&
-    item.interval.trim().toLowerCase() === form.interval.trim().toLowerCase()
-  );
 }

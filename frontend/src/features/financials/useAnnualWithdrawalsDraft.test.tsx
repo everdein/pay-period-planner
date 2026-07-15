@@ -2,13 +2,16 @@ import { act, renderHook } from '@testing-library/react';
 import { type FormEvent } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { FinancialsDraft } from './financialsDraft';
+import {
+  createTestFinancialsDraft,
+  useCanonicalDraftTestState,
+} from './financialsDraftTestSupport';
 import type { DraftAnnualWithdrawal } from './financialsTypes';
 import { useAnnualWithdrawalsDraft } from './useAnnualWithdrawalsDraft';
 
 const preventDefault = vi.fn();
 const submitEvent = { preventDefault } as unknown as FormEvent<HTMLFormElement>;
-
-type AnnualWithdrawalsDraftHook = ReturnType<typeof useAnnualWithdrawalsDraft>;
 
 function annualWithdrawal(overrides: Partial<DraftAnnualWithdrawal> = {}): DraftAnnualWithdrawal {
   return {
@@ -26,22 +29,13 @@ function annualWithdrawal(overrides: Partial<DraftAnnualWithdrawal> = {}): Draft
   };
 }
 
-function loadDraft(
-  result: { readonly current: AnnualWithdrawalsDraftHook },
-  draftAnnualWithdrawals: DraftAnnualWithdrawal[]
-) {
-  act(() => {
-    result.current.loadDraft({
-      annualWithdrawalForm: {
-        account: 'Check',
-        amount: '',
-        bill: '',
-        date: '2026-01-01',
-        paid: false,
-      },
-      draftAnnualWithdrawals,
-    });
-  });
+function useAnnualHarness(initialDraft: FinancialsDraft) {
+  const { dispatch, state } = useCanonicalDraftTestState(initialDraft);
+  return {
+    ...useAnnualWithdrawalsDraft(state.draft, dispatch, state.resetGeneration),
+    dispatch,
+    state,
+  };
 }
 
 describe('useAnnualWithdrawalsDraft', () => {
@@ -49,31 +43,32 @@ describe('useAnnualWithdrawalsDraft', () => {
     preventDefault.mockClear();
   });
 
-  it('loads, sorts, and totals annual withdrawals without marking the draft dirty', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() =>
-      useAnnualWithdrawalsDraft(onChange, '2026-06-01', '2026-06-15')
-    );
-
-    loadDraft(result, [
-      annualWithdrawal({ amount: 80, day: 5, id: 3, inPayPeriod: false, month: 12, paid: false }),
-      annualWithdrawal(),
-    ]);
+  it('selects, sorts, and totals canonical annual withdrawals', () => {
+    const draft = createTestFinancialsDraft({
+      annualWithdrawals: [
+        annualWithdrawal({
+          amount: 80,
+          day: 5,
+          id: 3,
+          inPayPeriod: false,
+          month: 12,
+          paid: false,
+        }),
+        annualWithdrawal(),
+      ],
+    });
+    const { result } = renderHook(() => useAnnualHarness(draft));
 
     expect(result.current.annualWithdrawals.map(({ id }) => id)).toEqual([2, 3]);
     expect(result.current.totals).toEqual({
       annualPayPeriodTotal: 120,
       totalAnnualWithdrawals: 200,
     });
-    expect(onChange).not.toHaveBeenCalled();
+    expect(result.current.state.revision).toBe(0);
   });
 
-  it('adds a temporary annual withdrawal and marks the aggregate draft dirty', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() =>
-      useAnnualWithdrawalsDraft(onChange, '2026-06-01', '2026-06-15')
-    );
-    loadDraft(result, []);
+  it('dispatches a temporary annual withdrawal', () => {
+    const { result } = renderHook(() => useAnnualHarness(createTestFinancialsDraft()));
 
     act(() => result.current.updateAnnualWithdrawalForm('bill', ' Registration '));
     act(() => result.current.updateAnnualWithdrawalForm('date', '2026-06-10'));
@@ -95,44 +90,48 @@ describe('useAnnualWithdrawalsDraft', () => {
       }),
     ]);
     expect(result.current.editingAnnualWithdrawalId).toBeNull();
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 
-  it('edits and removes an annual withdrawal', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() =>
-      useAnnualWithdrawalsDraft(onChange, '2026-06-01', '2026-06-15')
-    );
+  it('edits and centrally removes an annual withdrawal', () => {
     const withdrawal = annualWithdrawal();
-    loadDraft(result, [withdrawal]);
+    const { result } = renderHook(() =>
+      useAnnualHarness(createTestFinancialsDraft({ annualWithdrawals: [withdrawal] }))
+    );
 
     act(() => result.current.startAnnualWithdrawalEdit(withdrawal));
     act(() => result.current.updateAnnualWithdrawalForm('amount', '150'));
     act(() => result.current.submitAnnualWithdrawal(submitEvent));
-
     expect(result.current.annualWithdrawals).toEqual([
       expect.objectContaining({ amount: 150, id: withdrawal.id }),
     ]);
 
-    act(() => result.current.removeAnnualWithdrawal(withdrawal.id));
+    act(() =>
+      result.current.dispatch({
+        removal: { id: withdrawal.id, name: withdrawal.bill, type: 'annual-withdrawal' },
+        type: 'request-removal',
+      })
+    );
+    act(() => result.current.dispatch({ type: 'confirm-removal' }));
 
     expect(result.current.annualWithdrawals).toEqual([]);
-    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(result.current.state.revision).toBe(2);
   });
 
-  it('recalculates annual dates when the pay period crosses into a new year', () => {
-    const onChange = vi.fn();
-    const { result, rerender } = renderHook(
-      ({ end, start }) => useAnnualWithdrawalsDraft(onChange, start, end),
-      { initialProps: { end: '2026-12-15', start: '2026-12-01' } }
-    );
-    loadDraft(result, [annualWithdrawal({ day: 5, inPayPeriod: false, month: 1 })]);
+  it('recalculates annual dates when canonical pay-period commands cross a year', () => {
+    const draft = createTestFinancialsDraft({
+      annualWithdrawals: [annualWithdrawal({ day: 5, inPayPeriod: false, month: 1 })],
+      payPeriodEnd: '2026-12-15',
+      payPeriodStart: '2026-12-01',
+    });
+    const { result } = renderHook(() => useAnnualHarness(draft));
 
-    rerender({ end: '2027-01-10', start: '2026-12-20' });
+    act(() => result.current.dispatch({ type: 'update-pay-period-start', value: '2026-12-20' }));
+    act(() => result.current.dispatch({ type: 'update-pay-period-end', value: '2027-01-10' }));
 
     expect(result.current.annualWithdrawals[0]).toEqual(
       expect.objectContaining({ dueDate: '2027-01-05', inPayPeriod: true })
     );
-    expect(onChange).not.toHaveBeenCalled();
+    expect(result.current.state.revision).toBe(2);
   });
 });

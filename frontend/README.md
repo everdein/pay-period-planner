@@ -113,8 +113,11 @@ The backend exposes
 account signup, sign-in, session recovery, and sign-out; the browser session is
 held in an `HttpOnly`, `SameSite=Strict` cookie. The frontend stores no account
 credentials or Basic token. It obtains fresh CSRF proof before each mutation,
-sends `X-Workspace-ID` for the selected membership, and stores only that
-non-sensitive workspace preference in browser session storage.
+sends an explicit `X-Workspace-ID` for the selected membership on every
+financial request, and stores only that non-sensitive workspace preference in
+browser session storage. Clearing the account session aborts active requests,
+and Redux associates each request with its originating workspace and request ID
+so a delayed completion cannot repopulate a newer account or workspace context.
 
 New accounts begin with an empty `Personal` workspace. Existing data must be
 explicitly migrated into that workspace; no personal or synthetic snapshot is
@@ -125,7 +128,11 @@ is unavailable, the account screen remains visible and reports the correlated
 request reference.
 
 Each frontend API request includes a generated `X-Request-ID`. Failed requests
-surface the backend-confirmed ID so an error can be matched to backend logs.
+preserve the HTTP status, safe problem detail, optional problem title, and
+backend-confirmed ID as separate fields. Redux classifies financial failures
+from the structured status, never from display text, and user-facing errors
+surface the structured request reference so a failure can be matched to backend
+logs.
 Unexpected render errors are contained by an accessible recovery screen, while
 the local browser reporter records only a reference ID, error category, and
 JavaScript error type. It does not record error messages, stacks, Redux state,
@@ -135,7 +142,7 @@ URLs, credentials, or financial data. See `../docs/observability-guide.md`.
 
 ## Financials UI
 
-The main application screen is a personal financial snapshot with grouped
+The main application screen is a household cash-flow planning workspace with grouped
 sidebar navigation for:
 
 - Overview
@@ -174,41 +181,62 @@ The backend returns the pay period that contains today's date. If the user edits
 the pay period dates and saves, those dates become the new schedule anchor for
 future automatic updates.
 
-The Projection tab derives a next-paycheck forecast from the current draft. It
-uses bi-weekly net income, next pay period bills, annual withdrawals due in the
-period, the rent bill, the current rent savings balance, and current debt to
-show cash after bills, the credit card payment that leftover cash could make,
-remaining debt, and any possible Apple HYSA transfer after debt is covered. The
+The Projection tab derives a next-paycheck forecast from the current draft. Its
+three workspace settings select the housing payment, housing reserve account,
+and primary paycheck by stable record ID, independently of their editable labels.
+It combines those inputs with next pay period bills, annual withdrawals due in
+the period, and current debt to show cash after bills, a possible debt payment,
+remaining debt, and a possible savings transfer after debt is covered. The
 current pay period is shown only as supporting context. The Overview shows the
-projection headline numbers.
+projection headline numbers. These values support household cash-flow planning;
+they are not accounting records, transaction reconciliation, transfer
+instructions, or financial advice.
 
 Annual Withdrawals tracks recurring yearly charges with native calendar inputs
 while storing month/day recurrence data. Income Summary tracks editable source
 rows by category, interval, and amount, plus derived net/disposable income
 values. Income Calendar tracks paydays and one-time income events, with derived
-received/current/upcoming statuses. It can generate bi-weekly paycheck rows for
-a selected year from the first payday and starting check number; by default the
-generator replaces existing numbered income rows for that year while preserving
-one-time income events.
+received/current/upcoming statuses. It generates weekly, biweekly,
+semimonthly, or monthly paycheck rows for a selected year from the required
+anchor date or dates and starting check number; by default the generator
+replaces existing numbered income rows for that year while preserving one-time
+income events. Month-based recurrence clamps dates to shorter months.
 
 The asset and debt tabs support editable account rows. Asset categories show
 category totals and an overall tracked-assets total. Debt contributes to total
-debt and net worth. Important Dates tracks holidays and personal/company dates,
+debt and net worth. Important Dates tracks household reminders and notable dates,
 with derived passed/next/upcoming statuses.
 
 Displayed dates use `MM/DD/YYYY`. Editable date fields use native browser date
-inputs.
+inputs. The workspace's saved IANA planning zone supplies the current planning
+date returned by the backend, and frontend date-only arithmetic uses UTC
+calendar operations so selected dates do not shift with browser offsets.
+
+Selected projection-input records must be reassigned before removal. A new
+temporary record can be selected and saved once because its negative draft ID
+is remapped with the assigned positive ID in the aggregate response.
 
 ### Data flow
 
 The frontend uses a draft/save pattern:
 
-1. `fetchMonthlyExpenses` loads one snapshot from the backend.
-2. The user edits local React component state.
-3. Redux tracks loading, saving, and error state.
-4. `saveExpenseSnapshot` sends the full edited snapshot with the loaded
-   snapshot version to the backend.
-5. The backend response becomes the new committed Redux snapshot.
+1. `fetchMonthlyExpenses` loads one snapshot into Redux from the backend.
+2. `useFinancialsDraftWorkspace` synchronizes that snapshot into a
+   feature-local reducer with one committed baseline and one editable draft.
+3. Domain hooks retain only transient form and editing state. Their commands
+   update the canonical draft through the reducer.
+4. Redux tracks loading, saving, and error state for server requests.
+5. `saveExpenseSnapshot` sends the full edited snapshot with the loaded
+   snapshot version, explicit workspace ID, and submitted draft revision to the
+   backend.
+6. The backend response becomes the new committed Redux snapshot and draft
+   baseline.
+
+If the user makes another draft edit while a save is in flight, the returned
+snapshot version becomes the base for the next save without replacing those
+newer local edits. A save response clears dirty state only when the submitted
+draft revision is still current. Resetting the draft restores the committed
+baseline without rewinding the monotonic local revision sequence.
 
 If the backend returns `409 Conflict`, another save committed first. The local
 draft remains in place and a dedicated conflict notice explains that reloading
@@ -319,6 +347,16 @@ npm run test -- --coverage
 npm run lint
 ```
 
+### Verify dependency compatibility
+
+```sh
+npm run check:dependency-compat
+```
+
+This read-only check verifies the temporary minimatch 3 compatibility override
+documented in `../docs/dependency-update-triage.md`. Frontend installation does
+not run a lifecycle script or modify dependency source files.
+
 ### Auto-fix ESLint issues
 
 ```sh
@@ -376,7 +414,7 @@ Responsibilities:
 - financial snapshot typing
 - withdrawal and asset category contracts
 - fetch and save API calls
-- optional granular withdrawal endpoint helpers
+- one versioned full-snapshot mutation boundary
 
 ### `src/app/store.ts`
 
@@ -423,17 +461,9 @@ Financial snapshot feature UI.
 
 Responsibilities:
 
-- sidebar financial sections
-- local draft state for edits
-- monthly withdrawal forms
-- annual withdrawal forms
-- income summary forms
-- income calendar forms
-- asset account forms
-- debt account forms
-- important date forms
-- pay period calculations
-- save/reset workflow
+- authenticated account and workspace header
+- load, initialize, save, export, and retry action coordination
+- active-tab selection and financial workspace composition
 
 ### Financials tab components
 
@@ -450,7 +480,11 @@ The financials feature is split into focused tab and shared UI modules:
 - `ImportantDatesTab.tsx`
 - `ConfirmRemoveModal.tsx`
 - `SaveControls.tsx`
+- `FinancialsWorkspaceState.tsx`
+- `FinancialsWorkflowFeedback.tsx`
+- `WorkspaceOnboarding.tsx`
 - `financialsDraft.ts`
+- `financialsDraftReducer.ts`
 - `financialsFormatters.ts`
 - `financialsTypes.ts`
 
@@ -489,6 +523,12 @@ Responsibilities:
 - import sorting
 - React hooks validation
 - formatting compatibility
+
+### `scripts/check-dependency-compatibility.cjs`
+
+Verifies that current ESLint packages using minimatch 3 resolve the secure,
+CommonJS-compatible brace-expansion 1.x release. It fails when the dependency
+path changes so the temporary override can be reviewed or removed.
 
 ---
 
@@ -548,10 +588,11 @@ to encourage safer and more maintainable frontend code.
 
 ### Draft/save financial editing
 
-Financial form changes are intentionally held in component-local draft state
-until the user clicks `Save Changes`. This mirrors applications that fetch data
-once, let a user make a batch of edits, then persist the final snapshot in one
-request.
+Financial record changes are intentionally held in one feature-local canonical
+draft reducer until the user clicks `Save Changes`. Domain hooks expose focused
+forms, selectors, and commands without maintaining independent record
+collections. This mirrors applications that fetch data once, let a user make a
+batch of edits, then persist the final snapshot in one request.
 
 ---
 

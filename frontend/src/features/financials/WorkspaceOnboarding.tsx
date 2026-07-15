@@ -1,7 +1,14 @@
 import { type FormEvent, useState } from 'react';
 
 import type { PayPeriodRequest } from '../../api/endpoints/financials';
+import {
+  PAY_CADENCE_OPTIONS,
+  payPeriodEndForCadence,
+  supportedPlanningTimeZones,
+} from './financialsDatePolicy';
 import { defaultPayPeriod } from './workspaceOnboardingDates';
+
+const planningTimeZones = supportedPlanningTimeZones();
 
 export function WorkspaceOnboarding({
   error,
@@ -9,7 +16,7 @@ export function WorkspaceOnboarding({
   onInitialize,
   workspaceName,
 }: {
-  error: string | null;
+  error: { message: string; requestId?: string } | null;
   initializing: boolean;
   onInitialize: (payPeriod: PayPeriodRequest) => Promise<void>;
   workspaceName: string;
@@ -25,7 +32,7 @@ export function WorkspaceOnboarding({
     <section className="workspace-onboarding" aria-labelledby="workspace-onboarding-heading">
       <div className="onboarding-copy">
         <p className="eyebrow">{workspaceName}</p>
-        <h2 id="workspace-onboarding-heading">Start your financial workspace</h2>
+        <h2 id="workspace-onboarding-heading">Start your planning workspace</h2>
         <p>Set the current pay period to create an empty snapshot.</p>
         <p className="onboarding-note">No sample or personal values will be added.</p>
       </div>
@@ -37,7 +44,14 @@ export function WorkspaceOnboarding({
             <input
               disabled={initializing}
               onChange={(event) =>
-                setPayPeriod((current) => ({ ...current, startDate: event.target.value }))
+                setPayPeriod((current) => ({
+                  ...current,
+                  endDate: payPeriodEndForCadence(
+                    event.target.value,
+                    current.planningSettings.payCadence
+                  ),
+                  startDate: event.target.value,
+                }))
               }
               required
               type="date"
@@ -57,10 +71,55 @@ export function WorkspaceOnboarding({
               value={payPeriod.endDate}
             />
           </label>
+          <label>
+            Pay cadence
+            <select
+              disabled={initializing}
+              onChange={(event) => {
+                const payCadence = event.target
+                  .value as PayPeriodRequest['planningSettings']['payCadence'];
+                setPayPeriod((current) => ({
+                  ...current,
+                  endDate: payPeriodEndForCadence(current.startDate, payCadence),
+                  planningSettings: { ...current.planningSettings, payCadence },
+                }));
+              }}
+              value={payPeriod.planningSettings.payCadence}
+            >
+              {PAY_CADENCE_OPTIONS.map(({ label, value }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Planning time zone
+            <select
+              disabled={initializing}
+              onChange={(event) =>
+                setPayPeriod((current) => ({
+                  ...current,
+                  planningSettings: {
+                    ...current.planningSettings,
+                    timeZone: event.target.value,
+                  },
+                }))
+              }
+              value={payPeriod.planningSettings.timeZone}
+            >
+              {planningTimeZones.map((timeZone) => (
+                <option key={timeZone} value={timeZone}>
+                  {timeZone}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
         {error && (
           <p className="error" role="alert">
-            {error}
+            {error.message}
+            {error.requestId && <small>Request reference: {error.requestId}</small>}
           </p>
         )}
         <button disabled={initializing} type="submit">

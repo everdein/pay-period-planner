@@ -22,12 +22,23 @@ subproject README before changing frontend, backend, database, or CI behavior.
 - `scripts/`: repeatable local setup, verification, and inspection commands.
 
 The application edits and saves one financial snapshot aggregate in the
-V3/V4/V6/V7 PostgreSQL `financial_record_*` relational tables, scoped to the workspace
-selected from a V5 account session. The V1 normalized tables are inactive
-historical groundwork and are not the runtime persistence path. V2
+V3/V4/V6/V7/V8/V9 PostgreSQL `financial_record_*` relational tables, scoped to the
+workspace selected from a V5 account session. The V1 normalized tables are
+inactive historical groundwork and are not the runtime persistence path. V2
 `financial_snapshot_document` is now a legacy migration source only. The
-PostgreSQL financial API requires `WORKSPACE` session authority, enforces CSRF
+runtime loads current snapshots separately from SQL-limited audit history and
+appends one audit event while batch-writing each aggregate replacement. The
+snapshot stores typed projection roles for its rent bill, rent-reserve asset
+account, and primary-paycheck income-summary item; mutable labels are not role
+identity. It also stores pay cadence and IANA planning time zone so one
+zone-derived date drives current-period calculations. The PostgreSQL financial
+API requires `WORKSPACE` session authority, enforces CSRF
 on writes, and isolates every operation by current database-derived membership.
+The HTTP adapter resolves that membership through the framework-neutral
+`CurrentWorkspace` application port, and `ApiExceptionHandler` alone maps
+financial application exceptions to HTTP statuses.
+Workspace initialization returns its successfully created aggregate for shared
+response presentation without a follow-up persistence read.
 The frontend uses signup, sign-in, session recovery, sign-out, CSRF bootstrap,
 and explicit workspace selection against that PostgreSQL API. Legacy Basic
 authentication remains only for operator migration and metrics routes.
@@ -41,7 +52,8 @@ authentication remains only for operator migration and metrics routes.
   contract.
 - `backend/src/main/java/.../domain/financials/`: financial record types and
   the saved snapshot aggregate used inside the backend.
-- `backend/src/main/java/.../service/`: validation, calculations, and domain
+- `backend/src/main/java/.../service/`: current-workspace query and command
+  boundaries, validation, normalization, calculations, API mapping, and domain
   orchestration.
 - `backend/src/main/java/.../repository/`: PostgreSQL persistence and storage
   boundaries.
@@ -113,6 +125,10 @@ a branch, implementation, verification report, or draft PR.
 - Prefer existing naming and package patterns. Avoid broad cleanup mixed with a
   behavioral change.
 - Never log secrets or full personal financial snapshots.
+- Do not add install lifecycle scripts that modify `node_modules`. Keep any
+  transitive security override scoped, lockfile-backed, documented in
+  `docs/dependency-update-triage.md`, and covered by a read-only assertion with
+  an explicit removal condition.
 - Use GitHub MCP or `gh` for scoped repository reads when live PR, CI, issue, or
   branch state is required. External writes require explicit user intent.
 - Use `financial_app_reader` or another dedicated read-only PostgreSQL role for
@@ -135,12 +151,13 @@ From the repository root:
 .\scripts\rollback-workspace-snapshot-migration.ps1 -MigrationId <uuid> -ConfirmRollback
 .\scripts\setup-postgres-readonly-role.ps1
 .\scripts\run-browser-checks.ps1
-.\scripts\export-financial-snapshot.ps1 -Format csv -OutputPath <outside-repo-path>
-.\scripts\import-financial-snapshot.ps1 -InputPath <outside-repo-path> -ConfirmRestore
+.\scripts\export-financial-snapshot.ps1 -OutputPath <outside-repo-path.json>
+.\scripts\restore-financial-snapshot.ps1 -InputPath <outside-repo-path.json> -ConfirmRestore
 .\scripts\write-coverage-summary.ps1
 .\scripts\check-documentation-drift.ps1
 .\scripts\triage-dependency-updates.ps1
 .\scripts\generate-engineering-status.ps1
+npm --prefix frontend run check:dependency-compat
 ```
 
 Run `.\scripts\run-security-checks.ps1` only when authenticated tooling and
@@ -183,9 +200,9 @@ or security policy from a packet alone.
 - `backend/data/financials.local.json`, PostgreSQL contents, exports, logs, and
   screenshots may contain personal data. Do not commit, paste, summarize, or
   send them to external services.
-- JSON, CSV, and XLSX snapshot exports are backup/restore artifacts. Store them
-  outside the repository unless the data is synthetic and `-AllowRepositoryPath`
-  is intentional.
+- JSON snapshot exports are application backup/restore artifacts. Store them
+  outside the repository unless the data is synthetic and
+  `-AllowRepositoryPath` is intentional.
 - Prefer metadata, counts, keys, and redacted/minimal reproductions when
   diagnosing personal data. Ask before reading full local records.
 - Never replace personal local data with mock data, seed over it, or migrate it
@@ -196,9 +213,9 @@ or security policy from a packet alone.
 - The financial API uses database-backed sessions and relational workspace
   ownership, and the browser verifies cross-user isolation. Production
   deployment infrastructure and external API integrations remain incomplete.
-- Full-snapshot saves use optimistic version checks; granular endpoints still
-  mutate immediately without client-supplied aggregate versions.
-- PostgreSQL persists active runtime data in the V3/V4/V6/V7
+- Full-snapshot saves use optimistic version checks and are the sole supported
+  financial mutation boundary.
+- PostgreSQL persists active runtime data in the V3/V4/V6/V7/V8/V9
   `financial_record_*` tables with relational audit history and optimistic
   workspace writes. V1 normalized tables remain inactive; V2 JSONB is retained
   only for explicit backup/migration and rollback evidence.

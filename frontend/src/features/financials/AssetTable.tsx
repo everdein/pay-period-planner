@@ -2,7 +2,6 @@ import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
 import { EmptyTableRow } from './EmptyTableRow';
-import { isRentReserveAccount, RENT_RESERVE_ACCOUNT_NAME } from './financialsAnchors';
 import { currency } from './financialsFormatters';
 import type { AssetFormState, DraftAssetAccount, DraftAssetCategory } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
@@ -14,6 +13,7 @@ export function AssetTable({
   category,
   editingAsset,
   requestRemoveAsset,
+  rentReserveAssetAccountId,
   startAssetEdit,
   submitAsset,
   updateAssetForm,
@@ -23,6 +23,7 @@ export function AssetTable({
   category: DraftAssetCategory;
   editingAsset: { categoryKey: string; id: number } | null;
   requestRemoveAsset: (categoryKey: string, account: DraftAssetAccount) => void;
+  rentReserveAssetAccountId: number;
   startAssetEdit: (categoryKey: string, account: DraftAssetAccount) => void;
   submitAsset: (categoryKey: string, event: FormEvent<HTMLFormElement>) => void;
   updateAssetForm: <K extends keyof AssetFormState>(key: K, value: AssetFormState[K]) => void;
@@ -63,7 +64,7 @@ export function AssetTable({
                     onClick={() => startAssetEdit(category.key, account)}
                   />
                   <RemoveButton
-                    disabled={isRentReserveAccount(account)}
+                    disabled={account.id === rentReserveAssetAccountId}
                     label={`Remove ${account.account}`}
                     onClick={() => requestRemoveAsset(category.key, account)}
                   />
@@ -82,7 +83,6 @@ export function AssetTable({
         <label>
           Account
           <input
-            disabled={isEditingThisCategory && assetForm.account === RENT_RESERVE_ACCOUNT_NAME}
             onChange={(event) => updateAssetForm('account', event.target.value)}
             required
             value={assetForm.account}
@@ -107,12 +107,6 @@ export function AssetTable({
             value={assetForm.amount}
           />
         </label>
-        {isEditingThisCategory && assetForm.account === RENT_RESERVE_ACCOUNT_NAME && (
-          <p className="helper-text">
-            Rent Reserve is required for projections. You can edit the company and amount, but the
-            account name stays fixed.
-          </p>
-        )}
         <div className="form-actions">
           <button type="submit">{isEditingThisCategory ? 'Update Draft' : 'Add to Draft'}</button>
           {isEditingThisCategory && (

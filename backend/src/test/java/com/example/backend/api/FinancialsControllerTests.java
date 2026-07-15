@@ -11,74 +11,63 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.example.backend.dto.financials.AssetAccountRecordResponse;
-import com.example.backend.dto.financials.AssetAccountRequest;
+import com.example.backend.domain.financials.FinancialSnapshot;
 import com.example.backend.dto.financials.ExpenseBillSnapshotRequest;
 import com.example.backend.dto.financials.ExpenseSnapshotRequest;
 import com.example.backend.dto.financials.ExpenseSnapshotResponse;
 import com.example.backend.dto.financials.FinancialAuditEventResponse;
 import com.example.backend.dto.financials.FinancialAuditHistoryResponse;
 import com.example.backend.dto.financials.FinancialProjectionSummaryResponse;
-import com.example.backend.dto.financials.FinancialSnapshotExportResponse;
-import com.example.backend.dto.financials.FinancialSnapshotFileExport;
+import com.example.backend.dto.financials.FinancialSnapshotBackup;
 import com.example.backend.dto.financials.PayPeriodRequest;
-import com.example.backend.service.FinancialsService;
+import com.example.backend.service.FinancialRequestException;
+import com.example.backend.service.FinancialSnapshotPresenter;
+import com.example.backend.service.FinancialSnapshotVersionConflictException;
+import com.example.backend.service.FinancialWorkspaceCommands;
+import com.example.backend.service.FinancialWorkspaceQueries;
 import com.example.backend.service.WorkspaceFinancialSnapshotInitializer;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
-import org.springframework.web.server.ResponseStatusException;
 
 class FinancialsControllerTests {
 
   @Test
-  void rejectsInvalidBillRequestWithProblemDetails() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+  void rejectsInvalidNestedSnapshotRequestWithProblemDetails() throws Exception {
+    MockMvc mockMvc = mockMvc(new TestFinancialWorkspaceOperations());
 
     mockMvc
         .perform(
-            post("/api/v1/financials/bills")
+            put("/api/v1/financials")
                 .contentType("application/json")
                 .content(
                     """
                         {
-                          "bill": "",
-                          "dueDay": 32,
-                          "amount": -1,
-                          "account": "",
-                          "paid": false
-                        }
-                        """))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.title").value("Invalid request"))
-        .andExpect(jsonPath("$.errors").isArray());
-  }
-
-  @Test
-  void rejectsBillRequestWithoutAmount() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
-
-    mockMvc
-        .perform(
-            post("/api/v1/financials/bills")
-                .contentType("application/json")
-                .content(
-                    """
-                        {
-                          "bill": "Internet",
-                          "dueDay": 15,
-                          "account": "Check",
-                          "paid": false
+                          "version": 1,
+                          "payPeriodStart": "2026-06-12",
+                          "payPeriodEnd": "2026-06-26",
+                          "bills": [{
+                            "id": null,
+                            "bill": "",
+                            "dueDay": 32,
+                            "amount": -1,
+                            "account": "",
+                            "paid": false
+                          }],
+                          "annualWithdrawals": [],
+                          "assetCategories": [],
+                          "debtAccounts": [],
+                          "incomeSummaryItems": [],
+                          "incomeEvents": [],
+                          "importantDates": []
                         }
                         """))
         .andExpect(status().isBadRequest())
@@ -88,10 +77,10 @@ class FinancialsControllerTests {
 
   @Test
   void rejectsMalformedJsonWithProblemDetails() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+    MockMvc mockMvc = mockMvc(new TestFinancialWorkspaceOperations());
 
     mockMvc
-        .perform(post("/api/v1/financials/bills").contentType("application/json").content("{"))
+        .perform(put("/api/v1/financials").contentType("application/json").content("{"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.title").value("Malformed request"))
         .andExpect(jsonPath("$.detail").value("Request body is malformed or cannot be parsed"));
@@ -99,120 +88,105 @@ class FinancialsControllerTests {
 
   @Test
   void rejectsUnsupportedMediaTypeWithProblemDetails() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+    MockMvc mockMvc = mockMvc(new TestFinancialWorkspaceOperations());
 
     mockMvc
-        .perform(post("/api/v1/financials/bills").contentType("text/plain").content("not-json"))
+        .perform(put("/api/v1/financials").contentType("text/plain").content("not-json"))
         .andExpect(status().isUnsupportedMediaType())
         .andExpect(jsonPath("$.title").value("Unsupported media type"))
         .andExpect(jsonPath("$.detail").value("Content-Type is not supported for this endpoint"));
   }
 
   @Test
-  void mapsResponseStatusExceptionsToProblemDetails() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+  void mapsFinancialRequestExceptionsToProblemDetails() throws Exception {
+    MockMvc mockMvc =
+        mockMvc(
+            new TestFinancialWorkspaceOperations() {
+              @Override
+              public ExpenseSnapshotResponse getSnapshot() {
+                throw new FinancialRequestException("Snapshot request is invalid");
+              }
+            });
 
     mockMvc
-        .perform(delete("/api/v1/financials/bills/99"))
-        .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.detail").value("Bill not found"));
+        .perform(get("/api/v1/financials"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title").value("400 BAD_REQUEST"))
+        .andExpect(jsonPath("$.detail").value("Snapshot request is invalid"));
+  }
+
+  @Test
+  void mapsFinancialVersionConflictsToProblemDetails() throws Exception {
+    MockMvc mockMvc =
+        mockMvc(
+            new TestFinancialWorkspaceOperations() {
+              @Override
+              public ExpenseSnapshotResponse getSnapshot() {
+                throw new FinancialSnapshotVersionConflictException(
+                    "The financial snapshot changed after it was loaded. Reload before saving.",
+                    new IllegalStateException("stale snapshot"));
+              }
+            });
+
+    mockMvc
+        .perform(get("/api/v1/financials"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.title").value("409 CONFLICT"))
+        .andExpect(
+            jsonPath("$.detail")
+                .value(
+                    "The financial snapshot changed after it was loaded. Reload before saving."));
   }
 
   @Test
   void rejectsInvalidPathVariableTypeWithProblemDetails() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+    MockMvc mockMvc = mockMvc(new TestFinancialWorkspaceOperations());
 
     mockMvc
-        .perform(delete("/api/v1/financials/bills/not-a-number"))
+        .perform(get("/api/v1/financials/history?limit=not-a-number"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.title").value("Invalid request"))
         .andExpect(jsonPath("$.detail").value("Request path or parameter has an invalid value"))
-        .andExpect(content().string(containsString("id: expected a whole number")));
+        .andExpect(content().string(containsString("limit: expected an integer")));
   }
 
   @Test
-  void rejectsNonPositiveGranularRecordId() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+  void doesNotExposeGranularMutationEndpoints() throws Exception {
+    MockMvc mockMvc = mockMvc(new TestFinancialWorkspaceOperations());
 
-    mockMvc
-        .perform(
-            put("/api/v1/financials/bills/0")
-                .contentType("application/json")
-                .content(
-                    """
-                        {
-                          "bill": "Internet",
-                          "dueDay": 15,
-                          "amount": 80,
-                          "account": "Check",
-                          "paid": false
-                        }
-                        """))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.detail").value("Record id must be positive"));
-  }
+    var retiredRequests =
+        List.of(
+            post("/api/v1/financials/bills"),
+            put("/api/v1/financials/bills/1"),
+            delete("/api/v1/financials/bills/1"),
+            post("/api/v1/financials/annual-withdrawals"),
+            put("/api/v1/financials/annual-withdrawals/1"),
+            delete("/api/v1/financials/annual-withdrawals/1"),
+            post("/api/v1/financials/asset-accounts"),
+            put("/api/v1/financials/asset-accounts/1"),
+            delete("/api/v1/financials/asset-accounts/1"),
+            post("/api/v1/financials/debt-accounts"),
+            put("/api/v1/financials/debt-accounts/1"),
+            delete("/api/v1/financials/debt-accounts/1"),
+            post("/api/v1/financials/income-summary-items"),
+            put("/api/v1/financials/income-summary-items/1"),
+            delete("/api/v1/financials/income-summary-items/1"),
+            post("/api/v1/financials/income-events"),
+            put("/api/v1/financials/income-events/1"),
+            delete("/api/v1/financials/income-events/1"),
+            post("/api/v1/financials/important-dates"),
+            put("/api/v1/financials/important-dates/1"),
+            delete("/api/v1/financials/important-dates/1"),
+            put("/api/v1/financials/pay-period"));
 
-  @Test
-  void createsAssetAccountThroughGranularEndpoint() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
-
-    mockMvc
-        .perform(
-            post("/api/v1/financials/asset-accounts")
-                .contentType("application/json")
-                .content(
-                    """
-                        {
-                          "categoryKey": "cash-savings",
-                          "categoryLabel": "Cash & Savings",
-                          "account": "Vacation",
-                          "company": "Credit Union",
-                          "amount": 900
-                        }
-                        """))
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.id").value(42))
-        .andExpect(jsonPath("$.categoryKey").value("cash-savings"))
-        .andExpect(jsonPath("$.account").value("Vacation"));
-  }
-
-  @Test
-  void rejectsInvalidAnnualWithdrawalRequestWithProblemDetails() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
-
-    mockMvc
-        .perform(
-            post("/api/v1/financials/annual-withdrawals")
-                .contentType("application/json")
-                .content(
-                    """
-                        {
-                          "bill": "",
-                          "month": 13,
-                          "day": 32,
-                          "amount": -1,
-                          "account": "",
-                          "paid": false
-                        }
-                        """))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.title").value("Invalid request"))
-        .andExpect(jsonPath("$.errors").isArray());
-  }
-
-  @Test
-  void mapsMissingGranularRecordToProblemDetails() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
-
-    mockMvc
-        .perform(delete("/api/v1/financials/important-dates/99"))
-        .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.detail").value("Important date not found"));
+    for (var request : retiredRequests) {
+      mockMvc.perform(request).andExpect(status().isNotFound());
+    }
   }
 
   @Test
   void rejectsSnapshotSaveWithoutVersion() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+    MockMvc mockMvc = mockMvc(new TestFinancialWorkspaceOperations());
 
     mockMvc
         .perform(
@@ -240,7 +214,21 @@ class FinancialsControllerTests {
   @Test
   void initializesAnEmptyWorkspaceSnapshotFromPayPeriodDates() throws Exception {
     AtomicReference<PayPeriodRequest> initializedPayPeriod = new AtomicReference<>();
-    MockMvc mockMvc = mockMvc(new TestFinancialsService(), initializedPayPeriod::set);
+    AtomicReference<FinancialSnapshot> presentedSnapshot = new AtomicReference<>();
+    TestFinancialWorkspaceOperations operations = new TestFinancialWorkspaceOperations();
+    FinancialSnapshot createdSnapshot =
+        emptyDomainSnapshot(1, LocalDate.of(2026, 7, 10), LocalDate.of(2026, 7, 23));
+    MockMvc mockMvc =
+        mockMvc(
+            operations,
+            (payPeriod) -> {
+              initializedPayPeriod.set(payPeriod);
+              return createdSnapshot;
+            },
+            (snapshot) -> {
+              presentedSnapshot.set(snapshot);
+              return operations.getSnapshot();
+            });
 
     mockMvc
         .perform(
@@ -258,11 +246,12 @@ class FinancialsControllerTests {
 
     assertThat(initializedPayPeriod.get())
         .isEqualTo(new PayPeriodRequest(LocalDate.of(2026, 7, 10), LocalDate.of(2026, 7, 23)));
+    assertThat(presentedSnapshot.get()).isSameAs(createdSnapshot);
   }
 
   @Test
   void rejectsSnapshotInitializationWithoutBothPayPeriodDates() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+    MockMvc mockMvc = mockMvc(new TestFinancialWorkspaceOperations());
 
     mockMvc
         .perform(
@@ -276,7 +265,7 @@ class FinancialsControllerTests {
 
   @Test
   void rejectsNullNestedSnapshotRecords() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+    MockMvc mockMvc = mockMvc(new TestFinancialWorkspaceOperations());
 
     mockMvc
         .perform(
@@ -304,7 +293,7 @@ class FinancialsControllerTests {
 
   @Test
   void exportsSnapshotBackupAsNoStoreAttachment() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+    MockMvc mockMvc = mockMvc(new TestFinancialWorkspaceOperations());
 
     mockMvc
         .perform(get("/api/v1/financials/export"))
@@ -325,7 +314,7 @@ class FinancialsControllerTests {
 
   @Test
   void returnsAuditHistory() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+    MockMvc mockMvc = mockMvc(new TestFinancialWorkspaceOperations());
 
     mockMvc
         .perform(get("/api/v1/financials/history").param("limit", "5"))
@@ -342,77 +331,120 @@ class FinancialsControllerTests {
   }
 
   @Test
-  void exportsSnapshotAsCsvAttachment() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
-
-    mockMvc
-        .perform(get("/api/v1/financials/export/csv"))
-        .andExpect(status().isOk())
-        .andExpect(content().contentTypeCompatibleWith("text/csv"))
-        .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
-        .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, containsString("attachment")))
-        .andExpect(
-            header()
-                .string(
-                    HttpHeaders.CONTENT_DISPOSITION, containsString("financial-snapshot-v7.csv")))
-        .andExpect(content().string(containsString("recordType,version,id")))
-        .andExpect(content().string(containsString("bill,,1,,,Rent,1")));
-  }
-
-  @Test
-  void exportsSnapshotAsXlsxAttachment() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
-
-    mockMvc
-        .perform(get("/api/v1/financials/export/xlsx"))
-        .andExpect(status().isOk())
-        .andExpect(
-            content()
-                .contentTypeCompatibleWith(
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-        .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
-        .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, containsString("attachment")))
-        .andExpect(
-            header()
-                .string(
-                    HttpHeaders.CONTENT_DISPOSITION, containsString("financial-snapshot-v7.xlsx")))
-        .andExpect(content().bytes(new byte[] {(byte) 'P', (byte) 'K'}));
-  }
-
-  @Test
-  void importsSnapshotCsv() throws Exception {
-    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+  void restoresJsonBackupAgainstExpectedTargetVersion() throws Exception {
+    AtomicReference<Long> expectedVersion = new AtomicReference<>();
+    AtomicReference<FinancialSnapshotBackup> restoredBackup = new AtomicReference<>();
+    MockMvc mockMvc =
+        mockMvc(
+            new TestFinancialWorkspaceOperations() {
+              @Override
+              public ExpenseSnapshotResponse restoreSnapshot(
+                  long targetVersion, FinancialSnapshotBackup backup) {
+                expectedVersion.set(targetVersion);
+                restoredBackup.set(backup);
+                return getSnapshot();
+              }
+            });
 
     mockMvc
         .perform(
-            post("/api/v1/financials/import/csv")
-                .contentType("text/csv")
-                .content("recordType,version,id,payPeriodStart,payPeriodEnd\n"))
+            post("/api/v1/financials/restore")
+                .param("expectedVersion", "12")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "format": "end-to-end-app.financial-snapshot.v1",
+                      "exportedAt": "2026-07-11T10:15:30Z",
+                      "snapshot": {
+                        "version": 3,
+                        "payPeriodStart": "2026-07-01",
+                        "payPeriodEnd": "2026-07-14",
+                        "bills": [],
+                        "annualWithdrawals": [],
+                        "assetCategories": [],
+                        "debtAccounts": [],
+                        "incomeSummaryItems": [],
+                        "incomeEvents": [],
+                        "importantDates": []
+                      }
+                    }
+                    """))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.version").value(8));
+        .andExpect(jsonPath("$.version").value(1));
+
+    assertThat(expectedVersion.get()).isEqualTo(12);
+    assertThat(restoredBackup.get().snapshot().version()).isEqualTo(3);
   }
 
-  private MockMvc mockMvc(FinancialsService financialsService) {
-    return mockMvc(financialsService, (payPeriod) -> {});
+  @Test
+  void rejectsIncompleteJsonBackup() throws Exception {
+    MockMvc mockMvc = mockMvc(new TestFinancialWorkspaceOperations());
+
+    mockMvc
+        .perform(
+            post("/api/v1/financials/restore")
+                .param("expectedVersion", "7")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "format": "end-to-end-app.financial-snapshot.v1",
+                      "exportedAt": "2026-07-11T10:15:30Z"
+                    }
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title").value("Invalid request"))
+        .andExpect(content().string(containsString("Backup snapshot is required")));
+  }
+
+  @Test
+  void doesNotExposeTabularSnapshotEndpoints() throws Exception {
+    MockMvc mockMvc = mockMvc(new TestFinancialWorkspaceOperations());
+
+    var retiredRequests =
+        List.of(
+            get("/api/v1/financials/export/csv"),
+            get("/api/v1/financials/export/xlsx"),
+            post("/api/v1/financials/import/csv"),
+            post("/api/v1/financials/import/xlsx"),
+            post("/api/v1/financials/import/json"));
+
+    for (var request : retiredRequests) {
+      mockMvc.perform(request).andExpect(status().isNotFound());
+    }
+  }
+
+  private MockMvc mockMvc(TestFinancialWorkspaceOperations operations) {
+    return mockMvc(
+        operations,
+        (payPeriod) -> emptyDomainSnapshot(1, payPeriod.startDate(), payPeriod.endDate()),
+        (snapshot) -> operations.getSnapshot());
   }
 
   private MockMvc mockMvc(
-      FinancialsService financialsService,
-      WorkspaceFinancialSnapshotInitializer snapshotInitializer) {
+      TestFinancialWorkspaceOperations operations,
+      WorkspaceFinancialSnapshotInitializer snapshotInitializer,
+      FinancialSnapshotPresenter snapshotPresenter) {
     LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
     validator.afterPropertiesSet();
     return MockMvcBuilders.standaloneSetup(
-            new FinancialsController(financialsService, snapshotInitializer))
+            new FinancialsController(
+                operations, operations, snapshotInitializer, snapshotPresenter))
         .setControllerAdvice(new ApiExceptionHandler())
         .setValidator(validator)
         .build();
   }
 
-  private static class TestFinancialsService extends FinancialsService {
+  private static FinancialSnapshot emptyDomainSnapshot(
+      long version, LocalDate startDate, LocalDate endDate) {
+    return new FinancialSnapshot(
+        version, startDate, endDate, List.of(), List.of(), List.of(), List.of(), List.of(),
+        List.of(), List.of());
+  }
 
-    TestFinancialsService() {
-      super(null);
-    }
+  private static class TestFinancialWorkspaceOperations
+      implements FinancialWorkspaceQueries, FinancialWorkspaceCommands {
 
     @Override
     public ExpenseSnapshotResponse getSnapshot() {
@@ -420,30 +452,9 @@ class FinancialsControllerTests {
     }
 
     @Override
-    public void deleteBill(long id) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bill not found");
-    }
-
-    @Override
-    public AssetAccountRecordResponse addAssetAccount(AssetAccountRequest request) {
-      return new AssetAccountRecordResponse(
-          42,
-          request.categoryKey(),
-          request.categoryLabel(),
-          request.account(),
-          request.company(),
-          request.amount());
-    }
-
-    @Override
-    public void deleteImportantDate(long id) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Important date not found");
-    }
-
-    @Override
-    public FinancialSnapshotExportResponse exportSnapshot() {
-      return new FinancialSnapshotExportResponse(
-          "end-to-end-app.financial-snapshot.v1",
+    public FinancialSnapshotBackup exportSnapshot() {
+      return new FinancialSnapshotBackup(
+          FinancialSnapshotBackup.FORMAT,
           Instant.parse("2026-07-11T10:15:30Z"),
           new ExpenseSnapshotRequest(
               7L,
@@ -458,29 +469,6 @@ class FinancialsControllerTests {
               List.of(),
               List.of(),
               List.of()));
-    }
-
-    @Override
-    public FinancialSnapshotFileExport exportSnapshotCsv() {
-      return new FinancialSnapshotFileExport(
-          7,
-          "recordType,version,id,payPeriodStart,payPeriodEnd,bill,dueDay\nbill,,1,,,Rent,1\n"
-              .getBytes(StandardCharsets.UTF_8));
-    }
-
-    @Override
-    public FinancialSnapshotFileExport exportSnapshotXlsx() {
-      return new FinancialSnapshotFileExport(7, new byte[] {(byte) 'P', (byte) 'K'});
-    }
-
-    @Override
-    public ExpenseSnapshotResponse importSnapshotCsv(String csv) {
-      return emptySnapshotResponse(8);
-    }
-
-    @Override
-    public ExpenseSnapshotResponse importSnapshotXlsx(byte[] workbook) {
-      return emptySnapshotResponse(8);
     }
 
     @Override
@@ -511,6 +499,17 @@ class FinancialsControllerTests {
                       new BigDecimal("15000.00"),
                       new BigDecimal("500.00"),
                       new BigDecimal("14500.00")))));
+    }
+
+    @Override
+    public ExpenseSnapshotResponse saveSnapshot(ExpenseSnapshotRequest request) {
+      return getSnapshot();
+    }
+
+    @Override
+    public ExpenseSnapshotResponse restoreSnapshot(
+        long expectedVersion, FinancialSnapshotBackup backup) {
+      return getSnapshot();
     }
 
     private ExpenseSnapshotResponse emptySnapshotResponse(long version) {

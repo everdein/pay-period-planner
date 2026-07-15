@@ -1,7 +1,10 @@
-package com.example.backend.service;
+package com.example.backend.config;
 
 import com.example.backend.domain.identity.AuthenticatedSession;
 import com.example.backend.domain.identity.WorkspaceAccess;
+import com.example.backend.service.CurrentWorkspace;
+import com.example.backend.service.WorkspaceAccessDeniedException;
+import com.example.backend.service.WorkspaceSelectionException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.springframework.security.core.Authentication;
@@ -9,11 +12,18 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 @Component
-public class AuthenticatedWorkspaceResolver {
+public class AuthenticatedRequestWorkspace implements CurrentWorkspace {
 
   public static final String WORKSPACE_ID_HEADER = "X-Workspace-ID";
 
-  public long requireWorkspaceId(HttpServletRequest request) {
+  private final HttpServletRequest request;
+
+  public AuthenticatedRequestWorkspace(HttpServletRequest request) {
+    this.request = request;
+  }
+
+  @Override
+  public long requireWorkspaceId() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication == null
         || !authentication.isAuthenticated()

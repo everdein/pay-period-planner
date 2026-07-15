@@ -2,13 +2,16 @@ import { act, renderHook } from '@testing-library/react';
 import { type FormEvent } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { FinancialsDraft } from './financialsDraft';
+import {
+  createTestFinancialsDraft,
+  useCanonicalDraftTestState,
+} from './financialsDraftTestSupport';
 import type { DraftImportantDate } from './financialsTypes';
 import { useImportantDatesDraft } from './useImportantDatesDraft';
 
 const preventDefault = vi.fn();
 const submitEvent = { preventDefault } as unknown as FormEvent<HTMLFormElement>;
-
-type ImportantDatesDraftHook = ReturnType<typeof useImportantDatesDraft>;
 
 function importantDate(overrides: Partial<DraftImportantDate> = {}): DraftImportantDate {
   return {
@@ -20,11 +23,13 @@ function importantDate(overrides: Partial<DraftImportantDate> = {}): DraftImport
   };
 }
 
-function loadDraft(
-  result: { readonly current: ImportantDatesDraftHook },
-  draftImportantDates: DraftImportantDate[]
-) {
-  act(() => result.current.loadDraft({ draftImportantDates }));
+function useImportantDatesHarness(initialDraft: FinancialsDraft, todayIso: string) {
+  const { dispatch, state } = useCanonicalDraftTestState(initialDraft);
+  return {
+    ...useImportantDatesDraft(state.draft, dispatch, state.resetGeneration, todayIso),
+    dispatch,
+    state,
+  };
 }
 
 describe('useImportantDatesDraft', () => {
@@ -33,13 +38,14 @@ describe('useImportantDatesDraft', () => {
   });
 
   it('sorts dates, assigns statuses, and identifies the next date', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useImportantDatesDraft(onChange, '2026-06-22'));
-    loadDraft(result, [
-      importantDate({ date: '2026-12-25', id: 3 }),
-      importantDate({ date: '2026-01-01', event: 'New Year', id: 1 }),
-      importantDate({ date: '2026-07-04', event: 'Independence Day', id: 2 }),
-    ]);
+    const draft = createTestFinancialsDraft({
+      importantDates: [
+        importantDate({ date: '2026-12-25', id: 3 }),
+        importantDate({ date: '2026-01-01', event: 'New Year', id: 1 }),
+        importantDate({ date: '2026-07-04', event: 'Independence Day', id: 2 }),
+      ],
+    });
+    const { result } = renderHook(() => useImportantDatesHarness(draft, '2026-06-22'));
 
     expect(result.current.importantDates.map(({ id, status }) => ({ id, status }))).toEqual([
       { id: 1, status: 'passed' },
@@ -47,13 +53,13 @@ describe('useImportantDatesDraft', () => {
       { id: 3, status: 'upcoming' },
     ]);
     expect(result.current.nextImportantDate?.id).toBe(2);
-    expect(onChange).not.toHaveBeenCalled();
+    expect(result.current.state.revision).toBe(0);
   });
 
-  it('adds a temporary date and resets the editor', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useImportantDatesDraft(onChange, '2026-06-22'));
-    loadDraft(result, []);
+  it('dispatches a temporary date and resets the editor', () => {
+    const { result } = renderHook(() =>
+      useImportantDatesHarness(createTestFinancialsDraft(), '2026-06-22')
+    );
 
     act(() => result.current.updateImportantDateForm('event', ' Birthday '));
     act(() => result.current.updateImportantDateForm('date', '2026-08-10'));
@@ -65,14 +71,13 @@ describe('useImportantDatesDraft', () => {
       { date: '2026-08-10', event: 'Birthday', id: -1, type: 'Personal' },
     ]);
     expect(result.current.importantDateForm).toEqual({ date: '', event: '', type: 'Holiday' });
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 
   it('updates an existing date without changing its identity', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useImportantDatesDraft(onChange, '2026-06-22'));
     const existingDate = importantDate();
-    loadDraft(result, [existingDate]);
+    const draft = createTestFinancialsDraft({ importantDates: [existingDate] });
+    const { result } = renderHook(() => useImportantDatesHarness(draft, '2026-06-22'));
 
     act(() => result.current.startImportantDateEdit(existingDate));
     act(() => result.current.updateImportantDateForm('event', ' Winter Holiday '));
@@ -87,14 +92,13 @@ describe('useImportantDatesDraft', () => {
       },
     ]);
     expect(result.current.editingImportantDateId).toBeNull();
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 
-  it('cancels an edit without changing the draft', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useImportantDatesDraft(onChange, '2026-06-22'));
+  it('cancels an edit without changing the canonical draft', () => {
     const existingDate = importantDate();
-    loadDraft(result, [existingDate]);
+    const draft = createTestFinancialsDraft({ importantDates: [existingDate] });
+    const { result } = renderHook(() => useImportantDatesHarness(draft, '2026-06-22'));
 
     act(() => result.current.startImportantDateEdit(existingDate));
     act(() => result.current.updateImportantDateForm('event', 'Changed'));
@@ -103,17 +107,24 @@ describe('useImportantDatesDraft', () => {
     expect(result.current.draftImportantDates).toEqual([existingDate]);
     expect(result.current.editingImportantDateId).toBeNull();
     expect(result.current.importantDateForm).toEqual({ date: '', event: '', type: 'Holiday' });
-    expect(onChange).not.toHaveBeenCalled();
+    expect(result.current.state.revision).toBe(0);
   });
 
-  it('removes a date from the draft', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useImportantDatesDraft(onChange, '2026-06-22'));
-    loadDraft(result, [importantDate(), importantDate({ id: 2 })]);
+  it('removes a date through the canonical pending-removal command', () => {
+    const draft = createTestFinancialsDraft({
+      importantDates: [importantDate(), importantDate({ id: 2 })],
+    });
+    const { result } = renderHook(() => useImportantDatesHarness(draft, '2026-06-22'));
 
-    act(() => result.current.removeImportantDate(1));
+    act(() =>
+      result.current.dispatch({
+        removal: { id: 1, name: 'Christmas', type: 'important-date' },
+        type: 'request-removal',
+      })
+    );
+    act(() => result.current.dispatch({ type: 'confirm-removal' }));
 
     expect(result.current.draftImportantDates.map(({ id }) => id)).toEqual([2]);
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 });

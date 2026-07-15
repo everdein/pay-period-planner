@@ -66,30 +66,22 @@ class RequestObservabilityFilterTests {
   }
 
   @Test
-  void recordsImportFormatAndOutcomeWithoutRequestData() throws Exception {
+  void recordsJsonRestoreOutcomeWithoutRequestData() throws Exception {
     SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     RequestObservabilityFilter filter = new RequestObservabilityFilter(meterRegistry);
 
-    filterImport(filter, "/api/v1/financials/import/csv", 201);
-    filterImport(filter, "/api/v1/financials/import/xlsx", 500);
+    filterRestore(filter, "/api/v1/financials/restore", 200);
 
     assertThat(
             meterRegistry
-                .get("financials.snapshot.imports")
-                .tags("format", "csv", "result", "success")
-                .counter()
-                .count())
-        .isEqualTo(1.0);
-    assertThat(
-            meterRegistry
-                .get("financials.snapshot.imports")
-                .tags("format", "xlsx", "result", "failure")
+                .get("financials.snapshot.restores")
+                .tags("format", "json", "result", "success")
                 .counter()
                 .count())
         .isEqualTo(1.0);
   }
 
-  private void filterImport(RequestObservabilityFilter filter, String route, int status)
+  private void filterRestore(RequestObservabilityFilter filter, String route, int status)
       throws Exception {
     MockHttpServletRequest request = new MockHttpServletRequest("POST", route);
     MockHttpServletResponse response = new MockHttpServletResponse();

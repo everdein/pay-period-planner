@@ -46,6 +46,7 @@ const snapshot: ExpenseSnapshot = {
       paid: false,
     },
   ],
+  currentDate: '2026-06-18',
   debtAccounts: [],
   importantDates: [{ date: '2026-12-25', event: 'Christmas', id: 1, type: 'Holiday' }],
   incomeEvents: [
@@ -63,6 +64,12 @@ const snapshot: ExpenseSnapshot = {
   paidTotal: 0,
   payPeriodEnd: '2026-06-26',
   payPeriodStart: '2026-06-12',
+  planningSettings: { payCadence: 'BIWEEKLY', timeZone: 'America/New_York' },
+  projectionRoles: {
+    primaryPaycheckIncomeSummaryItemId: 1,
+    rentBillId: 1,
+    rentReserveAssetAccountId: 1,
+  },
   payPeriodTotal: 250,
   totalAnnualWithdrawals: 0,
   totalDebt: 0,
@@ -101,12 +108,13 @@ describe('useFinancialsDraftWorkspace', () => {
       incomeEvents: [expect.objectContaining({ checkNumber: 12, id: 1 })],
       payPeriodEnd: '2026-06-26',
       payPeriodStart: '2026-06-12',
+      projectionRoles: snapshot.projectionRoles,
       version: 7,
     });
     expect(result.current.isDirty).toBe(false);
   });
 
-  it('protects anchors and coordinates confirmed removal and reset', async () => {
+  it('protects configured roles and allows removal after reassignment', async () => {
     const { result } = renderHook(() => useFinancialsDraftWorkspace(snapshot));
 
     await waitFor(() => expect(result.current.monthlyWithdrawals.sortedBills).toHaveLength(2));
@@ -118,6 +126,15 @@ describe('useFinancialsDraftWorkspace', () => {
     act(() => result.current.monthlyWithdrawals.requestRemoveBill(rent));
     expect(result.current.removalConfirmation).toBeNull();
 
+    act(() => result.current.projectionSettings.updateProjectionRole('rentBillId', transfer.id));
+    act(() => result.current.monthlyWithdrawals.requestRemoveBill(rent));
+    expect(result.current.removalConfirmation).toEqual({
+      itemName: 'Rent',
+      itemType: 'withdrawal',
+    });
+    act(() => result.current.cancelRemoval());
+
+    act(() => result.current.projectionSettings.updateProjectionRole('rentBillId', rent.id));
     act(() => result.current.monthlyWithdrawals.requestRemoveBill(transfer));
     expect(result.current.removalConfirmation).toEqual({
       itemName: 'Example Savings Transfer',
@@ -132,5 +149,60 @@ describe('useFinancialsDraftWorkspace', () => {
     act(() => result.current.resetDraft());
     await waitFor(() => expect(result.current.monthlyWithdrawals.sortedBills).toHaveLength(2));
     expect(result.current.isDirty).toBe(false);
+  });
+
+  it('accepts a save response as the new baseline when the draft has not changed again', async () => {
+    const { result, rerender } = renderHook(
+      ({ currentSnapshot, savedDraftRevision }) =>
+        useFinancialsDraftWorkspace(currentSnapshot, savedDraftRevision),
+      {
+        initialProps: { currentSnapshot: snapshot, savedDraftRevision: null as number | null },
+      }
+    );
+    await waitFor(() => expect(result.current.monthlyWithdrawals.sortedBills).toHaveLength(2));
+
+    act(() => result.current.monthlyWithdrawals.updatePayPeriodStart('2026-06-13'));
+    expect(result.current.draftRevision).toBe(1);
+
+    rerender({
+      currentSnapshot: { ...snapshot, payPeriodStart: '2026-06-13', version: 8 },
+      savedDraftRevision: 1,
+    });
+
+    await waitFor(() => expect(result.current.isDirty).toBe(false));
+    expect(result.current.draftRevision).toBe(1);
+    expect(result.current.monthlyWithdrawals.payPeriodStart).toBe('2026-06-13');
+    expect(result.current.buildSaveRequest()?.version).toBe(8);
+  });
+
+  it('preserves edits made after save submission while adopting the committed version', async () => {
+    const { result, rerender } = renderHook(
+      ({ currentSnapshot, savedDraftRevision }) =>
+        useFinancialsDraftWorkspace(currentSnapshot, savedDraftRevision),
+      {
+        initialProps: { currentSnapshot: snapshot, savedDraftRevision: null as number | null },
+      }
+    );
+    await waitFor(() => expect(result.current.monthlyWithdrawals.sortedBills).toHaveLength(2));
+
+    act(() => result.current.monthlyWithdrawals.updatePayPeriodStart('2026-06-13'));
+    const submittedRevision = result.current.draftRevision;
+    act(() => result.current.monthlyWithdrawals.updatePayPeriodEnd('2026-06-27'));
+
+    rerender({
+      currentSnapshot: {
+        ...snapshot,
+        payPeriodEnd: '2026-06-26',
+        payPeriodStart: '2026-06-13',
+        version: 8,
+      },
+      savedDraftRevision: submittedRevision,
+    });
+
+    await waitFor(() => expect(result.current.buildSaveRequest()?.version).toBe(8));
+    expect(result.current.draftRevision).toBe(2);
+    expect(result.current.isDirty).toBe(true);
+    expect(result.current.monthlyWithdrawals.payPeriodStart).toBe('2026-06-13');
+    expect(result.current.monthlyWithdrawals.payPeriodEnd).toBe('2026-06-27');
   });
 });

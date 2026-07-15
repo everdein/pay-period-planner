@@ -4,14 +4,12 @@ const mockClearApiSessionContext = vi.hoisted(() => vi.fn());
 const mockHttpGet = vi.hoisted(() => vi.fn());
 const mockHttpPost = vi.hoisted(() => vi.fn());
 const mockHttpPostVoid = vi.hoisted(() => vi.fn());
-const mockSetActiveWorkspaceId = vi.hoisted(() => vi.fn());
 
 vi.mock('./client', () => ({
   clearApiSessionContext: mockClearApiSessionContext,
   httpGet: mockHttpGet,
   httpPost: mockHttpPost,
   httpPostVoid: mockHttpPostVoid,
-  setActiveWorkspaceId: mockSetActiveWorkspaceId,
 }));
 
 import { accountSessionService, clearAccountSession } from './auth';
@@ -34,7 +32,6 @@ describe('accountSessionService', () => {
     mockHttpGet.mockReset();
     mockHttpPost.mockReset();
     mockHttpPostVoid.mockReset();
-    mockSetActiveWorkspaceId.mockClear();
   });
 
   afterEach(() => clearAccountSession());
@@ -44,8 +41,9 @@ describe('accountSessionService', () => {
 
     await expect(accountSessionService.recover()).resolves.toEqual({ account, workspaceId: 11 });
 
-    expect(mockHttpGet).toHaveBeenCalledWith('/api/v1/auth/session', false);
-    expect(mockSetActiveWorkspaceId).toHaveBeenCalledWith(11);
+    expect(mockHttpGet).toHaveBeenCalledWith('/api/v1/auth/session', {
+      notifyUnauthorized: false,
+    });
     expect(sessionStorage.getItem('end-to-end-app.auth.workspaceId')).toBe('11');
   });
 

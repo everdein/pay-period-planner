@@ -1,9 +1,10 @@
 package com.example.backend.api;
 
-import com.example.backend.repository.SnapshotVersionConflictException;
 import com.example.backend.service.AccountAuthenticationException;
 import com.example.backend.service.AccountConflictException;
 import com.example.backend.service.AccountRequestException;
+import com.example.backend.service.FinancialRequestException;
+import com.example.backend.service.FinancialSnapshotVersionConflictException;
 import com.example.backend.service.WorkspaceAccessDeniedException;
 import com.example.backend.service.WorkspaceFinancialSnapshotConflictException;
 import com.example.backend.service.WorkspaceFinancialSnapshotNotFoundException;
@@ -22,18 +23,24 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
-  @ExceptionHandler(SnapshotVersionConflictException.class)
-  public ProblemDetail handleSnapshotVersionConflict(SnapshotVersionConflictException exception) {
+  @ExceptionHandler(FinancialSnapshotVersionConflictException.class)
+  public ProblemDetail handleSnapshotVersionConflict(
+      FinancialSnapshotVersionConflictException exception) {
     ProblemDetail problemDetail =
-        ProblemDetail.forStatusAndDetail(
-            HttpStatus.CONFLICT,
-            "The financial snapshot changed after it was loaded. Reload before saving.");
-    problemDetail.setTitle("Financial snapshot conflict");
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    problemDetail.setTitle(HttpStatus.CONFLICT.toString());
+    return withRequestId(problemDetail);
+  }
+
+  @ExceptionHandler(FinancialRequestException.class)
+  public ProblemDetail handleFinancialRequest(FinancialRequestException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+    problemDetail.setTitle(HttpStatus.BAD_REQUEST.toString());
     return withRequestId(problemDetail);
   }
 
@@ -174,14 +181,6 @@ public class ApiExceptionHandler {
         ProblemDetail.forStatusAndDetail(
             HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Content-Type is not supported for this endpoint");
     problemDetail.setTitle("Unsupported media type");
-    return withRequestId(problemDetail);
-  }
-
-  @ExceptionHandler(ResponseStatusException.class)
-  public ProblemDetail handleResponseStatus(ResponseStatusException exception) {
-    ProblemDetail problemDetail =
-        ProblemDetail.forStatusAndDetail(exception.getStatusCode(), exception.getReason());
-    problemDetail.setTitle(exception.getStatusCode().toString());
     return withRequestId(problemDetail);
   }
 

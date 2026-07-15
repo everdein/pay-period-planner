@@ -2,13 +2,16 @@ import { act, renderHook } from '@testing-library/react';
 import { type FormEvent } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { FinancialsDraft } from './financialsDraft';
+import {
+  createTestFinancialsDraft,
+  useCanonicalDraftTestState,
+} from './financialsDraftTestSupport';
 import type { DraftIncomeSummaryItem } from './financialsTypes';
 import { useIncomeSummaryDraft } from './useIncomeSummaryDraft';
 
 const preventDefault = vi.fn();
 const submitEvent = { preventDefault } as unknown as FormEvent<HTMLFormElement>;
-
-type IncomeSummaryDraftHook = ReturnType<typeof useIncomeSummaryDraft>;
 
 function item(overrides: Partial<DraftIncomeSummaryItem> = {}): DraftIncomeSummaryItem {
   return {
@@ -20,30 +23,25 @@ function item(overrides: Partial<DraftIncomeSummaryItem> = {}): DraftIncomeSumma
   };
 }
 
-function loadDraft(
-  result: { readonly current: IncomeSummaryDraftHook },
-  draftIncomeSummaryItems: DraftIncomeSummaryItem[]
-) {
-  const primaryPaycheck = draftIncomeSummaryItems.find(
-    ({ category, interval }) => category === 'Net Income' && interval === 'Bi-Weekly'
-  );
-
-  act(() => {
-    result.current.loadDraft({
-      draftIncomeSummaryItems,
-      incomeSummaryForm: primaryPaycheck
-        ? {
-            amount: String(primaryPaycheck.amount),
-            category: primaryPaycheck.category,
-            interval: primaryPaycheck.interval,
-          }
-        : { amount: '', category: 'Net Income', interval: 'Bi-Weekly' },
-    });
-  });
+function useIncomeSummaryHarness(initialDraft: FinancialsDraft, withdrawals: number) {
+  const { dispatch, state } = useCanonicalDraftTestState(initialDraft);
+  return {
+    ...useIncomeSummaryDraft(
+      state.draft,
+      dispatch,
+      state.resetGeneration,
+      withdrawals,
+      state.draft?.projectionRoles.primaryPaycheckIncomeSummaryItemId ?? 0
+    ),
+    dispatch,
+    state,
+  };
 }
 
 function derivedAmount(
-  result: { readonly current: IncomeSummaryDraftHook },
+  result: {
+    readonly current: ReturnType<typeof useIncomeSummaryHarness>;
+  },
   category: string,
   interval: string
 ) {
@@ -57,35 +55,35 @@ describe('useIncomeSummaryDraft', () => {
     preventDefault.mockClear();
   });
 
-  it('sorts sources and recalculates derived income when monthly withdrawals change', () => {
-    const onChange = vi.fn();
+  it('selects sources and recalculates derived income when withdrawals change', () => {
+    const draft = createTestFinancialsDraft({
+      incomeSummaryItems: [
+        item({ amount: 100, category: 'Side Income', id: 2, interval: 'Month' }),
+        item(),
+      ],
+    });
     const { result, rerender } = renderHook(
-      ({ withdrawals }) => useIncomeSummaryDraft(onChange, withdrawals),
+      ({ withdrawals }) => useIncomeSummaryHarness(draft, withdrawals),
       { initialProps: { withdrawals: 600 } }
     );
-    loadDraft(result, [
-      item({ amount: 100, category: 'Side Income', id: 2, interval: 'Month' }),
-      item(),
-    ]);
 
     expect(result.current.sourceIncomeSummaryItems.map(({ category }) => category)).toEqual([
       'Net Income',
       'Side Income',
     ]);
     expect(result.current.primaryPaycheckIncome?.amount).toBe(1000);
-    expect(derivedAmount(result, 'Net Income', 'Month')).toBe(2000);
-    expect(derivedAmount(result, 'Disposable Income', 'Month')).toBe(1400);
+    expect(derivedAmount(result, 'Net Income', 'Month')).toBeCloseTo(2166.67);
+    expect(derivedAmount(result, 'Disposable Income', 'Month')).toBeCloseTo(1566.67);
 
     rerender({ withdrawals: 800 });
 
-    expect(derivedAmount(result, 'Disposable Income', 'Month')).toBe(1200);
-    expect(onChange).not.toHaveBeenCalled();
+    expect(derivedAmount(result, 'Disposable Income', 'Month')).toBeCloseTo(1366.67);
+    expect(result.current.state.revision).toBe(0);
   });
 
-  it('adds a temporary income source and restores the primary paycheck form', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useIncomeSummaryDraft(onChange, 0));
-    loadDraft(result, [item()]);
+  it('dispatches a temporary source and restores the primary paycheck form', () => {
+    const draft = createTestFinancialsDraft({ incomeSummaryItems: [item()] });
+    const { result } = renderHook(() => useIncomeSummaryHarness(draft, 0));
 
     act(() => result.current.updateIncomeSummaryForm('category', ' Bonus '));
     act(() => result.current.updateIncomeSummaryForm('interval', ' Month '));
@@ -104,16 +102,17 @@ describe('useIncomeSummaryDraft', () => {
       category: 'Net Income',
       interval: 'Bi-Weekly',
     });
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 
   it('updates a matching source instead of creating a duplicate', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useIncomeSummaryDraft(onChange, 0));
-    loadDraft(result, [
-      item(),
-      item({ amount: 100, category: 'Side Income', id: 2, interval: 'Month' }),
-    ]);
+    const draft = createTestFinancialsDraft({
+      incomeSummaryItems: [
+        item(),
+        item({ amount: 100, category: 'Side Income', id: 2, interval: 'Month' }),
+      ],
+    });
+    const { result } = renderHook(() => useIncomeSummaryHarness(draft, 0));
 
     act(() => result.current.updateIncomeSummaryForm('category', ' side income '));
     act(() => result.current.updateIncomeSummaryForm('interval', ' month '));
@@ -127,14 +126,13 @@ describe('useIncomeSummaryDraft', () => {
       id: 2,
       interval: 'month',
     });
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 
-  it('preserves the primary paycheck category and interval while editing', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useIncomeSummaryDraft(onChange, 0));
+  it('allows the selected primary paycheck labels to be edited without changing its role', () => {
     const primaryPaycheck = item();
-    loadDraft(result, [primaryPaycheck]);
+    const draft = createTestFinancialsDraft({ incomeSummaryItems: [primaryPaycheck] });
+    const { result } = renderHook(() => useIncomeSummaryHarness(draft, 0));
 
     act(() => result.current.startIncomeSummaryItemEdit(primaryPaycheck));
     act(() => result.current.updateIncomeSummaryForm('category', 'Changed'));
@@ -143,24 +141,43 @@ describe('useIncomeSummaryDraft', () => {
     act(() => result.current.submitIncomeSummaryItem(submitEvent));
 
     expect(result.current.sourceIncomeSummaryItems).toEqual([
-      { amount: 1200, category: 'Net Income', id: 1, interval: 'Bi-Weekly' },
+      { amount: 1200, category: 'Changed', id: 1, interval: 'Annual' },
     ]);
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.primaryPaycheckIncome?.id).toBe(1);
+    expect(result.current.state.revision).toBe(1);
   });
 
-  it('protects the primary paycheck while removing an ordinary source', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useIncomeSummaryDraft(onChange, 0));
+  it('protects the primary paycheck and confirms an ordinary source removal', () => {
     const primaryPaycheck = item();
     const sideIncome = item({ amount: 100, category: 'Side Income', id: 2, interval: 'Month' });
-    loadDraft(result, [primaryPaycheck, sideIncome]);
+    const draft = createTestFinancialsDraft({
+      incomeSummaryItems: [primaryPaycheck, sideIncome],
+    });
+    const { result } = renderHook(() => useIncomeSummaryHarness(draft, 0));
 
     act(() => result.current.startIncomeSummaryItemEdit(sideIncome));
-    act(() => result.current.removeIncomeSummaryItem(primaryPaycheck.id));
-    act(() => result.current.removeIncomeSummaryItem(sideIncome.id));
+    act(() =>
+      result.current.dispatch({
+        removal: {
+          id: primaryPaycheck.id,
+          name: primaryPaycheck.category,
+          type: 'income-summary',
+        },
+        type: 'request-removal',
+      })
+    );
+    expect(result.current.state.pendingRemoval).toBeNull();
+
+    act(() =>
+      result.current.dispatch({
+        removal: { id: sideIncome.id, name: sideIncome.category, type: 'income-summary' },
+        type: 'request-removal',
+      })
+    );
+    act(() => result.current.dispatch({ type: 'confirm-removal' }));
 
     expect(result.current.sourceIncomeSummaryItems).toEqual([primaryPaycheck]);
     expect(result.current.editingIncomeSummaryItemId).toBeNull();
-    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(result.current.state.revision).toBe(1);
   });
 });

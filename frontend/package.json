@@ -13,9 +13,9 @@
     "test:responsive": "playwright test e2e/responsive.spec.ts",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit",
+    "check:dependency-compat": "node scripts/check-dependency-compatibility.cjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "postinstall": "node scripts/apply-dependency-compat-patches.cjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -51,7 +51,8 @@
     "vitest": "^4.1.9"
   },
   "overrides": {
-    "brace-expansion": "5.0.7",
-    "js-yaml": "4.3.0"
+    "minimatch@3.1.5": {
+      "brace-expansion": "1.1.13"
+    }
   }
 }

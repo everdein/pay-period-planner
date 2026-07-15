@@ -5,6 +5,7 @@ import type {
   ImportantDate,
   IncomeEvent,
   IncomeSummaryItem,
+  PayCadence,
 } from '../../api/endpoints/financials';
 
 export type BillFormState = {
@@ -53,7 +54,9 @@ export type IncomeEventFormState = {
 export type RecurringPaydayFormState = {
   firstPayDate: string;
   label: string;
+  payCadence: PayCadence;
   replaceExistingYear: boolean;
+  secondPayDate: string;
   startingCheckNumber: string;
   type: string;
   year: string;
@@ -112,7 +115,7 @@ export type ProjectionSummary = {
   nextPayPeriodCashAfterBills: number;
   nextPayPeriodDebtPayment: number;
   nextPayPeriodDebtRemaining: number;
-  nextPayPeriodHysaTransfer: number;
+  nextPayPeriodSavingsTransfer: number;
   projectedAfterDebt: number;
   projectedBeforeDebt: number;
   remainingDebtAfterProjectedCash: number;

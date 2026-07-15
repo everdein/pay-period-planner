@@ -1,7 +1,29 @@
+import type { PayCadence } from '../../api/endpoints/financials';
+
 export type PayPeriod = {
   end: string;
   start: string;
 };
+
+export const PAY_CADENCE_OPTIONS: { label: string; value: PayCadence }[] = [
+  { label: 'Weekly', value: 'WEEKLY' },
+  { label: 'Every two weeks', value: 'BIWEEKLY' },
+  { label: 'Twice monthly', value: 'SEMIMONTHLY' },
+  { label: 'Monthly', value: 'MONTHLY' },
+];
+
+export function payCadenceLabel(cadence: PayCadence) {
+  return PAY_CADENCE_OPTIONS.find(({ value }) => value === cadence)?.label ?? cadence;
+}
+
+export function payPeriodsPerYear(cadence: PayCadence) {
+  return {
+    WEEKLY: 52,
+    BIWEEKLY: 26,
+    SEMIMONTHLY: 24,
+    MONTHLY: 12,
+  }[cadence];
+}
 
 export function monthlyDueDateForPeriod(
   dueDay: number,
@@ -10,10 +32,10 @@ export function monthlyDueDateForPeriod(
 ) {
   const startDate = localDate(payPeriodStart);
   const endDate = localDate(payPeriodEnd);
-  let dueDate = safeDate(startDate.getFullYear(), startDate.getMonth(), dueDay);
+  let dueDate = safeDate(startDate.getUTCFullYear(), startDate.getUTCMonth(), dueDay);
 
-  if (dueDate < startDate && startDate.getMonth() !== endDate.getMonth()) {
-    dueDate = safeDate(endDate.getFullYear(), endDate.getMonth(), dueDay);
+  if (dueDate < startDate && startDate.getUTCMonth() !== endDate.getUTCMonth()) {
+    dueDate = safeDate(endDate.getUTCFullYear(), endDate.getUTCMonth(), dueDay);
   }
 
   return toIsoDate(dueDate);
@@ -27,10 +49,10 @@ export function annualDueDateForPeriod(
 ) {
   const startDate = localDate(payPeriodStart);
   const endDate = localDate(payPeriodEnd);
-  let dueDate = safeDate(startDate.getFullYear(), month - 1, day);
+  let dueDate = safeDate(startDate.getUTCFullYear(), month - 1, day);
 
-  if (dueDate < startDate && startDate.getFullYear() !== endDate.getFullYear()) {
-    dueDate = safeDate(endDate.getFullYear(), month - 1, day);
+  if (dueDate < startDate && startDate.getUTCFullYear() !== endDate.getUTCFullYear()) {
+    dueDate = safeDate(endDate.getUTCFullYear(), month - 1, day);
   }
 
   return toIsoDate(dueDate);
@@ -51,7 +73,7 @@ export function nextPayPeriod(payPeriodStart: string, payPeriodEnd: string): Pay
 }
 
 export function annualInputDate(month: number, day: number) {
-  const year = new Date().getFullYear();
+  const year = todayIso().slice(0, 4);
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
@@ -60,6 +82,7 @@ export function annualDateLabel(value: string) {
     month: '2-digit',
     day: '2-digit',
     year: 'numeric',
+    timeZone: 'UTC',
   });
 }
 
@@ -73,30 +96,72 @@ export function parseAnnualDate(value: string) {
   return { day, month };
 }
 
-export function todayIso() {
-  return toIsoDate(new Date());
+export function todayIso(timeZone = browserPlanningTimeZone()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone,
+    year: 'numeric',
+  }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map(({ type, value: partValue }) => [type, partValue]));
+  return `${value.year}-${value.month}-${value.day}`;
 }
 
 export function addDaysIso(value: string, days: number) {
   return toIsoDate(addDays(localDate(value), days));
 }
 
+export function dateInMonthIso(year: number, monthIndex: number, day: number) {
+  return toIsoDate(safeDate(year, monthIndex, day));
+}
+
+export function payPeriodEndForCadence(startDate: string, cadence: PayCadence) {
+  if (cadence === 'WEEKLY') {
+    return addDaysIso(startDate, 6);
+  }
+  if (cadence === 'BIWEEKLY') {
+    return addDaysIso(startDate, 13);
+  }
+
+  const start = localDate(startDate);
+  const year = start.getUTCFullYear();
+  const month = start.getUTCMonth();
+  if (cadence === 'SEMIMONTHLY' && start.getUTCDate() <= 15) {
+    return dateInMonthIso(year, month, 15);
+  }
+  return dateInMonthIso(year, month, 31);
+}
+
+export function browserPlanningTimeZone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+}
+
+export function supportedPlanningTimeZones() {
+  const intlWithSupportedValues = Intl as typeof Intl & {
+    supportedValuesOf?: (key: 'timeZone') => string[];
+  };
+  const browserTimeZone = browserPlanningTimeZone();
+  const timeZones = intlWithSupportedValues.supportedValuesOf?.('timeZone') ?? [];
+  return [...new Set(['UTC', browserTimeZone, ...timeZones])].sort((left, right) =>
+    left.localeCompare(right)
+  );
+}
+
 function localDate(value: string) {
-  return new Date(`${value}T00:00:00`);
+  return new Date(`${value}T00:00:00Z`);
 }
 
 function safeDate(year: number, monthIndex: number, day: number) {
-  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-  return new Date(year, monthIndex, Math.min(day, daysInMonth));
+  const daysInMonth = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(year, monthIndex, Math.min(day, daysInMonth)));
 }
 
 function addDays(date: Date, days: number) {
   const nextDate = new Date(date);
-  nextDate.setDate(nextDate.getDate() + days);
+  nextDate.setUTCDate(nextDate.getUTCDate() + days);
   return nextDate;
 }
 
 function toIsoDate(date: Date) {
-  const offset = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+  return date.toISOString().slice(0, 10);
 }

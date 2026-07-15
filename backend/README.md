@@ -475,7 +475,7 @@ ORDER BY table_name;
 
 Expected for the relational PostgreSQL runtime: V1 tables may remain empty,
 `financial_snapshot_document` may contain a retained legacy source, and
-V3/V4/V6/V7 `financial_record_*` rows exist only after explicit workspace
+V3/V4/V6/V7/V8/V9 `financial_record_*` rows exist only after explicit workspace
 migration or creation. The V5 identity, workspace, membership, and session
 tables have `0` rows until the account API is used. Creating an account does not
 silently assign or seed financial data.
@@ -502,7 +502,7 @@ backend/data/financials.example.json
 This intentionally keeps the frontend API contract unchanged. The browser still
 loads one snapshot, edits a local draft, and saves one snapshot back to the API.
 
-The active PostgreSQL repository reads and writes only V3/V4/V6/V7
+The active PostgreSQL repository reads and writes only V3/V4/V6/V7/V8/V9
 `financial_record_*` tables. `financial_snapshot_document` is retained as a
 legacy migration source. The normalized V1 tables
 (`financial_snapshot`, `monthly_withdrawal`, `annual_withdrawal`,
@@ -513,14 +513,27 @@ database.
 
 V3 adds a clean relational path through the `financial_record_*` table family
 and `PostgresFinancialRecordSnapshotAdapter`. V4 adds per-snapshot
-`app_record_id` uniqueness indexes for granular updates and deletes. That
-adapter can save/load the backend `FinancialSnapshot` domain aggregate in
-relational form and perform record-level CRUD operations. V6 links relational
-snapshots to a workspace, permits one active snapshot per workspace, and makes
-every adapter operation require a workspace ID. The runtime store resolves an
-authenticated membership, loads through this adapter, and performs optimistic
-replacement writes under a workspace-row lock. Relational and HTTP integration
-tests cover cross-workspace isolation and audit continuity.
+`app_record_id` uniqueness indexes that preserve stable record identity within
+each snapshot. ADR 0016 retired the adapter's record-level CRUD methods while
+retaining the additive constraints and relational aggregate storage. V6 links
+relational snapshots to a workspace, permits one active snapshot per workspace,
+and makes every adapter operation require a workspace ID. The runtime store
+obtains that ID through the framework-neutral `CurrentWorkspace` port. The
+`AuthenticatedRequestWorkspace` HTTP adapter resolves the selected authenticated
+membership; persistence and application services do not receive servlet
+requests. V8 adds snapshot-versioned projection roles for the rent bill,
+rent-reserve asset account, and primary-paycheck income-summary item. The
+adapter persists those IDs with the aggregate, and request normalization
+validates that each role references the expected record type. V9 adds the pay
+cadence and validated IANA planning time zone to each versioned snapshot. The
+backend derives one `currentDate` in that zone and uses it for the active pay
+period; historical input without settings defaults to `BIWEEKLY` and `UTC`.
+The store loads
+current state separately from SQL-limited audit
+history and performs optimistic replacement writes under a workspace-row lock.
+Replacement writes batch each relational record family and append exactly one
+new audit event. Relational and HTTP integration tests cover cross-workspace
+isolation and audit continuity.
 
 The local `financial_app_user` account is intentionally write-capable because
 it is the backend application user. For read-only inspection, use `SELECT`
@@ -596,11 +609,12 @@ POST /api/v1/financials
 ```
 
 Accepts `startDate` and `endDate`, creates a version-1 relational snapshot with
-no user records for the authenticated workspace, and returns `201 Created` with
-the calculated response. The response supplies zero-value protected projection
-anchors; it does not import financial values. Duplicate or concurrent
+zero-value projection input records and typed role references for the
+authenticated workspace, and returns `201 Created` with the calculated
+response. It does not import financial values. Duplicate or concurrent
 initialization returns `409 Conflict`. It never imports example, personal JSON,
-or legacy JSONB data.
+or legacy JSONB data. The initializer returns the created aggregate for response
+presentation; the controller does not reload it after the write.
 
 ### Get financial snapshot
 
@@ -622,7 +636,8 @@ Returns recent saved-change audit events newest first. Each event includes the
 action, coarse resource type/ID, version movement, timestamp, and aggregate
 projection summary after the committed write. Audit history is personal
 financial data; it intentionally does not include request bodies or field-level
-before/after diffs.
+before/after diffs. PostgreSQL applies the requested limit without loading the
+current snapshot aggregate.
 
 ### Save financial snapshot
 
@@ -639,26 +654,22 @@ current `version` returned by `GET /api/v1/financials`; stale versions return
 
 ```http
 GET /api/v1/financials/export
-GET /api/v1/financials/export/csv
-GET /api/v1/financials/export/xlsx
 ```
 
 Downloads the saved source snapshot with `Cache-Control: no-store`. The JSON
 response includes `format`, `exportedAt`, and a `snapshot` object that mirrors
-the full-snapshot save request shape. CSV and XLSX downloads use the same
-fixed-column tabular format for records and can be restored through the import
-endpoints. Source-shaped exports do not currently include audit history.
+the full-snapshot save request shape. Source-shaped backups do not include
+complete relational audit history.
 
 ```http
-POST /api/v1/financials/import/csv
-POST /api/v1/financials/import/xlsx
+POST /api/v1/financials/restore?expectedVersion=<current-version>
 ```
 
-Imports replace the complete snapshot and use the imported `version` as the
-same optimistic concurrency token required by `PUT /api/v1/financials`. A stale
-file returns `409 Conflict`; a successful import increments the version and
-returns the calculated snapshot response. Treat JSON, CSV, and XLSX files as
-personal financial data.
+Restore accepts the exported JSON envelope unchanged. Its embedded snapshot
+version describes the backup source; `expectedVersion` must match the current
+target workspace. A concurrent target write returns `409 Conflict`; a
+successful restore increments the target version and returns the calculated
+snapshot response. Treat JSON backup files as personal financial data.
 
 Local operators can use the repository scripts without printing financial
 contents. Set account credentials first; the scripts establish and revoke a
@@ -669,39 +680,13 @@ more than one membership:
 $env:FINANCIALS_ACCOUNT_EMAIL="owner@example.com"
 $env:FINANCIALS_ACCOUNT_PASSWORD="<account-password>"
 
-.\scripts\export-financial-snapshot.ps1 -Format xlsx -OutputPath "$HOME\Downloads\financial-snapshot.xlsx"
-.\scripts\import-financial-snapshot.ps1 -InputPath "$HOME\Downloads\financial-snapshot.xlsx" -ConfirmRestore
+.\scripts\export-financial-snapshot.ps1 -OutputPath "$HOME\Downloads\financial-snapshot.json"
+.\scripts\restore-financial-snapshot.ps1 -InputPath "$HOME\Downloads\financial-snapshot.json" -ConfirmRestore
 ```
 
-### Granular record endpoints
-
-```http
-POST /api/v1/financials/bills
-PUT /api/v1/financials/bills/{id}
-DELETE /api/v1/financials/bills/{id}
-POST /api/v1/financials/annual-withdrawals
-PUT /api/v1/financials/annual-withdrawals/{id}
-DELETE /api/v1/financials/annual-withdrawals/{id}
-POST /api/v1/financials/asset-accounts
-PUT /api/v1/financials/asset-accounts/{id}
-DELETE /api/v1/financials/asset-accounts/{id}
-POST /api/v1/financials/debt-accounts
-PUT /api/v1/financials/debt-accounts/{id}
-DELETE /api/v1/financials/debt-accounts/{id}
-POST /api/v1/financials/income-summary-items
-PUT /api/v1/financials/income-summary-items/{id}
-DELETE /api/v1/financials/income-summary-items/{id}
-POST /api/v1/financials/income-events
-PUT /api/v1/financials/income-events/{id}
-DELETE /api/v1/financials/income-events/{id}
-POST /api/v1/financials/important-dates
-PUT /api/v1/financials/important-dates/{id}
-DELETE /api/v1/financials/important-dates/{id}
-PUT /api/v1/financials/pay-period
-```
-
-These endpoints remain available for direct record and pay period updates, even
-though the current UI saves the full snapshot as the source of truth.
+Record and pay-period edits are persisted only through the version-checked
+`PUT /api/v1/financials` aggregate boundary. The former granular routes were
+retired by ADR 0016.
 
 ---
 
@@ -766,9 +751,9 @@ REST controllers.
 Responsibilities:
 
 - HTTP request handling
-- request/response mapping
 - status code handling
 - API boundary definition
+- delegation to explicit financial workspace query and command boundaries
 
 ### `dto/`
 
@@ -798,7 +783,7 @@ Responsibilities:
 
 - loading and writing PostgreSQL-backed snapshot data
 - reading legacy JSON/JSONB only through explicit migration operations
-- workspace-scoped saving/loading and granular CRUD in the V3/V4/V6/V7 relational
+- workspace-scoped aggregate saving/loading in the V3/V4/V6/V7/V8/V9 relational
   record adapter path
 - assigning IDs for new relational rows
 - keeping persistence concerns out of controllers
@@ -810,17 +795,22 @@ Business/service layer.
 
 Responsibilities:
 
-- application logic
-- validation
-- pay period calculations
-- totals and snapshot aggregation
-- orchestration between API and repository layers
+- current-workspace query and versioned-command orchestration
+- API request validation and domain conversion
+- required-record normalization
+- pay-period and financial calculations
+- API response mapping from calculated domain state
+- shared presentation of supplied domain snapshots for current reads and
+  initialization responses
+- orchestration between API and repository layers through focused interfaces
+- framework-neutral current-workspace access and application exceptions; HTTP
+  status mapping remains in `ApiExceptionHandler`
 
 ---
 
 ## Financials domain behavior
 
-The financials service calculates:
+`FinancialSnapshotCalculator` calculates:
 
 - monthly withdrawal total
 - paid total
@@ -835,14 +825,14 @@ The financials service calculates:
 - income calendar monthly paycheck counts
 
 Pay periods are stored as start and end dates. When a snapshot is read, the
-service advances or rewinds the stored pay period window to include the current
+calculator advances or rewinds the stored pay period window to include the current
 date while preserving the original period length.
 
 Withdrawal due dates are derived from each row's due day and the active pay
 period month. Days beyond the end of a month are clamped to the last valid day
 of that month.
 
-Annual withdrawals are stored as recurring month/day values. The service
+Annual withdrawals are stored as recurring month/day values. The calculator
 projects them into the active pay period year so they can be displayed as
 `MM/DD/YYYY` and included in pay period planning.
 
@@ -851,7 +841,7 @@ asset accounts, debt accounts, income summary source items, income calendar
 events, and important dates. Derived income summary rows are calculated by the
 frontend.
 
-The runtime stores this aggregate in V3/V4/V6/V7 relational workspace tables
+The runtime stores this aggregate in V3/V4/V6/V7/V8/V9 relational workspace tables
 and authorizes access from account-session memberships.
 
 ---
@@ -933,7 +923,7 @@ $env:DATABASE_PASSWORD="financial_app_password"
 
 ## PostgreSQL integration test
 
-The PostgreSQL snapshot store, V3/V4/V6/V7 workspace-scoped relational record
+The PostgreSQL snapshot store, V3/V4/V6/V7/V8/V9 workspace-scoped relational record
 adapter, V5 identity schema, V6 legacy-upgrade boundary, account/session flows,
 and explicit migration/rollback API have a required repository integration
 gate. Focused Maven unit builds remain database-independent, while

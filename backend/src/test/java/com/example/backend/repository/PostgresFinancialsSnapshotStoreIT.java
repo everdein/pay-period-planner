@@ -5,9 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.backend.domain.financials.ExpenseBill;
 import com.example.backend.domain.financials.FinancialSnapshot;
-import com.example.backend.domain.identity.AuthenticatedSession;
-import com.example.backend.domain.identity.WorkspaceAccess;
-import com.example.backend.service.AuthenticatedWorkspaceResolver;
 import com.example.backend.service.WorkspaceFinancialSnapshotNotFoundException;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -15,7 +12,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.UUID;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,10 +19,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @EnabledIfEnvironmentVariable(named = "RUN_POSTGRES_INTEGRATION_TESTS", matches = "true")
@@ -58,21 +50,17 @@ class PostgresFinancialsSnapshotStoreIT {
     jdbcTemplate = new JdbcTemplate(dataSource);
     WorkspaceOwner owner = createWorkspace("runtime-owner@example.com", "Runtime Workspace");
     workspaceId = owner.workspaceId();
-    authenticate(owner);
 
     adapter =
         new PostgresFinancialRecordSnapshotAdapter(
             jdbcTemplate,
             new TransactionTemplate(
                 new org.springframework.jdbc.datasource.DataSourceTransactionManager(dataSource)));
-    store =
-        new PostgresFinancialsSnapshotStore(
-            adapter, new AuthenticatedWorkspaceResolver(), new MockHttpServletRequest());
+    store = new PostgresFinancialsSnapshotStore(adapter, () -> workspaceId);
   }
 
   @AfterEach
   void tearDown() {
-    SecurityContextHolder.clearContext();
     if (jdbcTemplate != null) {
       jdbcTemplate.execute("drop schema if exists " + TEST_SCHEMA + " cascade");
     }
@@ -80,7 +68,7 @@ class PostgresFinancialsSnapshotStoreIT {
 
   @Test
   void requiresAnExplicitlyMigratedWorkspaceSnapshot() {
-    assertThatThrownBy(store::load)
+    assertThatThrownBy(store::loadCurrentSnapshot)
         .isInstanceOf(WorkspaceFinancialSnapshotNotFoundException.class)
         .hasMessageContaining(Long.toString(workspaceId));
   }
@@ -91,30 +79,70 @@ class PostgresFinancialsSnapshotStoreIT {
     Clock clock = Clock.fixed(Instant.parse("2026-07-14T12:00:00Z"), ZoneOffset.UTC);
     FinancialsRepository repository = new FinancialsRepository(store, clock);
 
-    repository.addBill(new ExpenseBill(0, "Water", 10, new BigDecimal("31.25"), "Check", false));
+    FinancialSnapshot current = repository.currentSnapshot();
+    repository.replaceSnapshot(
+        current.version(),
+        new FinancialSnapshot(
+            current.version(),
+            current.payPeriodStart(),
+            current.payPeriodEnd(),
+            List.of(new ExpenseBill(0, "Water", 10, new BigDecimal("31.25"), "Check", false)),
+            current.annualWithdrawals(),
+            current.assetAccounts(),
+            current.debtAccounts(),
+            current.incomeSummaryItems(),
+            current.incomeEvents(),
+            current.importantDates()));
 
-    FinancialsData loaded = store.load();
-    assertThat(loaded.version()).isEqualTo(8);
+    FinancialSnapshot afterFirstReplacement = repository.currentSnapshot();
+    repository.replaceSnapshot(
+        afterFirstReplacement.version(),
+        new FinancialSnapshot(
+            afterFirstReplacement.version(),
+            afterFirstReplacement.payPeriodStart(),
+            afterFirstReplacement.payPeriodEnd(),
+            List.of(new ExpenseBill(1, "Water", 10, new BigDecimal("32.50"), "Check", true)),
+            afterFirstReplacement.annualWithdrawals(),
+            afterFirstReplacement.assetAccounts(),
+            afterFirstReplacement.debtAccounts(),
+            afterFirstReplacement.incomeSummaryItems(),
+            afterFirstReplacement.incomeEvents(),
+            afterFirstReplacement.importantDates()));
+
+    FinancialSnapshot loaded = store.loadCurrentSnapshot();
     assertThat(loaded.bills()).extracting(ExpenseBill::bill).containsExactly("Water");
-    assertThat(loaded.auditEvents()).hasSize(1);
-    assertThat(loaded.auditEvents().getFirst().versionBefore()).isEqualTo(7);
-    assertThat(loaded.auditEvents().getFirst().versionAfter()).isEqualTo(8);
+    assertThat(loaded.version()).isEqualTo(9);
+    assertThat(loaded.bills().getFirst().amount()).isEqualByComparingTo("32.50");
+    assertThat(store.loadAuditHistory(1))
+        .singleElement()
+        .satisfies(
+            (event) -> {
+              assertThat(event.id()).isEqualTo(2);
+              assertThat(event.versionBefore()).isEqualTo(8);
+              assertThat(event.versionAfter()).isEqualTo(9);
+            });
+    assertThat(store.loadAuditHistory(10))
+        .extracting((event) -> event.versionAfter())
+        .containsExactly(9L, 8L);
     assertThat(countRows("financial_record_snapshot where workspace_id = " + workspaceId))
-        .isEqualTo(2);
+        .isEqualTo(3);
     assertThat(
             countRows(
                 "financial_record_snapshot where workspace_id = " + workspaceId + " and active"))
         .isEqualTo(1);
-    assertThat(countRows("financial_record_audit_event")).isEqualTo(1);
+    assertThat(countRows("financial_record_audit_event")).isEqualTo(2);
   }
 
   @Test
   void rejectsAStaleRelationalReplacement() {
     adapter.createInitialSnapshot(workspaceId, emptySnapshot(3));
-    FinancialsData stale = store.load();
+    FinancialsRepository staleRepository =
+        new FinancialsRepository(
+            store, Clock.fixed(Instant.parse("2026-07-14T12:00:00Z"), ZoneOffset.UTC));
+    FinancialSnapshot stale = staleRepository.currentSnapshot();
     adapter.replaceActiveSnapshot(workspaceId, emptySnapshot(4));
 
-    assertThatThrownBy(() -> store.save(stale.withVersion(4)))
+    assertThatThrownBy(() -> staleRepository.replaceSnapshot(stale.version(), stale))
         .isInstanceOf(SnapshotVersionConflictException.class)
         .hasMessageContaining("current version is 4");
   }
@@ -160,21 +188,6 @@ class PostgresFinancialsSnapshotStoreIT {
         createdWorkspaceId,
         userId);
     return new WorkspaceOwner(userId, email, createdWorkspaceId, name);
-  }
-
-  private void authenticate(WorkspaceOwner owner) {
-    AuthenticatedSession session =
-        new AuthenticatedSession(
-            UUID.randomUUID(),
-            owner.userId(),
-            owner.email(),
-            "Runtime Owner",
-            Instant.parse("2026-08-14T12:00:00Z"),
-            List.of(new WorkspaceAccess(owner.workspaceId(), owner.workspaceName(), "owner")));
-    SecurityContextHolder.getContext()
-        .setAuthentication(
-            UsernamePasswordAuthenticationToken.authenticated(
-                session, null, List.of(new SimpleGrantedAuthority("ROLE_WORKSPACE"))));
   }
 
   private int countRows(String tableExpression) {

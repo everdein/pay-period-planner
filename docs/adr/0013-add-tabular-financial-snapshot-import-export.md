@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Superseded by
+[ADR 0018](0018-use-json-as-the-sole-application-backup-format.md)
 
 ## Context
 

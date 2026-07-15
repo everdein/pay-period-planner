@@ -12,68 +12,114 @@ export type FinancialsFailure = {
   kind: 'conflict' | 'error' | 'not-found' | 'unauthorized' | 'validation';
   message: string;
   operation: 'initialize' | 'load' | 'save';
+  requestId?: string;
   status?: number;
+  title?: string;
 };
 
 type FinancialsState = {
+  activeWorkspaceId: number | null;
   snapshot: ExpenseSnapshot | null;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   saving: boolean;
   initializing: boolean;
   snapshotMissing: boolean;
   error: FinancialsFailure | null;
+  initializeRequestId: string | null;
+  loadRequestId: string | null;
+  saveRequestId: string | null;
+  savedDraftRevision: number | null;
 };
 
 const initialState: FinancialsState = {
+  activeWorkspaceId: null,
   snapshot: null,
   status: 'idle',
   saving: false,
   initializing: false,
   snapshotMissing: false,
   error: null,
+  initializeRequestId: null,
+  loadRequestId: null,
+  saveRequestId: null,
+  savedDraftRevision: null,
+};
+
+type WorkspaceRequest = {
+  workspaceId: number;
+};
+
+type InitializeSnapshotRequest = WorkspaceRequest & {
+  payPeriod: PayPeriodRequest;
+};
+
+type SaveSnapshotRequest = WorkspaceRequest & {
+  draftRevision: number;
+  snapshot: ExpenseSnapshotRequest;
 };
 
 export const fetchMonthlyExpenses = createAsyncThunk<
   ExpenseSnapshot,
-  void,
+  WorkspaceRequest,
   { rejectValue: FinancialsFailure; state: { financials: FinancialsState } }
 >(
   'financials/fetchMonthlyExpenses',
-  async (_, { rejectWithValue }) => {
+  async ({ workspaceId }, { rejectWithValue }) => {
     try {
-      return await financialsService.getMonthlyExpenses();
+      return await financialsService.getMonthlyExpenses(workspaceId);
     } catch (error) {
       return rejectWithValue(toFinancialsFailure(error, 'load'));
     }
   },
   {
-    condition: (_, { getState }) => getState().financials.status !== 'loading',
+    condition: ({ workspaceId }, { getState }) => {
+      const state = getState().financials;
+      return state.status !== 'loading' || state.activeWorkspaceId !== workspaceId;
+    },
   }
 );
 
 export const saveExpenseSnapshot = createAsyncThunk<
   ExpenseSnapshot,
-  ExpenseSnapshotRequest,
-  { rejectValue: FinancialsFailure }
->('financials/saveExpenseSnapshot', async (payload, { rejectWithValue }) => {
-  try {
-    return await financialsService.saveSnapshot(payload);
-  } catch (error) {
-    return rejectWithValue(toFinancialsFailure(error, 'save'));
+  SaveSnapshotRequest,
+  { rejectValue: FinancialsFailure; state: { financials: FinancialsState } }
+>(
+  'financials/saveExpenseSnapshot',
+  async ({ snapshot, workspaceId }, { rejectWithValue }) => {
+    try {
+      return await financialsService.saveSnapshot(workspaceId, snapshot);
+    } catch (error) {
+      return rejectWithValue(toFinancialsFailure(error, 'save'));
+    }
+  },
+  {
+    condition: ({ workspaceId }, { getState }) => {
+      const state = getState().financials;
+      return state.activeWorkspaceId === workspaceId && state.snapshot !== null && !state.saving;
+    },
   }
-});
+);
 
 export const initializeExpenseSnapshot = createAsyncThunk<
   ExpenseSnapshot,
-  PayPeriodRequest,
-  { rejectValue: FinancialsFailure }
->('financials/initializeExpenseSnapshot', async (payload, { rejectWithValue }) => {
-  try {
-    return await financialsService.initializeSnapshot(payload);
-  } catch (error) {
-    return rejectWithValue(toFinancialsFailure(error, 'initialize'));
+  InitializeSnapshotRequest,
+  { rejectValue: FinancialsFailure; state: { financials: FinancialsState } }
+>(
+  'financials/initializeExpenseSnapshot',
+  async ({ payPeriod, workspaceId }, { rejectWithValue }) => {
+    try {
+      return await financialsService.initializeSnapshot(workspaceId, payPeriod);
+    } catch (error) {
+      return rejectWithValue(toFinancialsFailure(error, 'initialize'));
+    }
+  },
+  {
+    condition: ({ workspaceId }, { getState }) => {
+      const state = getState().financials;
+      return state.activeWorkspaceId === workspaceId && !state.initializing;
+    },
   }
-});
+);
 
 const financialsSlice = createSlice({
   name: 'financials',
@@ -82,26 +128,44 @@ const financialsSlice = createSlice({
     clearFinancialsError: (state) => {
       state.error = null;
     },
-    resetFinancials: () => initialState,
+    resetFinancials: () => ({ ...initialState }),
   },
   selectors: {
     selectFinancialsSnapshot: (state) => state.snapshot,
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchMonthlyExpenses.pending, (state) => {
+      .addCase(fetchMonthlyExpenses.pending, (state, action) => {
+        const workspaceChanged = state.activeWorkspaceId !== action.meta.arg.workspaceId;
+        state.activeWorkspaceId = action.meta.arg.workspaceId;
+        state.loadRequestId = action.meta.requestId;
         state.status = 'loading';
         state.snapshot = null;
         state.snapshotMissing = false;
         state.error = null;
+        state.savedDraftRevision = null;
+        if (workspaceChanged) {
+          state.initializing = false;
+          state.initializeRequestId = null;
+          state.saving = false;
+          state.saveRequestId = null;
+        }
       })
       .addCase(fetchMonthlyExpenses.fulfilled, (state, action) => {
+        if (!isCurrentRequest(state, action.meta.arg.workspaceId, action.meta.requestId, 'load')) {
+          return;
+        }
+        state.loadRequestId = null;
         state.status = 'succeeded';
         state.snapshot = action.payload;
         state.snapshotMissing = false;
       })
       .addCase(fetchMonthlyExpenses.rejected, (state, action) => {
+        if (!isCurrentRequest(state, action.meta.arg.workspaceId, action.meta.requestId, 'load')) {
+          return;
+        }
         const failure = action.payload ?? fallbackFailure('load');
+        state.loadRequestId = null;
         state.status = 'failed';
         state.snapshot = null;
         state.error = failure;
@@ -109,32 +173,56 @@ const financialsSlice = createSlice({
       });
 
     builder
-      .addCase(initializeExpenseSnapshot.pending, (state) => {
+      .addCase(initializeExpenseSnapshot.pending, (state, action) => {
+        state.initializeRequestId = action.meta.requestId;
         state.initializing = true;
         state.error = null;
       })
       .addCase(initializeExpenseSnapshot.fulfilled, (state, action) => {
+        if (
+          !isCurrentRequest(state, action.meta.arg.workspaceId, action.meta.requestId, 'initialize')
+        ) {
+          return;
+        }
+        state.initializeRequestId = null;
         state.initializing = false;
         state.snapshotMissing = false;
         state.status = 'succeeded';
         state.snapshot = action.payload;
+        state.savedDraftRevision = null;
       })
       .addCase(initializeExpenseSnapshot.rejected, (state, action) => {
+        if (
+          !isCurrentRequest(state, action.meta.arg.workspaceId, action.meta.requestId, 'initialize')
+        ) {
+          return;
+        }
+        state.initializeRequestId = null;
         state.initializing = false;
         state.error = action.payload ?? fallbackFailure('initialize');
       });
 
     builder
-      .addCase(saveExpenseSnapshot.pending, (state) => {
+      .addCase(saveExpenseSnapshot.pending, (state, action) => {
+        state.saveRequestId = action.meta.requestId;
         state.saving = true;
         state.error = null;
       })
       .addCase(saveExpenseSnapshot.fulfilled, (state, action) => {
+        if (!isCurrentRequest(state, action.meta.arg.workspaceId, action.meta.requestId, 'save')) {
+          return;
+        }
+        state.saveRequestId = null;
         state.saving = false;
         state.status = 'succeeded';
         state.snapshot = action.payload;
+        state.savedDraftRevision = action.meta.arg.draftRevision;
       })
       .addCase(saveExpenseSnapshot.rejected, (state, action) => {
+        if (!isCurrentRequest(state, action.meta.arg.workspaceId, action.meta.requestId, 'save')) {
+          return;
+        }
+        state.saveRequestId = null;
         state.saving = false;
         state.error = action.payload ?? fallbackFailure('save');
       });
@@ -146,18 +234,41 @@ export const { clearFinancialsError, resetFinancials } = financialsSlice.actions
 
 export default financialsSlice.reducer;
 
+function isCurrentRequest(
+  state: FinancialsState,
+  workspaceId: number,
+  requestId: string,
+  operation: 'initialize' | 'load' | 'save'
+) {
+  const activeRequestId =
+    operation === 'load'
+      ? state.loadRequestId
+      : operation === 'save'
+        ? state.saveRequestId
+        : state.initializeRequestId;
+
+  return state.activeWorkspaceId === workspaceId && activeRequestId === requestId;
+}
+
 function toFinancialsFailure(
   error: unknown,
   operation: FinancialsFailure['operation']
 ): FinancialsFailure {
-  const message = error instanceof Error ? error.message : fallbackMessage(operation);
-  const status = error instanceof ApiError ? error.status : statusFromMessage(message);
+  if (error instanceof ApiError) {
+    return {
+      kind: failureKind(error.status),
+      message: error.detail,
+      operation,
+      requestId: error.requestId,
+      status: error.status,
+      ...(error.title ? { title: error.title } : {}),
+    };
+  }
 
   return {
-    kind: failureKind(status),
-    message,
+    kind: 'error',
+    message: error instanceof Error ? error.message : fallbackMessage(operation),
     operation,
-    ...(status ? { status } : {}),
   };
 }
 
@@ -174,11 +285,6 @@ function fallbackMessage(operation: FinancialsFailure['operation']) {
     default:
       return 'Unable to save changes';
   }
-}
-
-function statusFromMessage(message: string) {
-  const match = /HTTP (\d{3})/.exec(message);
-  return match ? Number(match[1]) : undefined;
 }
 
 function failureKind(status?: number): FinancialsFailure['kind'] {

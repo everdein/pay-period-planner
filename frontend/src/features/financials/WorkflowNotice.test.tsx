@@ -15,12 +15,14 @@ describe('WorkflowNotice', () => {
       <WorkflowNotice
         actions={<button type="button">Reload Latest</button>}
         message="The draft was not saved."
+        requestId="request-conflict"
         title="A newer snapshot is available"
         tone="conflict"
       />
     );
 
     expect(screen.getByRole('alert')).toHaveTextContent('The draft was not saved.');
+    expect(screen.getByText('Request reference: request-conflict')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Reload Latest' })).toBeVisible();
   });
 });

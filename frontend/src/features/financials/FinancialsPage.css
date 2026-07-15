@@ -419,6 +419,28 @@ button.danger {
   border-left-width: 5px;
 }
 
+.projection-role-settings {
+  border-bottom: 1px solid #d7e0eb;
+  border-top: 1px solid #d7e0eb;
+  margin-bottom: 20px;
+  padding: 16px 0;
+}
+
+.projection-role-settings h3 {
+  font-size: 1rem;
+  margin: 0 0 12px;
+}
+
+.projection-role-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.projection-role-grid select {
+  width: 100%;
+}
+
 .overview-sections {
   display: grid;
   gap: 20px;
@@ -1101,6 +1123,12 @@ tr.projection-row.neutral td {
   color: #8a1f11;
 }
 
+.error > small {
+  display: block;
+  font-size: 0.75rem;
+  margin-top: 4px;
+}
+
 .workflow-notice {
   align-items: center;
   border-left: 4px solid;
@@ -1156,8 +1184,13 @@ tr.projection-row.neutral td {
   .expenses-layout,
   .financials-layout,
   .projection-periods,
-  .projection-focus {
+  .projection-focus,
+  .projection-role-grid {
     display: block;
+  }
+
+  .projection-role-grid label + label {
+    margin-top: 12px;
   }
 
   .workspace-onboarding {

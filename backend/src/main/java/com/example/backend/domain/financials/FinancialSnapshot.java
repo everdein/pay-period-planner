@@ -7,6 +7,8 @@ public record FinancialSnapshot(
     long version,
     LocalDate payPeriodStart,
     LocalDate payPeriodEnd,
+    FinancialPlanningSettings planningSettings,
+    FinancialProjectionRoles projectionRoles,
     List<ExpenseBill> bills,
     List<AnnualWithdrawal> annualWithdrawals,
     List<AssetAccount> assetAccounts,
@@ -25,11 +27,66 @@ public record FinancialSnapshot(
     importantDates = immutableOrEmpty(importantDates);
   }
 
+  public FinancialSnapshot(
+      long version,
+      LocalDate payPeriodStart,
+      LocalDate payPeriodEnd,
+      FinancialProjectionRoles projectionRoles,
+      List<ExpenseBill> bills,
+      List<AnnualWithdrawal> annualWithdrawals,
+      List<AssetAccount> assetAccounts,
+      List<DebtAccount> debtAccounts,
+      List<IncomeSummaryItem> incomeSummaryItems,
+      List<IncomeEvent> incomeEvents,
+      List<ImportantDate> importantDates) {
+    this(
+        version,
+        payPeriodStart,
+        payPeriodEnd,
+        null,
+        projectionRoles,
+        bills,
+        annualWithdrawals,
+        assetAccounts,
+        debtAccounts,
+        incomeSummaryItems,
+        incomeEvents,
+        importantDates);
+  }
+
+  public FinancialSnapshot(
+      long version,
+      LocalDate payPeriodStart,
+      LocalDate payPeriodEnd,
+      List<ExpenseBill> bills,
+      List<AnnualWithdrawal> annualWithdrawals,
+      List<AssetAccount> assetAccounts,
+      List<DebtAccount> debtAccounts,
+      List<IncomeSummaryItem> incomeSummaryItems,
+      List<IncomeEvent> incomeEvents,
+      List<ImportantDate> importantDates) {
+    this(
+        version,
+        payPeriodStart,
+        payPeriodEnd,
+        null,
+        null,
+        bills,
+        annualWithdrawals,
+        assetAccounts,
+        debtAccounts,
+        incomeSummaryItems,
+        incomeEvents,
+        importantDates);
+  }
+
   public FinancialSnapshot withVersion(long replacementVersion) {
     return new FinancialSnapshot(
         replacementVersion,
         payPeriodStart,
         payPeriodEnd,
+        planningSettings,
+        projectionRoles,
         bills,
         annualWithdrawals,
         assetAccounts,

@@ -78,7 +78,7 @@ async function signUp(page: Page, email: string) {
   await page.getByLabel('Password', { exact: true }).fill(accountPassword);
   await page.getByLabel('Confirm password').fill(accountPassword);
   await page.getByRole('button', { name: 'Create Account' }).click();
-  await expect(page.getByRole('heading', { name: 'Start your financial workspace' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start your planning workspace' })).toBeVisible();
 }
 
 async function expectNoAccessibilityViolations(page: Page, state: string) {

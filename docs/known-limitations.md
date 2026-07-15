@@ -20,12 +20,18 @@ changes in a new ADR.
 
 ### LIM-002 — Browser user and workspace isolation
 
-- **Status:** Resolved for the current PostgreSQL browser workflow on 2026-07-14
-- **Resolution:** Every PostgreSQL financial operation resolves a current
-  database-derived membership and workspace-scoped snapshot. The live browser
-  test creates two accounts with distinct relational snapshots, changes one,
-  proves the other cannot observe it, and then recovers the first session and
-  value. Redux clears the prior snapshot during every identity/workspace switch.
+- **Status:** Resolved for the current PostgreSQL browser workflow on 2026-07-15
+- **Resolution:** Every PostgreSQL operation resolves a database-derived
+  membership and workspace-scoped snapshot. Every financial client call now
+  receives an explicit workspace ID instead of reading mutable module-level
+  context. Redux records the active workspace and current load, initialization,
+  and save request IDs, then ignores completions outside that boundary. Page
+  workflow notices also verify that their originating workspace is still
+  active.
+- **Verification:** Deterministic tests delay loads and saves, switch the active
+  workspace, and prove that prior completions cannot replace the new snapshot.
+  The live browser test separately proves cross-account database isolation,
+  sign-out, recovery, and snapshot persistence.
 - **Remaining boundary:** Collaboration and membership-management UX are not
   implemented.
 
@@ -43,17 +49,14 @@ changes in a new ADR.
 
 ## API and Concurrency
 
-### LIM-004 — Granular endpoints do not carry snapshot versions
+### LIM-004 — Granular endpoints did not carry snapshot versions
 
-- **Status:** Partially resolved for full-snapshot saves
-- **Impact:** `PUT /api/v1/financials` rejects stale versions with `409`, but
-  granular record and pay-period endpoints still mutate immediately without a
-  client-supplied aggregate version.
-- **Current mitigation:** The current browser workspace primarily uses the
-  versioned full-snapshot save boundary; ADR 0012 records that granular
-  endpoints remain direct API utilities.
-- **Revisit when:** Multiple tabs/users, remote access, background writes,
-  synchronization, or broader granular editing are supported.
+- **Status:** Resolved by ADR 0016
+- **Resolution:** The granular record and pay-period routes, request DTOs,
+  client helpers, service/repository methods, and relational-adapter CRUD
+  helpers were removed. `PUT /api/v1/financials` is now the sole supported
+  financial mutation boundary and always requires the current aggregate
+  version.
 
 ### LIM-005 — Full-snapshot replacement can delete omitted collections
 
@@ -79,25 +82,25 @@ changes in a new ADR.
 
 ### LIM-007 — Name-based projection anchors
 
-- **Status:** Intentional current invariant
-- **Impact:** Renaming `Rent`, `Rent Reserve`, or `Net Income` / `Bi-Weekly`
-  changes projection behavior. Normalization may add or rename zero-valued
-  anchor records.
-- **Current mitigation:** Case-insensitive matching, documented glossary, and
-  focused projection tests.
-- **Revisit when:** Users need configurable anchors, multiple rent obligations,
-  or localization.
+- **Status:** Resolved 2026-07-15 by ADR 0026
+- **Resolution:** Every versioned snapshot stores typed projection roles that
+  reference stable bill, asset-account, and income-summary record IDs. Display
+  labels are editable and no longer determine projection or removal behavior.
+- **Compatibility boundary:** V8 backfills historical exact anchor labels.
+  Legacy imports without roles may use label matching once to establish roles and
+  add missing zero-value defaults without renaming existing records.
 
 ### LIM-008 — Local-date and system-time-zone dependence
 
-- **Status:** Accepted
-- **Impact:** The backend uses its system default time zone and the frontend
-  uses browser-local dates. Different zones near midnight can disagree about
-  current periods or statuses.
-- **Current mitigation:** Local frontend/backend usage on one workstation and
-  date-only API fields.
-- **Revisit when:** Frontend and backend run in different zones or scheduled
-  processing is introduced.
+- **Status:** Resolved 2026-07-15 by ADR 0027
+- **Resolution:** Every versioned snapshot stores a validated IANA planning
+  time zone and one of four supported pay cadences. The backend derives one
+  `currentDate` from the stored zone and uses it for all current-period
+  calculations. The frontend uses that returned date for the saved zone and
+  performs date-only arithmetic with UTC calendar operations.
+- **Compatibility boundary:** Historical rows and legacy imports without
+  settings use `BIWEEKLY` and `UTC`. New browser onboarding proposes the
+  browser IANA zone, which remains editable.
 
 ### LIM-009 — Simplified financial model
 
@@ -105,7 +108,9 @@ changes in a new ADR.
 - **Impact:** The workspace tracks balances and planning flags, not transaction
   history, reconciliation, interest, amortization, taxes, market prices,
   currencies, or financial-account connectivity.
-- **Current mitigation:** UI and glossary describe values as planning inputs.
+- **Current mitigation:** UI and glossary explicitly frame values as household
+  planning estimates rather than accounting, reconciliation, transfer, or
+  advisory outputs.
 - **Revisit when:** Product scope requires accounting-grade or advisory
   behavior.
 
@@ -137,12 +142,12 @@ changes in a new ADR.
   migration source, so operators must distinguish it from active relational
   workspace data.
 - **Current mitigation:** PostgreSQL runtime reads and writes only
-  V3/V4/V6/V7 `financial_record_*` rows. Inspection and migration documentation
+  V3/V4/V6/V7/V8/V9 `financial_record_*` rows. Inspection and migration documentation
   label V2 JSONB as legacy, and the operator workflow leaves it untouched for
   recovery evidence.
 - **Revisit when:** Reporting, granular concurrency, audit history, relational
   integrity, or large snapshots are needed. Use ADR 0010 and ADR 0011's
-  V3/V4/V6/V7 relational path, not the inactive V1 tables as-is.
+  V3/V4/V6/V7/V8/V9 relational path, not the inactive V1 tables as-is.
 - **Remaining migration boundary:** V6 preserves any preexisting unowned
   relational snapshot without silently assigning it. New and changed rows must
   have a workspace; the explicit ownership migration must backfill legacy rows,
@@ -156,7 +161,7 @@ changes in a new ADR.
 - **Impact:** Their presence can mislead operators into expecting data; they may
   remain empty while the application is healthy.
 - **Current mitigation:** Storage guide, inspector, and architecture map
-  identify V3/V4/V6/V7 as the PostgreSQL runtime path, V2 JSONB as a legacy
+  identify V3/V4/V6/V7/V8/V9 as the PostgreSQL runtime path, V2 JSONB as a legacy
   migration source, and prohibit dual-write/backfill through V1.
 - **Revisit when:** Planning a production schema cleanup.
 
@@ -190,9 +195,9 @@ changes in a new ADR.
   a verified JSON/JSONB-to-workspace transition, but there is still no automated
   backup schedule, PostgreSQL dump automation, off-host retention policy, or
   database-native restore drill.
-- **Current mitigation:** Manual `GET /api/v1/financials/export*` downloads,
-  explicit `POST /api/v1/financials/import/{csv,xlsx}` restores, PowerShell
-  helpers that avoid printing financial contents, plus explicit
+- **Current mitigation:** Manual `GET /api/v1/financials/export` downloads,
+  explicit version-checked `POST /api/v1/financials/restore` operations,
+  PowerShell helpers that avoid printing financial contents, plus explicit
   `migrate-financial-snapshot-to-workspace.ps1` and
   `rollback-workspace-snapshot-migration.ps1` commands. The migration command
   requires an external backup and fingerprint before writing, preserves audit
@@ -202,7 +207,7 @@ changes in a new ADR.
   deployment is planned.
 - **Remaining boundary:** Keep the source and external backup until relational
   runtime activation and recovery evidence pass. Production backup automation,
-  retention, and restore drills remain Phase G work.
+  retention, and restore drills remain roadmap Phase M work.
 
 ### LIM-017 — Empty PostgreSQL could seed from personal JSON
 
@@ -213,20 +218,23 @@ changes in a new ADR.
   source data enters relational storage only through the explicit, backed-up
   migration workflow.
 
-### LIM-018 — Audit history is coarse and storage-envelope scoped
+### LIM-018 — Audit history is coarse
 
-- **Status:** Accepted first audit/history slice
+- **Status:** Query/write scaling resolved by ADR 0019; event detail remains
+  intentionally coarse
 - **Impact:** The backend records saved-change audit events with action,
   resource type/ID, version movement, timestamp, and aggregate projection
-  summaries. It does not store field-level before/after diffs, authenticated
-  user identity, request origin, or a separately normalized audit table. Manual
-  JSON/CSV/XLSX source-shaped exports do not currently include audit history.
+  summaries in `financial_record_audit_event`. It still does not store
+  field-level before/after diffs, authenticated user identity, or request
+  origin. Manual source-shaped exports do not include audit history.
 - **Current mitigation:** Use `GET /api/v1/financials/history` for recent
-  history, keep the persisted storage envelope and local `.bak` copy together
-  for recovery, and treat audit history as personal financial data.
-- **Revisit when:** Multi-user support, compliance-grade audit needs,
-  exportable history, or runtime activation of a relational audit table is
-  planned.
+  history and treat audit events as personal financial data. V7 stores events
+  relationally beside their immutable snapshot evidence. ADR 0019 separates
+  history from current-state loading, applies limits in SQL, and appends one new
+  audit row per successful replacement.
+- **Revisit when:** Add field-level history, actor identity, or request origin
+  only if collaboration or compliance requirements justify that data and
+  complexity.
 
 ## Testing and Delivery
 
@@ -248,12 +256,16 @@ changes in a new ADR.
   cross-user workspace isolation, draft editing, full-snapshot save, refresh
   persistence, delete confirmation, and post-delete persistence. Focused suites
   now audit every financial section for WCAG violations and responsive layout,
-  but they do not exercise every CRUD action in every section or provide pixel
-  visual regression and human assistive-technology evidence.
+  but they do not exercise in-flight account/workspace changes, delayed saves,
+  every CRUD action in every section, pixel visual regression, or human
+  assistive-technology evidence. Deterministic Redux and draft-hook tests cover
+  stale request completions and edits made during delayed saves without adding
+  production-only timing controls.
 - **Current mitigation:** Live-backend `scripts/run-browser-checks.ps1`,
-  deterministic schema cleanup, Testing Library coverage, API/service tests,
-  hosted Accessibility and Responsive jobs, and the manual protocols in
-  `docs/accessibility-verification.md` and `docs/responsive-verification.md`.
+  deterministic schema cleanup, delayed-response unit tests, Testing Library
+  coverage, API/service tests, hosted Accessibility and Responsive jobs, and
+  the manual protocols in `docs/accessibility-verification.md` and
+  `docs/responsive-verification.md`.
 - **Revisit when:** Per-section workflow depth, visual regression, or broader
   release confidence is required.
 
@@ -300,13 +312,45 @@ changes in a new ADR.
 
 ### LIM-025 — Request-size guard depends on declared content length
 
-- **Status:** Accepted operational guardrail
+- **Status:** Partially resolved on 2026-07-15
 - **Impact:** The backend rejects requests above `FINANCIALS_MAX_REQUEST_BYTES`
   when `Content-Length` is known. Streaming/chunked requests without a declared
-  length should still be limited by a production reverse proxy or gateway.
-- **Current mitigation:** Local request-size filter, API tests, and documented
-  production edge requirement.
-- **Revisit when:** A concrete production hosting target is selected.
+  length still require a production reverse proxy or gateway limit.
+- **Resolution:** ADR 0017 first retired XLSX import and its decompression path.
+  ADR 0018 then retires all CSV/XLSX application backup behavior and the custom
+  tabular codec. JSON restore is parsed by the framework and still passes
+  through the declared-length request guard.
+- **Remaining boundary:** Enforce streaming request limits at the selected edge
+  before roadmap Phase M.
+
+### LIM-026 - Legacy ESLint packages require a scoped transitive override
+
+- **Status:** Accepted temporary development-tool boundary in ADR 0020
+- **Impact:** Five current ESLint dependency paths still use `minimatch@3.1.5`
+  and its callable CommonJS brace-expansion 1.x contract.
+- **Current mitigation:** `frontend/package.json` scopes those paths to
+  advisory-fixed `brace-expansion@1.1.13`. A read-only compatibility assertion
+  runs locally and in CI, and clean installs do not mutate `node_modules`.
+- **Revisit when:** Remove the override and assertion after every checked owner
+  leaves minimatch 3 or upstream dependency declarations resolve a secure,
+  compatible brace-expansion release without repository intervention.
+
+### LIM-027 - Current-workspace application boundaries remain framework-aware
+
+- **Status:** Resolved 2026-07-15 by ADR 0022
+- **Resolution:** The active PostgreSQL store and initialization service depend
+  on the framework-neutral `CurrentWorkspace` port. The
+  `AuthenticatedRequestWorkspace` HTTP adapter owns servlet headers and Spring
+  Security principal inspection. Financial validation and stale-write handling
+  raise application exceptions that `ApiExceptionHandler` maps to the existing
+  Problem Detail statuses and safe details.
+- **Verification:** Focused service and adapter tests invoke application
+  behavior without servlet requests. Controller tests preserve the `400` and
+  `409` HTTP mappings, and PostgreSQL integration tests continue to preserve
+  workspace isolation.
+- **Remaining boundary:** `FinancialsRepository` remains Spring request-scoped
+  to isolate its mutable aggregate cache. That lifecycle choice no longer owns
+  workspace selection or HTTP error semantics.
 
 ## Maintaining This Register
 

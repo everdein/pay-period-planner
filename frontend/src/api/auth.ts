@@ -1,10 +1,4 @@
-import {
-  clearApiSessionContext,
-  httpGet,
-  httpPost,
-  httpPostVoid,
-  setActiveWorkspaceId,
-} from './client';
+import { clearApiSessionContext, httpGet, httpPost, httpPostVoid } from './client';
 
 export type WorkspaceAccess = {
   id: number;
@@ -38,15 +32,15 @@ const WORKSPACE_STORAGE_KEY = 'end-to-end-app.auth.workspaceId';
 
 export const accountSessionService = {
   recover: async () =>
-    activateSession(await httpGet<AccountSession>('/api/v1/auth/session', false)),
+    activateSession(
+      await httpGet<AccountSession>('/api/v1/auth/session', { notifyUnauthorized: false })
+    ),
   signIn: async (request: AccountSignInRequest) => {
-    setActiveWorkspaceId(null);
     return activateSession(
       await httpPost<AccountSession, AccountSignInRequest>('/api/v1/auth/signin', request)
     );
   },
   signUp: async (request: AccountSignUpRequest) => {
-    setActiveWorkspaceId(null);
     return activateSession(
       await httpPost<AccountSession, AccountSignUpRequest>('/api/v1/auth/signup', request)
     );
@@ -56,13 +50,14 @@ export const accountSessionService = {
     clearAccountSession();
   },
   selectWorkspace: (activeSession: ActiveAccountSession, workspaceId: number) => {
-    const workspace = activeSession.account.workspaces.find((candidate) => candidate.id === workspaceId);
+    const workspace = activeSession.account.workspaces.find(
+      (candidate) => candidate.id === workspaceId
+    );
     if (!workspace) {
       throw new Error('The selected workspace is not available to this account.');
     }
 
     persistWorkspaceId(workspace.id);
-    setActiveWorkspaceId(workspace.id);
     return { ...activeSession, workspaceId: workspace.id };
   },
 };
@@ -84,7 +79,6 @@ function activateSession(account: AccountSession): ActiveAccountSession {
   }
 
   persistWorkspaceId(workspace.id);
-  setActiveWorkspaceId(workspace.id);
   return { account, workspaceId: workspace.id };
 }
 

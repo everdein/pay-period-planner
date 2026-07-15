@@ -1,5 +1,6 @@
 package com.example.backend.domain.migration;
 
+import com.example.backend.domain.financials.FinancialSnapshot;
 import com.example.backend.repository.FinancialsData;
 
 public record FinancialSnapshotCounts(
@@ -22,5 +23,17 @@ public record FinancialSnapshotCounts(
         data.incomeEvents().size(),
         data.importantDates().size(),
         data.auditEvents().size());
+  }
+
+  public static FinancialSnapshotCounts from(FinancialSnapshot snapshot, long auditEvents) {
+    return new FinancialSnapshotCounts(
+        snapshot.bills().size(),
+        snapshot.annualWithdrawals().size(),
+        snapshot.assetAccounts().size(),
+        snapshot.debtAccounts().size(),
+        snapshot.incomeSummaryItems().size(),
+        snapshot.incomeEvents().size(),
+        snapshot.importantDates().size(),
+        auditEvents);
   }
 }

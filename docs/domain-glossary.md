@@ -1,7 +1,8 @@
 # Domain Glossary
 
-This glossary defines terms as the current application uses them. It is not
-general financial advice or a model for multi-user accounting.
+This glossary defines terms as the current application uses them. The product
+supports household cash-flow and pay-period planning; it is not accounting,
+transaction reconciliation, transfer instruction, or financial advice.
 
 ## Financial Workspace Terms
 
@@ -14,6 +15,25 @@ current date.
 
 The active pay period is not a payroll provider record and is not necessarily
 exactly fourteen days.
+
+### Planning settings
+
+Versioned workspace settings containing the pay cadence and IANA planning time
+zone. Historical input without settings defaults to biweekly and UTC. Changing
+these settings is a normal full-snapshot draft/save operation.
+
+### Pay cadence
+
+The selected paycheck recurrence: weekly, biweekly, semimonthly, or monthly.
+It controls primary-paycheck annualization and recurring-payday generation; it
+does not silently resize the independently editable pay-period anchor.
+
+### Planning time zone
+
+The IANA zone used by the backend to derive the workspace's `currentDate` from
+an instant. Current-period and frontend status calculations use that planning
+date. Persisted financial dates remain date-only values and are not converted
+between zones.
 
 ### Annual withdrawal
 
@@ -50,11 +70,11 @@ A named balance owed to a company. Total debt is the sum of debt-account
 amounts. The application does not model interest, minimum payments,
 amortization, transactions, or account authentication.
 
-### HYSA
+### Possible savings transfer
 
-High-yield savings account. “Possible HYSA transfer” is a projection output:
-remaining projected cash after covered bills and debt. It is not a transfer
-instruction and no banking integration exists.
+A projection output representing estimated cash remaining after covered bills
+and debt. The destination is not tied to an account type or institution. It is
+not a transfer instruction, and no banking integration exists.
 
 ### Important date
 
@@ -71,16 +91,17 @@ frontend derives monthly paycheck counts and `received`, `current`, or
 ### Numbered income row
 
 An income event with a non-null check number. The Income Calendar generator can
-replace numbered rows in a selected year when creating a bi-weekly payday
-calendar. One-time income events without check numbers are preserved by that
-replacement.
+replace numbered rows in a selected year when creating a cadence-aware payday
+calendar. Semimonthly generation requires two anchor dates. One-time income
+events without check numbers are preserved by that replacement.
 
 ### Income summary item
 
-A category/interval/amount source record. The distinguished source item is
-`Net Income` / `Bi-Weekly`; projections use it as paycheck income. Additional
-source rows are editable and persisted for planning. Additional summary rows may
-be derived for presentation from the primary source.
+A category/interval/amount source record. The workspace projection roles select
+one item as the primary paycheck independently of its editable category and
+interval labels. Additional source rows are editable and persisted for
+planning. Additional summary rows may be derived for presentation from the
+selected primary source.
 
 ### Net worth
 
@@ -100,36 +121,46 @@ the annual pay-period total.
 
 ### Projection
 
-A frontend-only planning calculation using pay-period withdrawals, the primary
-bi-weekly net-income item, rent, rent reserve, debt, and available cash. It does
-not persist a forecast, execute transfers, or guarantee future balances.
+A frontend-only household-planning calculation using pay-period withdrawals,
+the primary paycheck annualized from the selected cadence, the selected housing
+payment and reserve, debt, and available cash. It does not persist a forecast,
+execute transfers, reconcile transactions, produce accounting records, provide
+financial advice, or guarantee future balances.
 
-### Rent and Rent Reserve
+### Projection roles
 
-Special name-based anchors used by projections:
-
-- A monthly withdrawal named `Rent` is the rent obligation.
-- An asset account named `Rent Reserve` is savings set aside for rent.
-
-Matching is trimmed and case-insensitive. Renaming either record changes
-projection behavior; these are domain anchors, not presentation-only labels.
+Three typed record references stored with each versioned snapshot select the
+housing payment, housing reserve, and primary paycheck used by projections. Their
+bill, account, category, and interval names are presentation labels and can be
+edited freely. A selected record must be reassigned before it can be removed.
+Legacy input without roles may use historical labels once to establish these roles.
 
 ## Application State Terms
 
 ### Draft
 
-The editable browser copy derived from the last loaded server snapshot.
-Changes to a draft are not persistent until the user saves. Failed saves leave
-the draft available for correction or retry.
+The editable browser aggregate derived from the last loaded server snapshot.
+One feature-local reducer owns both the committed baseline and canonical draft;
+domain hooks expose focused forms and commands without owning separate record
+collections. Changes to a draft are not persistent until the user saves.
+Failed saves leave the draft available for correction or retry.
 
 New draft records use temporary negative IDs. When saved, negative IDs are sent
-as `null`; the backend assigns positive IDs.
+as `null`; the backend assigns positive IDs. One shared allocator prevents
+temporary IDs from colliding across record types.
 
 ### Dirty state
 
-Frontend state indicating that the local draft differs through an edit the UI
-tracks. It controls save/cancel actions. It is separate from the server
-snapshot `version` used for optimistic concurrency.
+Derived frontend state indicating that the canonical draft differs from its
+committed baseline. It controls save/reset actions. It is separate from the
+server snapshot `version` used for optimistic concurrency.
+
+### Draft revision
+
+A monotonic frontend sequence that identifies the local draft submitted by a
+save. A matching save response can commit that revision; a response for an
+older revision updates the baseline and server version without overwriting
+newer edits. Resetting a draft does not rewind the sequence.
 
 ### Snapshot
 
@@ -152,11 +183,11 @@ The request must include the current snapshot `version`. If the server has a
 newer version, the operation fails with `409 Conflict` instead of overwriting
 the newer snapshot.
 
-### Granular endpoints
+### Retired granular endpoints
 
-The bill create/update/delete and pay-period routes under
-`/api/v1/financials`. They mutate the same aggregate and persist immediately.
-The current workspace UI primarily uses the full-snapshot save.
+The former record-level and pay-period mutation routes under
+`/api/v1/financials`. ADR 0016 retired them so the versioned full-snapshot save
+is the sole supported financial mutation contract.
 
 ### Derived field
 
@@ -208,7 +239,7 @@ the cookie value.
 ### PostgreSQL runtime
 
 The only application persistence path. `PostgresFinancialsSnapshotStore` binds the request-scoped aggregate to an
-authenticated workspace and reads/writes V3/V4/V6/V7 relational rows. Flyway
+authenticated workspace and reads/writes V3/V4/V6/V7/V8/V9 relational rows. Flyway
 applies schema migrations.
 
 ### Legacy JSON file

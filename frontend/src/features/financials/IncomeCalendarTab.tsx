@@ -2,6 +2,7 @@ import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
 import { EmptyTableRow } from './EmptyTableRow';
+import { payCadenceLabel } from './financialsDatePolicy';
 import { formatDate } from './financialsFormatters';
 import type {
   DraftIncomeEvent,
@@ -118,9 +119,7 @@ export function IncomeCalendarTab({
         <div className="side-forms">
           <form className="bill-form" onSubmit={submitRecurringPaydays}>
             <h2>Generate Paydays</h2>
-            <p className="helper-text">
-              Create bi-weekly paycheck rows for a selected year from the first payday.
-            </p>
+            <p className="helper-text">{payCadenceLabel(recurringPaydayForm.payCadence)}</p>
             <label>
               Year
               <input
@@ -132,6 +131,21 @@ export function IncomeCalendarTab({
                 value={recurringPaydayForm.year}
               />
             </label>
+            {recurringPaydayForm.payCadence === 'SEMIMONTHLY' && (
+              <label>
+                Second payday
+                <input
+                  max={yearEnd}
+                  min={yearStart}
+                  onChange={(event) =>
+                    updateRecurringPaydayForm('secondPayDate', event.target.value)
+                  }
+                  required
+                  type="date"
+                  value={recurringPaydayForm.secondPayDate}
+                />
+              </label>
+            )}
             <label>
               First payday
               <input

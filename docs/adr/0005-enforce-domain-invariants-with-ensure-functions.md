@@ -2,9 +2,13 @@
 
 ## Status
 
-Accepted
+Superseded by ADR 0026
 
 ## Context
+
+ADR 0026 replaces name-based ensure functions with typed, versioned projection
+role IDs. This record remains as historical context for the compatibility
+normalizer used by legacy input without roles.
 
 The financial snapshot aggregate requires certain critical entities to always be present for the projection engine and UI to function correctly:
 

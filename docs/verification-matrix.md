@@ -12,13 +12,14 @@ This runs:
 
 1. Environment checks
 2. Spell checking
-3. Frontend TypeScript checking
-4. Frontend linting
-5. Frontend tests with coverage thresholds
-6. Frontend production build
-7. Backend formatting and POM ordering checks
-8. Backend clean build, tests, JaCoCo coverage, and packaging
-9. Required isolated PostgreSQL integration tests
+3. Frontend dependency compatibility checking
+4. Frontend TypeScript checking
+5. Frontend linting
+6. Frontend tests with coverage thresholds
+7. Frontend production build
+8. Backend formatting and POM ordering checks
+9. Backend clean build, tests, JaCoCo coverage, and packaging
+10. Required isolated PostgreSQL integration tests
 
 Use targeted commands while iterating, then run the aggregate gate before
 declaring implementation work complete. Report checks as passed, failed, or
@@ -28,36 +29,36 @@ gate.
 
 ## Change-to-Check Matrix
 
-| Change surface                  | Targeted iteration checks                              | Completion checks                                         | Additional evidence                                                |
-| ------------------------------- | ------------------------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------ |
-| Markdown/docs                   | `npm run spell`                                        | Spell check plus referenced paths/commands                | State whether runtime claims were executed or statically verified  |
-| Repository skill                | YAML metadata and linked-reference validation          | `npm run spell`, `git diff --check`                       | Confirm UI metadata names the skill                                |
-| Frontend helper/calculation     | Relevant Vitest file                                   | Full local verification                                   | Boundary/date/financial cases and coverage                         |
-| React component/workflow        | Relevant Testing Library tests, typecheck, lint        | Full local verification                                   | Keyboard, labels, focus, error/empty/loading states                |
-| Redux/API client                | Relevant frontend tests, typecheck                     | Full local verification                                   | Rejected requests, stale state, save/load behavior                 |
-| Backend service/domain          | Focused Maven test                                     | Full local verification                                   | Validation, boundaries, regression test                            |
-| Controller/DTO/API              | Controller/service tests plus frontend typecheck       | Full local verification                                   | Request/response compatibility and Problem Detail behavior         |
-| Audit/history                   | Repository/service/controller tests                    | Full local verification                                   | Version movement, newest-first order, no request-body logging      |
-| CSV/XLSX import/export          | Controller/service tests plus frontend typecheck       | Full local verification                                   | Stale version rejection, fixed columns, no personal data in output |
-| Legacy JSON migration           | Migration service/API tests                            | Full local verification                                   | Backup fingerprint, explicit owner/workspace, source unchanged     |
-| PostgreSQL store/config/adapter | Focused integration profile                            | Full local verification                                   | Read-only metadata inspection afterward                            |
-| Migration SQL                   | Review ordered migration and constraints               | Full verification with PostgreSQL                         | Fresh and upgraded isolated schema; Flyway history behavior        |
-| Workspace data migration        | Service/controller tests plus script parser            | Full local verification                                   | External backup fingerprint, ownership, counts, audit, rollback    |
-| PowerShell scripts              | PowerShell parser plus safest applicable execution     | Full local verification when orchestration changed        | Exit codes, working directory, cleanup, mutation scope             |
-| Dependency/lockfile             | Clean install and affected build/tests                 | Full local verification and authenticated security checks | Direct/transitive path, compatibility, both lock files             |
-| GitHub workflow                 | Run exact local equivalents                            | Hosted PR run required                                    | Events, permissions, job dependencies, cache paths, secrets        |
-| Hosted AI workflow              | Review workflow YAML and docs                          | Hosted PR run required                                    | Copilot policy, billing, permissions, non-blocking behavior        |
-| PR/failure summary workflow     | Review workflow YAML, template, and docs               | Hosted PR/run evidence required                           | Summary packets are context, not pass/fail evidence                |
-| Issue workflow                  | Review issue forms and implementation guide            | Hosted issue form rendering                               | Scope, data-safety, acceptance criteria, write boundaries          |
-| Documentation drift             | `scripts/check-documentation-drift.ps1`                | Hosted documentation-drift workflow                       | Drift packets are hints; verify source claims before acting        |
-| Dependency triage               | `scripts/triage-dependency-updates.ps1`                | Dependabot PR plus hosted triage workflow                 | Release notes, lockfiles, security status, compatibility risk      |
-| Scheduled maintenance           | `scripts/generate-engineering-status.ps1`              | Weekly maintenance workflow                               | Packets are advisory; external writes require user intent          |
-| Security configuration          | Focused configuration inspection                       | Authenticated Snyk scan                                   | Tool/auth state, severity threshold, fixed versions                |
-| Observability/correlation       | Filter, security, API-client, and error-boundary tests | Full local verification                                   | No sensitive fields; bounded metric tags; protected Actuator       |
-| Accessibility                   | Focused interaction tests plus live axe browser audit  | Full local verification and hosted Accessibility job      | Manual screen-reader/keyboard protocol when interaction changed    |
-| Responsive UI                   | Focused live responsive browser audit                  | Full local verification and hosted Responsive job         | 320/390/768/1024 widths; contained controls and table scrolling    |
-| Browser workflow                | `scripts/run-browser-checks.ps1`                       | Full local verification plus browser smoke when relevant  | Synthetic data, screenshots/traces only when intentionally shared  |
-| Cross-layer feature             | Narrow checks in every affected layer                  | Full local verification                                   | End-to-end contract and persistence parity                         |
+| Change surface                  | Targeted iteration checks                              | Completion checks                                         | Additional evidence                                                      |
+| ------------------------------- | ------------------------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Markdown/docs                   | `npm run spell`                                        | Spell check plus referenced paths/commands                | State whether runtime claims were executed or statically verified        |
+| Repository skill                | YAML metadata and linked-reference validation          | `npm run spell`, `git diff --check`                       | Confirm UI metadata names the skill                                      |
+| Frontend helper/calculation     | Relevant Vitest file                                   | Full local verification                                   | Boundary/date/financial cases and coverage                               |
+| React component/workflow        | Relevant Testing Library tests, typecheck, lint        | Full local verification                                   | Keyboard, labels, focus, error/empty/loading states                      |
+| Redux/API client                | Relevant frontend tests, typecheck                     | Full local verification                                   | Rejected requests, stale state, save/load behavior                       |
+| Backend service/domain          | Focused Maven test                                     | Full local verification                                   | Validation, boundaries, regression test                                  |
+| Controller/DTO/API              | Controller/service tests plus frontend typecheck       | Full local verification                                   | Request/response compatibility and Problem Detail behavior               |
+| Audit/history                   | Repository/service/controller tests                    | Full local verification                                   | Version movement, newest-first order, no request-body logging            |
+| JSON backup and restore         | Controller/service tests plus frontend typecheck       | Full local verification and isolated PostgreSQL API test  | Older backup restore, stale target rejection, no personal data in output |
+| Legacy JSON migration           | Migration service/API tests                            | Full local verification                                   | Backup fingerprint, explicit owner/workspace, source unchanged           |
+| PostgreSQL store/config/adapter | Focused integration profile                            | Full local verification                                   | Read-only metadata inspection afterward                                  |
+| Migration SQL                   | Review ordered migration and constraints               | Full verification with PostgreSQL                         | Fresh and upgraded isolated schema; Flyway history behavior              |
+| Workspace data migration        | Service/controller tests plus script parser            | Full local verification                                   | External backup fingerprint, ownership, counts, audit, rollback          |
+| PowerShell scripts              | PowerShell parser plus safest applicable execution     | Full local verification when orchestration changed        | Exit codes, working directory, cleanup, mutation scope                   |
+| Dependency/lockfile             | Clean install and affected build/tests                 | Full local verification and authenticated security checks | Direct/transitive path, compatibility, both lock files                   |
+| GitHub workflow                 | Run exact local equivalents                            | Hosted PR run required                                    | Events, permissions, job dependencies, cache paths, secrets              |
+| Hosted AI workflow              | Review workflow YAML and docs                          | Hosted PR run required                                    | Copilot policy, billing, permissions, non-blocking behavior              |
+| PR/failure summary workflow     | Review workflow YAML, template, and docs               | Hosted PR/run evidence required                           | Summary packets are context, not pass/fail evidence                      |
+| Issue workflow                  | Review issue forms and implementation guide            | Hosted issue form rendering                               | Scope, data-safety, acceptance criteria, write boundaries                |
+| Documentation drift             | `scripts/check-documentation-drift.ps1`                | Hosted documentation-drift workflow                       | Drift packets are hints; verify source claims before acting              |
+| Dependency triage               | `scripts/triage-dependency-updates.ps1`                | Dependabot PR plus hosted triage workflow                 | Release notes, lockfiles, security status, compatibility risk            |
+| Scheduled maintenance           | `scripts/generate-engineering-status.ps1`              | Weekly maintenance workflow                               | Packets are advisory; external writes require user intent                |
+| Security configuration          | Focused configuration inspection                       | Authenticated Snyk scan                                   | Tool/auth state, severity threshold, fixed versions                      |
+| Observability/correlation       | Filter, security, API-client, and error-boundary tests | Full local verification                                   | No sensitive fields; bounded metric tags; protected Actuator             |
+| Accessibility                   | Focused interaction tests plus live axe browser audit  | Full local verification and hosted Accessibility job      | Manual screen-reader/keyboard protocol when interaction changed          |
+| Responsive UI                   | Focused live responsive browser audit                  | Full local verification and hosted Responsive job         | 320/390/768/1024 widths; contained controls and table scrolling          |
+| Browser workflow                | `scripts/run-browser-checks.ps1`                       | Full local verification plus browser smoke when relevant  | Synthetic data, screenshots/traces only when intentionally shared        |
+| Cross-layer feature             | Narrow checks in every affected layer                  | Full local verification                                   | End-to-end contract and persistence parity                               |
 
 ## Canonical Commands
 
@@ -74,16 +75,13 @@ gate.
 Bootstrap installs dependencies. The PostgreSQL option also creates or updates
 a local role, database, and schema; it is setup, not verification.
 
-### Financial snapshot import/export
+### Financial snapshot backup/restore
 
 ```powershell
 $env:FINANCIALS_ACCOUNT_EMAIL = "<account email>"
 $env:FINANCIALS_ACCOUNT_PASSWORD = "<account password>"
-.\scripts\export-financial-snapshot.ps1 -Format json -OutputPath "$HOME\Downloads\financial-snapshot.json"
-.\scripts\export-financial-snapshot.ps1 -Format csv -OutputPath "$HOME\Downloads\financial-snapshot.csv"
-.\scripts\export-financial-snapshot.ps1 -Format xlsx -OutputPath "$HOME\Downloads\financial-snapshot.xlsx"
-.\scripts\import-financial-snapshot.ps1 -InputPath "$HOME\Downloads\financial-snapshot.csv" -ConfirmRestore
-.\scripts\import-financial-snapshot.ps1 -InputPath "$HOME\Downloads\financial-snapshot.xlsx" -ConfirmRestore
+.\scripts\export-financial-snapshot.ps1 -OutputPath "$HOME\Downloads\financial-snapshot.json"
+.\scripts\restore-financial-snapshot.ps1 -InputPath "$HOME\Downloads\financial-snapshot.json" -ConfirmRestore
 ```
 
 Exports and import files can contain personal financial data. Keep them outside
@@ -92,6 +90,7 @@ the repository unless using synthetic/mock data and an explicit override.
 ### Frontend
 
 ```powershell
+npm --prefix frontend run check:dependency-compat
 npm --prefix frontend run type-check
 npm --prefix frontend run lint
 npm --prefix frontend run test
@@ -290,7 +289,7 @@ against the source map and executable sources before posting or changing docs.
 | `verify-local.ps1`                            | Build, test, and coverage output                                   | Creates and drops isolated test schemas              | Local database credentials; Maven may need network |
 | `inspect-postgres.ps1`                        | None                                                               | Explicit read-only transactions                      | Local database credentials                         |
 | `export-financial-snapshot.ps1`               | Writes the requested export file outside the repository by default | Creates and revokes a temporary account session      | Account credential and selected workspace          |
-| `import-financial-snapshot.ps1`               | None                                                               | Replaces the saved snapshot; creates/revokes session | Account credential and selected workspace          |
+| `restore-financial-snapshot.ps1`              | None                                                               | Replaces the saved snapshot; creates/revokes session | Account credential and selected workspace          |
 | `run-browser-checks.ps1`                      | Playwright reports/traces in ignored paths                         | None                                                 | May install browser binaries with flag             |
 | `run-security-checks.ps1`                     | Tool caches/reporting side effects                                 | None                                                 | Network and Snyk token                             |
 | `write-coverage-summary.ps1`                  | Optional GitHub job summary output                                 | None                                                 | None                                               |
@@ -312,7 +311,7 @@ complete. Explain why they were required and what target they used.
 | GitHub job             | Local equivalent                     | Hosted-only concern                                                       |
 | ---------------------- | ------------------------------------ | ------------------------------------------------------------------------- |
 | Code Coverage          | Frontend test with `--coverage`      | Artifact upload                                                           |
-| Code Quality           | Frontend lint                        | Linux runner behavior                                                     |
+| Code Quality           | Dependency compatibility plus lint   | Clean Linux install and runner behavior                                   |
 | Spell Check            | Root spell command                   | Clean checkout/install                                                    |
 | Type Check             | Frontend typecheck                   | Clean checkout/install                                                    |
 | Build & Test Backend   | Formatting plus Maven `clean verify` | Linux/JDK action/cache                                                    |

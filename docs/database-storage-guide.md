@@ -3,8 +3,9 @@
 ## Storage Model
 
 The backend owns one `domain/financials/FinancialSnapshot` aggregate. A
-request-scoped `PostgresFinancialsSnapshotStore` persists the repository
-`FinancialsData` storage envelope in one authenticated relational workspace.
+request-scoped `PostgresFinancialsSnapshotStore` loads current state and audit
+history through separate workspace-scoped queries and persists versioned
+aggregate replacements in PostgreSQL.
 
 This guide describes current executable storage behavior. ADR 0014 records the
 implemented PostgreSQL-only target.
@@ -21,6 +22,7 @@ flowchart TD
 The relational adapter stores these source fields:
 
 - Pay-period start and end anchors
+- Pay cadence and IANA planning time zone
 - Monthly bills
 - Annual withdrawals
 - Asset accounts with category keys and labels
@@ -38,23 +40,23 @@ the version created by each committed write.
 
 ## Ownership
 
-| Concern                             | Owner                                               |
-| ----------------------------------- | --------------------------------------------------- |
-| Domain aggregate and records        | `domain/financials/`                                |
-| Storage envelope                    | `repository/FinancialsData.java`                    |
-| In-memory records and ID assignment | `repository/FinancialsRepository.java`              |
-| Adapter contract                    | `repository/FinancialsSnapshotStore.java`           |
-| PostgreSQL load/save/version update | `PostgresFinancialsSnapshotStore.java`              |
-| Relational record adapter path      | `PostgresFinancialRecordSnapshotAdapter.java`       |
-| Workspace migration orchestration   | `WorkspaceSnapshotMigrationService.java`            |
-| Migration metadata/audit storage    | `PostgresWorkspaceSnapshotMigrationRepository.java` |
-| Runtime configuration               | `application.properties`                            |
-| Schema history                      | Ordered files under `db/migration/`                 |
-| Local role/database creation        | `scripts/setup-local-postgres.ps1`                  |
-| Local migration execution           | `scripts/migrate-postgres.ps1`                      |
-| Read-only role creation             | `scripts/setup-postgres-readonly-role.ps1`          |
-| Read-only diagnosis                 | `scripts/inspect-postgres.ps1`                      |
-| Personal-data custody               | The local developer/operator                        |
+| Concern                              | Owner                                               |
+| ------------------------------------ | --------------------------------------------------- |
+| Domain aggregate and records         | `domain/financials/`                                |
+| Legacy migration envelope            | `repository/FinancialsData.java`                    |
+| In-memory records and ID assignment  | `repository/FinancialsRepository.java`              |
+| Adapter contract                     | `repository/FinancialsSnapshotStore.java`           |
+| Current/history/replacement boundary | `PostgresFinancialsSnapshotStore.java`              |
+| Relational record adapter path       | `PostgresFinancialRecordSnapshotAdapter.java`       |
+| Workspace migration orchestration    | `WorkspaceSnapshotMigrationService.java`            |
+| Migration metadata/audit storage     | `PostgresWorkspaceSnapshotMigrationRepository.java` |
+| Runtime configuration                | `application.properties`                            |
+| Schema history                       | Ordered files under `db/migration/`                 |
+| Local role/database creation         | `scripts/setup-local-postgres.ps1`                  |
+| Local migration execution            | `scripts/migrate-postgres.ps1`                      |
+| Read-only role creation              | `scripts/setup-postgres-readonly-role.ps1`          |
+| Read-only diagnosis                  | `scripts/inspect-postgres.ps1`                      |
+| Personal-data custody                | The local developer/operator                        |
 
 Controllers and services must not read files or issue SQL. Storage adapters
 must not calculate API totals or presentation fields.
@@ -101,10 +103,11 @@ changing the source.
 Starting the application never copies local JSON or synthetic example data.
 Signup creates identity and membership rows only. A financial request for
 a workspace without an explicitly migrated or created relational snapshot
-returns `404`. The browser can create a version-1 relational snapshot with no
-user records by posting its selected pay-period dates to
-`/api/v1/financials`; calculated responses supply the app's zero-value protected
-projection anchors. The unique active workspace constraint rejects duplicate
+returns `404`. The browser can create a version-1 relational snapshot with
+zero-value projection input records by posting its selected pay-period dates
+to `/api/v1/financials`; V8 stores their typed role references and V9 stores
+their planning cadence and time zone with the snapshot. The unique active
+workspace constraint rejects duplicate
 and concurrent initialization. Existing data still enters through the
 explicit, backed-up migration workflow.
 
@@ -128,7 +131,7 @@ document table contains an active snapshot.
 
 Do not dual-write, backfill, query, or repair through the V1 tables.
 
-### V3/V4/V6 relational runtime path
+### V3/V4/V6/V7/V8/V9 relational runtime path
 
 V3 creates the `financial_record_*` table family:
 
@@ -146,14 +149,29 @@ backend `FinancialSnapshot` domain aggregate as relational records while
 preserving the application record IDs as `app_record_id`.
 
 V4 adds unique `(snapshot_id, app_record_id)` indexes to each record table so
-granular updates and deletes can target one domain record unambiguously within
-the active relational snapshot.
+stable application IDs remain unambiguous within a relational snapshot. ADR
+0016 later retired the record-level CRUD methods, but the additive constraints
+and applied migration remain part of the schema history.
 
 V6 adds `workspace_id` ownership to `financial_record_snapshot`, replaces the
 global active-snapshot index with one active snapshot per workspace, and makes
-every `PostgresFinancialRecordSnapshotAdapter` load, replacement, find,
-create, update, and delete operation require a workspace ID. Child records
-inherit that ownership through their snapshot foreign key.
+every `PostgresFinancialRecordSnapshotAdapter` load and replacement require a
+workspace ID. Child records inherit that ownership through their snapshot
+foreign key.
+
+V8 adds `financial_record_projection_role`. Each versioned snapshot stores the
+application record ID selected for the rent bill, rent-reserve asset account,
+and primary-paycheck income-summary item. V8 backfills exact historical anchor
+labels; the service completes any legacy input without roles before it is persisted.
+Typed reference integrity is validated by the application because one role
+table cannot use a direct foreign key to three different child-table types.
+
+V9 adds `pay_cadence` and `planning_time_zone` to
+`financial_record_snapshot`. Supported cadence values are constrained to
+`WEEKLY`, `BIWEEKLY`, `SEMIMONTHLY`, and `MONTHLY`; the application validates
+the time-zone value as an IANA zone. Existing rows default to `BIWEEKLY` and
+`UTC`. Both fields are versioned, copied through backup/restore, and replaced
+with the rest of the aggregate.
 
 V6 does not silently assign any preexisting relational snapshot to a user or
 workspace. Its workspace-required check is `NOT VALID`: PostgreSQL enforces it
@@ -162,13 +180,12 @@ for the explicit migration workflow. A transitional unique index still allows
 at most one active unowned row. After explicit ownership migration, a later
 migration must validate the check and remove that transitional index.
 
-The adapter saves and loads one active relational snapshot per workspace,
-marks only that workspace's previous relational snapshots inactive, and can
-perform workspace-scoped record-level CRUD. The runtime
-`PostgresFinancialsSnapshotStore` resolves the authenticated membership and
-uses this adapter for every aggregate and granular API operation. Writes lock
-the stable workspace row, verify the expected version, insert the next active
-snapshot, and retain prior rows as history.
+The adapter saves and loads one active relational snapshot per workspace and
+marks only that workspace's previous relational snapshots inactive. The
+runtime `PostgresFinancialsSnapshotStore` resolves the authenticated membership
+and uses this adapter for aggregate operations. Writes lock the stable
+workspace row, verify the expected version, insert the next active snapshot,
+and retain prior rows as history.
 
 ### V5 identity, workspace, and session runtime foundation
 
@@ -220,8 +237,15 @@ The PostgreSQL-only operator service uses this schema to migrate either an
 explicit JSON file or the active legacy JSONB document into an empty workspace.
 It validates source fidelity, preserves audit history, verifies counts and
 version inside the transaction, and leaves the source untouched. Runtime writes
-append new relational audit events while history reads span retained snapshots
-for the selected workspace.
+append exactly one new relational audit event while history reads span retained
+snapshots for the selected workspace. The request repository loads current
+snapshot records lazily and does not load them for a history-only request.
+History is queried newest first with the validated limit applied in SQL.
+
+Whole-snapshot replacement still creates a new immutable relational snapshot.
+The adapter batches each child-record family in groups of up to 100 and inserts
+the new audit event in the same workspace-locked transaction. It does not pass
+or rewrite the complete historical event list on an ordinary runtime save.
 
 ## PostgreSQL Roles
 
@@ -347,29 +371,31 @@ The application exposes a manual snapshot export:
 
 ```http
 GET /api/v1/financials/export
-GET /api/v1/financials/export/csv
-GET /api/v1/financials/export/xlsx
 ```
 
 The export is a JSON attachment whose `snapshot` field mirrors the
 full-snapshot save request shape. It is useful as a portable, source-shaped
-copy of the currently saved aggregate. CSV and XLSX exports use a fixed-column
-tabular representation of the same source records. These source-shaped exports
-do not currently include audit history; relational storage and some retained
-legacy migration sources may include it.
+copy of the currently saved aggregate. Application backups do not include
+complete relational audit history; relational storage and some retained legacy
+migration sources may include it.
 
-The backend also exposes explicit full-snapshot tabular restore endpoints:
+The backend exposes one explicit application-level restore endpoint:
 
 ```http
-POST /api/v1/financials/import/csv
-POST /api/v1/financials/import/xlsx
+POST /api/v1/financials/restore?expectedVersion=<current-version>
 ```
 
-Those imports are restore operations, not merges. They replace the complete
-aggregate through the same version-checked path as `PUT /api/v1/financials`.
-They are useful for deliberate local recovery from a trusted export, but they
-are not an automated backup schedule, PostgreSQL dump, or workspace-migration
-strategy. The PowerShell export/import helpers sign in with
+The JSON restore is not a merge. It accepts the export envelope unchanged and
+replaces the complete aggregate through the same validation and optimistic
+replacement path as `PUT /api/v1/financials`. The embedded snapshot version is
+source metadata; the separate `expectedVersion` must match the current target
+workspace. This permits deliberate recovery from an older backup while a
+concurrent target write still fails with `409 Conflict`.
+
+Application restore is useful for deliberate local recovery from a trusted
+export, but it is not an automated backup schedule, PostgreSQL dump, complete
+audit-history backup, or workspace-migration strategy. The PowerShell
+export/restore helpers sign in with
 `FINANCIALS_ACCOUNT_EMAIL` and `FINANCIALS_ACCOUNT_PASSWORD`, require
 `-WorkspaceId` when the account has multiple memberships, and revoke their
 temporary server session afterward.
@@ -378,7 +404,7 @@ temporary server session afterward.
   a protected location outside the repository.
 - Before PostgreSQL changes, use administrator-approved database-native backup
   tooling and verify restoration on a separate target.
-- Treat backups, exports, and import files as personal financial data.
+- Treat backups, exports, and restore files as personal financial data.
 - Treat audit history as personal financial data because aggregate totals and
   timestamps can reveal financial behavior.
 - Do not commit downloaded exports or store them in repository folders. The
@@ -469,7 +495,7 @@ It does not automatically change Spring profiles or restore a modified runtime.
   intended invariant and require administrator-led recovery after a backup.
 - An empty legacy document table is healthy.
 - Empty normalized V1 tables are healthy under the current adapter.
-- Empty V3/V4/V6/V7 `financial_record_*` tables are healthy only for workspaces
+- Empty V3/V4/V6/V7/V8/V9 `financial_record_*` tables are healthy only for workspaces
   that have not received an explicit initial or migrated snapshot.
 
 See `docs/api-contract.md` for request replacement semantics and

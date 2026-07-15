@@ -1,37 +1,42 @@
 package com.example.backend.repository;
 
-import com.example.backend.service.AuthenticatedWorkspaceResolver;
+import com.example.backend.domain.financials.FinancialAuditEvent;
+import com.example.backend.domain.financials.FinancialSnapshot;
+import com.example.backend.service.CurrentWorkspace;
 import com.example.backend.service.WorkspaceFinancialSnapshotNotFoundException;
-import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public class PostgresFinancialsSnapshotStore implements FinancialsSnapshotStore {
 
   private final PostgresFinancialRecordSnapshotAdapter snapshotAdapter;
-  private final AuthenticatedWorkspaceResolver workspaceResolver;
-  private final HttpServletRequest request;
+  private final CurrentWorkspace currentWorkspace;
 
   public PostgresFinancialsSnapshotStore(
-      PostgresFinancialRecordSnapshotAdapter snapshotAdapter,
-      AuthenticatedWorkspaceResolver workspaceResolver,
-      HttpServletRequest request) {
+      PostgresFinancialRecordSnapshotAdapter snapshotAdapter, CurrentWorkspace currentWorkspace) {
     this.snapshotAdapter = snapshotAdapter;
-    this.workspaceResolver = workspaceResolver;
-    this.request = request;
+    this.currentWorkspace = currentWorkspace;
   }
 
   @Override
-  public FinancialsData load() {
-    long workspaceId = workspaceResolver.requireWorkspaceId(request);
+  public FinancialSnapshot loadCurrentSnapshot() {
+    long workspaceId = currentWorkspace.requireWorkspaceId();
     return snapshotAdapter
-        .loadActiveData(workspaceId)
+        .loadActiveSnapshot(workspaceId)
         .orElseThrow(() -> new WorkspaceFinancialSnapshotNotFoundException(workspaceId));
   }
 
   @Override
-  public void save(FinancialsData data) {
-    long workspaceId = workspaceResolver.requireWorkspaceId(request);
-    snapshotAdapter.replaceActiveData(workspaceId, data.version() - 1, data);
+  public List<FinancialAuditEvent> loadAuditHistory(int limit) {
+    long workspaceId = currentWorkspace.requireWorkspaceId();
+    return snapshotAdapter.loadAuditEvents(workspaceId, limit);
+  }
+
+  @Override
+  public void replaceSnapshot(
+      long expectedVersion, FinancialSnapshot snapshot, FinancialAuditEvent auditEvent) {
+    long workspaceId = currentWorkspace.requireWorkspaceId();
+    snapshotAdapter.replaceActiveSnapshot(workspaceId, expectedVersion, snapshot, auditEvent);
   }
 }

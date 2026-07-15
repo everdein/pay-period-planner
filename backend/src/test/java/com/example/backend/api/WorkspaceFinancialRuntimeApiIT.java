@@ -3,16 +3,22 @@ package com.example.backend.api;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.backend.config.AuthenticatedRequestWorkspace;
 import com.example.backend.config.WorkspaceSessionAuthenticationFilter;
+import com.example.backend.domain.financials.AssetAccount;
 import com.example.backend.domain.financials.ExpenseBill;
+import com.example.backend.domain.financials.FinancialPlanningSettings;
+import com.example.backend.domain.financials.FinancialProjectionRoles;
 import com.example.backend.domain.financials.FinancialSnapshot;
+import com.example.backend.domain.financials.IncomeSummaryItem;
+import com.example.backend.domain.financials.PayCadence;
 import com.example.backend.repository.PostgresFinancialRecordSnapshotAdapter;
 import com.example.backend.service.AccountSessionService;
 import com.example.backend.service.AccountSessionService.IssuedSession;
-import com.example.backend.service.AuthenticatedWorkspaceResolver;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.servlet.http.Cookie;
 import java.math.BigDecimal;
@@ -126,7 +132,7 @@ class WorkspaceFinancialRuntimeApiIT {
             get("/api/v1/financials")
                 .cookie(sessionCookie(firstOwner))
                 .header(
-                    AuthenticatedWorkspaceResolver.WORKSPACE_ID_HEADER,
+                    AuthenticatedRequestWorkspace.WORKSPACE_ID_HEADER,
                     Long.toString(secondWorkspaceId)))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.title").value("Workspace access denied"));
@@ -137,17 +143,68 @@ class WorkspaceFinancialRuntimeApiIT {
     String requestBody =
         """
         {
-          "bill": "First Workspace Added Bill",
-          "dueDay": 15,
-          "amount": 80.00,
-          "account": "Check",
-          "paid": false
+          "version": 7,
+          "payPeriodStart": "2026-07-01",
+          "payPeriodEnd": "2026-07-14",
+          "planningSettings": {
+            "payCadence": "MONTHLY",
+            "timeZone": "America/Los_Angeles"
+          },
+          "projectionRoles": {
+            "rentBillId": 1,
+            "rentReserveAssetAccountId": 1,
+            "primaryPaycheckIncomeSummaryItemId": 1
+          },
+          "bills": [
+            {
+              "id": 1,
+              "bill": "First Workspace Bill",
+              "dueDay": 10,
+              "amount": 25.00,
+              "account": "Check",
+              "paid": false
+            },
+            {
+              "id": null,
+              "bill": "First Workspace Added Bill",
+              "dueDay": 15,
+              "amount": 80.00,
+              "account": "Check",
+              "paid": false
+            }
+          ],
+          "annualWithdrawals": [],
+          "assetCategories": [
+            {
+              "key": "cash-savings",
+              "label": "Cash & Savings",
+              "accounts": [
+                {
+                  "id": 1,
+                  "account": "First Workspace Reserve",
+                  "company": "Test Bank",
+                  "amount": 100.00
+                }
+              ]
+            }
+          ],
+          "debtAccounts": [],
+          "incomeSummaryItems": [
+            {
+              "id": 1,
+              "category": "First Workspace Paycheck",
+              "interval": "Every two weeks",
+              "amount": 1000.00
+            }
+          ],
+          "incomeEvents": [],
+          "importantDates": []
         }
         """;
 
     mockMvc
         .perform(
-            post("/api/v1/financials/bills")
+            put("/api/v1/financials")
                 .cookie(sessionCookie(firstOwner))
                 .contentType("application/json")
                 .content(requestBody))
@@ -156,18 +213,28 @@ class WorkspaceFinancialRuntimeApiIT {
     CsrfProof csrfProof = csrfProof();
     mockMvc
         .perform(
-            post("/api/v1/financials/bills")
+            put("/api/v1/financials")
                 .cookie(sessionCookie(firstOwner), csrfProof.cookie())
                 .header(csrfProof.headerName(), csrfProof.token())
                 .contentType("application/json")
                 .content(requestBody))
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.bill").value("First Workspace Added Bill"));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.bills[?(@.bill == 'First Workspace Added Bill')]").isNotEmpty())
+        .andExpect(jsonPath("$.projectionRoles.rentBillId").value(1))
+        .andExpect(jsonPath("$.planningSettings.payCadence").value("MONTHLY"))
+        .andExpect(jsonPath("$.planningSettings.timeZone").value("America/Los_Angeles"))
+        .andExpect(jsonPath("$.projectionRoles.rentReserveAssetAccountId").value(1))
+        .andExpect(jsonPath("$.projectionRoles.primaryPaycheckIncomeSummaryItemId").value(1));
 
     mockMvc
         .perform(get("/api/v1/financials").cookie(sessionCookie(firstOwner)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.version").value(8))
+        .andExpect(jsonPath("$.planningSettings.payCadence").value("MONTHLY"))
+        .andExpect(jsonPath("$.planningSettings.timeZone").value("America/Los_Angeles"))
+        .andExpect(jsonPath("$.projectionRoles.rentBillId").value(1))
+        .andExpect(jsonPath("$.projectionRoles.rentReserveAssetAccountId").value(1))
+        .andExpect(jsonPath("$.projectionRoles.primaryPaycheckIncomeSummaryItemId").value(1))
         .andExpect(jsonPath("$.bills[?(@.bill == 'First Workspace Added Bill')]").isNotEmpty())
         .andExpect(jsonPath("$.bills[?(@.bill == 'Second Workspace Bill')]").isEmpty());
     mockMvc
@@ -184,16 +251,82 @@ class WorkspaceFinancialRuntimeApiIT {
         .andExpect(jsonPath("$.bills[?(@.bill == 'First Workspace Added Bill')]").isEmpty());
   }
 
+  @Test
+  void restoresOlderJsonBackupUsingTheCurrentWorkspaceVersion() throws Exception {
+    String backupBody =
+        """
+        {
+          "format": "end-to-end-app.financial-snapshot.v1",
+          "exportedAt": "2026-07-01T12:00:00Z",
+          "snapshot": {
+            "version": 3,
+            "payPeriodStart": "2026-06-01",
+            "payPeriodEnd": "2026-06-14",
+            "bills": [
+              {
+                "id": 9,
+                "bill": "Restored Workspace Bill",
+                "dueDay": 12,
+                "amount": 65.00,
+                "account": "Check",
+                "paid": true
+              }
+            ],
+            "annualWithdrawals": [],
+            "assetCategories": [],
+            "debtAccounts": [],
+            "incomeSummaryItems": [],
+            "incomeEvents": [],
+            "importantDates": []
+          }
+        }
+        """;
+
+    CsrfProof csrfProof = csrfProof();
+    mockMvc
+        .perform(
+            post("/api/v1/financials/restore")
+                .param("expectedVersion", "7")
+                .cookie(sessionCookie(firstOwner), csrfProof.cookie())
+                .header(csrfProof.headerName(), csrfProof.token())
+                .contentType("application/json")
+                .content(backupBody))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.version").value(8))
+        .andExpect(jsonPath("$.planningSettings.payCadence").value("BIWEEKLY"))
+        .andExpect(jsonPath("$.planningSettings.timeZone").value("UTC"))
+        .andExpect(jsonPath("$.bills[?(@.bill == 'Restored Workspace Bill')]").isNotEmpty())
+        .andExpect(jsonPath("$.bills[?(@.bill == 'First Workspace Bill')]").isEmpty());
+
+    mockMvc
+        .perform(get("/api/v1/financials").cookie(sessionCookie(secondOwner)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.version").value(11))
+        .andExpect(jsonPath("$.bills[?(@.bill == 'Second Workspace Bill')]").isNotEmpty())
+        .andExpect(jsonPath("$.bills[?(@.bill == 'Restored Workspace Bill')]").isEmpty());
+  }
+
   private FinancialSnapshot snapshot(long version, String billName, String amount) {
     return new FinancialSnapshot(
         version,
         LocalDate.of(2026, 7, 1),
         LocalDate.of(2026, 7, 14),
+        new FinancialPlanningSettings(PayCadence.BIWEEKLY, "America/New_York"),
+        new FinancialProjectionRoles(1, 1, 1),
         List.of(new ExpenseBill(1, billName, 10, new BigDecimal(amount), "Check", false)),
         List.of(),
+        List.of(
+            new AssetAccount(
+                1,
+                "cash-savings",
+                "Cash & Savings",
+                "Workspace Reserve",
+                "Test Bank",
+                new BigDecimal("100.00"))),
         List.of(),
-        List.of(),
-        List.of(),
+        List.of(
+            new IncomeSummaryItem(
+                1, "Workspace Paycheck", "Every two weeks", new BigDecimal("1000.00"))),
         List.of(),
         List.of());
   }

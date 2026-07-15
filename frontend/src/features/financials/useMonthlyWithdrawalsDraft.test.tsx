@@ -2,6 +2,11 @@ import { act, renderHook } from '@testing-library/react';
 import { type FormEvent } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { FinancialsDraft } from './financialsDraft';
+import {
+  createTestFinancialsDraft,
+  useCanonicalDraftTestState,
+} from './financialsDraftTestSupport';
 import type { DraftBill } from './financialsTypes';
 import { useMonthlyWithdrawalsDraft } from './useMonthlyWithdrawalsDraft';
 
@@ -23,19 +28,13 @@ function bill(overrides: Partial<DraftBill> = {}): DraftBill {
   };
 }
 
-function loadDraft(
-  result: ReturnType<
-    typeof renderHook<ReturnType<typeof useMonthlyWithdrawalsDraft>, unknown>
-  >['result'],
-  draftBills: DraftBill[]
-) {
-  act(() => {
-    result.current.loadDraft({
-      draftBills,
-      payPeriodEnd: '2026-06-15',
-      payPeriodStart: '2026-06-01',
-    });
-  });
+function useMonthlyHarness(initialDraft: FinancialsDraft) {
+  const { dispatch, state } = useCanonicalDraftTestState(initialDraft);
+  return {
+    ...useMonthlyWithdrawalsDraft(state.draft, dispatch, state.resetGeneration),
+    dispatch,
+    state,
+  };
 }
 
 describe('useMonthlyWithdrawalsDraft', () => {
@@ -43,14 +42,11 @@ describe('useMonthlyWithdrawalsDraft', () => {
     preventDefault.mockClear();
   });
 
-  it('loads, sorts, and totals monthly bills without marking the draft dirty', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useMonthlyWithdrawalsDraft(onChange));
-
-    loadDraft(result, [
-      bill({ amount: 50, dueDay: 20, id: 3, inPayPeriod: false, paid: false }),
-      bill(),
-    ]);
+  it('selects, sorts, and totals canonical monthly bills without changing revision', () => {
+    const draft = createTestFinancialsDraft({
+      bills: [bill({ amount: 50, dueDay: 20, id: 3, inPayPeriod: false, paid: false }), bill()],
+    });
+    const { result } = renderHook(() => useMonthlyHarness(draft));
 
     expect(result.current.sortedBills.map(({ id }) => id)).toEqual([2, 3]);
     expect(result.current.totals).toEqual({
@@ -59,13 +55,11 @@ describe('useMonthlyWithdrawalsDraft', () => {
       totalMonthlyExpenses: 150,
       unpaidTotal: 50,
     });
-    expect(onChange).not.toHaveBeenCalled();
+    expect(result.current.state.revision).toBe(0);
   });
 
-  it('adds a temporary bill and marks the aggregate draft dirty', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useMonthlyWithdrawalsDraft(onChange));
-    loadDraft(result, []);
+  it('dispatches a temporary bill into the canonical draft', () => {
+    const { result } = renderHook(() => useMonthlyHarness(createTestFinancialsDraft()));
 
     act(() => result.current.updateForm('bill', ' Internet '));
     act(() => result.current.updateForm('dueDay', '5'));
@@ -85,33 +79,48 @@ describe('useMonthlyWithdrawalsDraft', () => {
       }),
     ]);
     expect(result.current.formTitle).toBe('Add Bill');
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 
-  it('preserves the Rent anchor and removes ordinary bills', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useMonthlyWithdrawalsDraft(onChange));
+  it('allows the selected rent bill label to change while protecting its ID', () => {
     const rent = bill({ bill: 'Rent', id: 1 });
     const utilities = bill();
-    loadDraft(result, [rent, utilities]);
+    const { result } = renderHook(() =>
+      useMonthlyHarness(createTestFinancialsDraft({ bills: [rent, utilities] }))
+    );
 
     act(() => result.current.startEdit(rent));
     act(() => result.current.updateForm('bill', 'Renamed'));
     act(() => result.current.updateForm('amount', '125'));
     act(() => result.current.submitBill(submitEvent));
-    act(() => result.current.removeBill(rent.id));
-    act(() => result.current.removeBill(utilities.id));
+    act(() =>
+      result.current.dispatch({
+        removal: { id: rent.id, name: rent.bill, type: 'bill' },
+        type: 'request-removal',
+      })
+    );
+    expect(result.current.state.pendingRemoval).toBeNull();
+
+    act(() =>
+      result.current.dispatch({
+        removal: { id: utilities.id, name: utilities.bill, type: 'bill' },
+        type: 'request-removal',
+      })
+    );
+    act(() => result.current.dispatch({ type: 'confirm-removal' }));
 
     expect(result.current.sortedBills).toEqual([
-      expect.objectContaining({ amount: 125, bill: 'Rent', id: rent.id }),
+      expect.objectContaining({ amount: 125, bill: 'Renamed', id: rent.id }),
     ]);
-    expect(onChange).toHaveBeenCalledTimes(3);
+    expect(result.current.state.revision).toBe(2);
   });
 
-  it('recalculates bill dates when the pay period changes', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useMonthlyWithdrawalsDraft(onChange));
-    loadDraft(result, [bill({ dueDay: 20, inPayPeriod: false })]);
+  it('recalculates bill dates through canonical pay-period commands', () => {
+    const { result } = renderHook(() =>
+      useMonthlyHarness(
+        createTestFinancialsDraft({ bills: [bill({ dueDay: 20, inPayPeriod: false })] })
+      )
+    );
 
     act(() => result.current.updatePayPeriodStart('2026-06-16'));
     act(() => result.current.updatePayPeriodEnd('2026-06-30'));
@@ -119,6 +128,6 @@ describe('useMonthlyWithdrawalsDraft', () => {
     expect(result.current.sortedBills[0]).toEqual(
       expect.objectContaining({ dueDate: '2026-06-20', inPayPeriod: true })
     );
-    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(result.current.state.revision).toBe(2);
   });
 });

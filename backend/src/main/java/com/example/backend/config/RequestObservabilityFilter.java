@@ -29,8 +29,7 @@ public class RequestObservabilityFilter extends OncePerRequestFilter {
   private static final Logger LOGGER = LoggerFactory.getLogger(RequestObservabilityFilter.class);
   private static final Pattern SAFE_REQUEST_ID = Pattern.compile("[A-Za-z0-9._:-]{1,100}");
   private static final String FINANCIALS_ROOT_ROUTE = "/api/v1/financials";
-  private static final String FINANCIALS_CSV_IMPORT_ROUTE = "/api/v1/financials/import/csv";
-  private static final String FINANCIALS_XLSX_IMPORT_ROUTE = "/api/v1/financials/import/xlsx";
+  private static final String FINANCIALS_RESTORE_ROUTE = "/api/v1/financials/restore";
 
   private final MeterRegistry meterRegistry;
 
@@ -77,16 +76,9 @@ public class RequestObservabilityFilter extends OncePerRequestFilter {
       meterRegistry.counter("financials.snapshot.saves", "result", result(status)).increment();
     }
 
-    if ("POST".equals(method)
-        && (FINANCIALS_CSV_IMPORT_ROUTE.equals(route)
-            || FINANCIALS_XLSX_IMPORT_ROUTE.equals(route))) {
+    if ("POST".equals(method) && FINANCIALS_RESTORE_ROUTE.equals(route)) {
       meterRegistry
-          .counter(
-              "financials.snapshot.imports",
-              "format",
-              FINANCIALS_CSV_IMPORT_ROUTE.equals(route) ? "csv" : "xlsx",
-              "result",
-              result(status))
+          .counter("financials.snapshot.restores", "format", "json", "result", result(status))
           .increment();
     }
   }
@@ -105,9 +97,7 @@ public class RequestObservabilityFilter extends OncePerRequestFilter {
     }
 
     String requestUri = request.getRequestURI();
-    if (FINANCIALS_ROOT_ROUTE.equals(requestUri)
-        || FINANCIALS_CSV_IMPORT_ROUTE.equals(requestUri)
-        || FINANCIALS_XLSX_IMPORT_ROUTE.equals(requestUri)) {
+    if (FINANCIALS_ROOT_ROUTE.equals(requestUri) || FINANCIALS_RESTORE_ROUTE.equals(requestUri)) {
       return requestUri;
     }
     if (requestUri.startsWith(FINANCIALS_ROOT_ROUTE)) {

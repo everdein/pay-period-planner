@@ -2,13 +2,16 @@ import { act, renderHook } from '@testing-library/react';
 import { type FormEvent } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { FinancialsDraft } from './financialsDraft';
+import {
+  createTestFinancialsDraft,
+  useCanonicalDraftTestState,
+} from './financialsDraftTestSupport';
 import type { DraftIncomeEvent } from './financialsTypes';
 import { useIncomeCalendarDraft } from './useIncomeCalendarDraft';
 
 const preventDefault = vi.fn();
 const submitEvent = { preventDefault } as unknown as FormEvent<HTMLFormElement>;
-
-type IncomeCalendarDraftHook = ReturnType<typeof useIncomeCalendarDraft>;
 
 function incomeEvent(overrides: Partial<DraftIncomeEvent> = {}): DraftIncomeEvent {
   return {
@@ -22,11 +25,13 @@ function incomeEvent(overrides: Partial<DraftIncomeEvent> = {}): DraftIncomeEven
   };
 }
 
-function loadDraft(
-  result: { readonly current: IncomeCalendarDraftHook },
-  draftIncomeEvents: DraftIncomeEvent[]
-) {
-  act(() => result.current.loadDraft({ draftIncomeEvents }));
+function useIncomeCalendarHarness(initialDraft: FinancialsDraft, todayIso: string) {
+  const { dispatch, state } = useCanonicalDraftTestState(initialDraft);
+  return {
+    ...useIncomeCalendarDraft(state.draft, dispatch, state.resetGeneration, todayIso),
+    dispatch,
+    state,
+  };
 }
 
 describe('useIncomeCalendarDraft', () => {
@@ -34,27 +39,28 @@ describe('useIncomeCalendarDraft', () => {
     preventDefault.mockClear();
   });
 
-  it('sorts loaded events, counts monthly paychecks, and identifies the current paycheck', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useIncomeCalendarDraft(onChange, '2026-01-15'));
-    loadDraft(result, [
-      incomeEvent({ checkNumber: 2, date: '2026-01-23', id: 2 }),
-      incomeEvent(),
-      incomeEvent({ checkNumber: null, date: '2026-02-01', id: 3, label: 'Bonus' }),
-    ]);
+  it('sorts events, counts monthly paychecks, and identifies the current paycheck', () => {
+    const draft = createTestFinancialsDraft({
+      incomeEvents: [
+        incomeEvent({ checkNumber: 2, date: '2026-01-23', id: 2 }),
+        incomeEvent(),
+        incomeEvent({ checkNumber: null, date: '2026-02-01', id: 3, label: 'Bonus' }),
+      ],
+    });
+    const { result } = renderHook(() => useIncomeCalendarHarness(draft, '2026-01-15'));
 
     expect(result.current.incomeEvents.map(({ id }) => id)).toEqual([1, 2, 3]);
     expect(result.current.incomeEvents[0]).toMatchObject({ checksInMonth: 2, status: 'current' });
     expect(result.current.incomeEvents[1]).toMatchObject({ checksInMonth: 2, status: 'upcoming' });
     expect(result.current.incomeEvents[2]).toMatchObject({ checksInMonth: 0, status: 'upcoming' });
     expect(result.current.currentPaycheck?.id).toBe(1);
-    expect(onChange).not.toHaveBeenCalled();
+    expect(result.current.state.revision).toBe(0);
   });
 
-  it('adds a temporary event and resets the single-event editor', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useIncomeCalendarDraft(onChange, '2026-06-22'));
-    loadDraft(result, []);
+  it('dispatches a temporary event and resets the editor', () => {
+    const { result } = renderHook(() =>
+      useIncomeCalendarHarness(createTestFinancialsDraft(), '2026-06-22')
+    );
 
     act(() => result.current.updateIncomeEventForm('date', '2026-07-01'));
     act(() => result.current.updateIncomeEventForm('label', ' Bonus '));
@@ -79,14 +85,13 @@ describe('useIncomeCalendarDraft', () => {
       label: '',
       type: 'Paycheck',
     });
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 
   it('updates an existing event without changing its identity', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useIncomeCalendarDraft(onChange, '2026-06-22'));
     const existingEvent = incomeEvent();
-    loadDraft(result, [existingEvent]);
+    const draft = createTestFinancialsDraft({ incomeEvents: [existingEvent] });
+    const { result } = renderHook(() => useIncomeCalendarHarness(draft, '2026-06-22'));
 
     act(() => result.current.startIncomeEventEdit(existingEvent));
     act(() => result.current.updateIncomeEventForm('label', ' Updated Paycheck '));
@@ -101,12 +106,10 @@ describe('useIncomeCalendarDraft', () => {
       },
     ]);
     expect(result.current.editingIncomeEventId).toBeNull();
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 
   it('replaces only numbered events in the generated year', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useIncomeCalendarDraft(onChange, '2026-06-22'));
     const oneTimeEvent = incomeEvent({
       checkNumber: null,
       date: '2026-03-01',
@@ -114,7 +117,10 @@ describe('useIncomeCalendarDraft', () => {
       label: 'Bonus',
     });
     const priorYearEvent = incomeEvent({ date: '2025-12-26', id: 3 });
-    loadDraft(result, [incomeEvent(), oneTimeEvent, priorYearEvent]);
+    const draft = createTestFinancialsDraft({
+      incomeEvents: [incomeEvent(), oneTimeEvent, priorYearEvent],
+    });
+    const { result } = renderHook(() => useIncomeCalendarHarness(draft, '2026-06-22'));
 
     act(() => result.current.updateRecurringPaydayForm('firstPayDate', '2026-12-04'));
     act(() => result.current.updateRecurringPaydayForm('startingCheckNumber', '20'));
@@ -130,31 +136,41 @@ describe('useIncomeCalendarDraft', () => {
     );
     expect(result.current.draftIncomeEvents).toHaveLength(4);
     expect(result.current.draftIncomeEvents).not.toContainEqual(incomeEvent());
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 
-  it('clears an incompatible first payday when the year changes and ignores invalid generation', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useIncomeCalendarDraft(onChange, '2026-06-22'));
-    loadDraft(result, [incomeEvent()]);
+  it('clears an incompatible first payday and ignores invalid generation', () => {
+    const draft = createTestFinancialsDraft({ incomeEvents: [incomeEvent()] });
+    const { result } = renderHook(() => useIncomeCalendarHarness(draft, '2026-06-22'));
 
     act(() => result.current.updateRecurringPaydayForm('firstPayDate', '2026-01-09'));
     act(() => result.current.updateRecurringPaydayForm('year', '2027'));
     act(() => result.current.submitRecurringPaydays(submitEvent));
 
-    expect(result.current.recurringPaydayForm).toMatchObject({ firstPayDate: '', year: '2027' });
+    expect(result.current.recurringPaydayForm).toMatchObject({
+      firstPayDate: '',
+      secondPayDate: '',
+      year: '2027',
+    });
     expect(result.current.draftIncomeEvents).toEqual([incomeEvent()]);
-    expect(onChange).not.toHaveBeenCalled();
+    expect(result.current.state.revision).toBe(0);
   });
 
-  it('removes an event from the draft', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useIncomeCalendarDraft(onChange, '2026-06-22'));
-    loadDraft(result, [incomeEvent(), incomeEvent({ id: 2 })]);
+  it('removes an event through the canonical pending-removal command', () => {
+    const draft = createTestFinancialsDraft({
+      incomeEvents: [incomeEvent(), incomeEvent({ id: 2 })],
+    });
+    const { result } = renderHook(() => useIncomeCalendarHarness(draft, '2026-06-22'));
 
-    act(() => result.current.removeIncomeEvent(1));
+    act(() =>
+      result.current.dispatch({
+        removal: { id: 1, name: 'Paycheck', type: 'income' },
+        type: 'request-removal',
+      })
+    );
+    act(() => result.current.dispatch({ type: 'confirm-removal' }));
 
     expect(result.current.draftIncomeEvents.map(({ id }) => id)).toEqual([2]);
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 });

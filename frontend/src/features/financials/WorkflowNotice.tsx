@@ -4,12 +4,14 @@ export function WorkflowNotice({
   actions,
   detail,
   message,
+  requestId,
   title,
   tone,
 }: {
   actions?: ReactNode;
   detail?: string;
   message?: string;
+  requestId?: string;
   title: string;
   tone: 'conflict' | 'error' | 'success';
 }) {
@@ -23,6 +25,7 @@ export function WorkflowNotice({
         <strong>{title}</strong>
         {message && <span>{message}</span>}
         {detail && <small>{detail}</small>}
+        {requestId && <small>Request reference: {requestId}</small>}
       </div>
       {actions && <div className="workflow-notice-actions">{actions}</div>}
     </section>

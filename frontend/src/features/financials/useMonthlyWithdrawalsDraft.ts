@@ -1,19 +1,8 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 
-import { isRentWithdrawal } from './financialsAnchors';
-import {
-  emptyForm,
-  type FinancialsDraftState,
-  formToDraftBill,
-  toDraftBill,
-  toForm,
-} from './financialsDraft';
+import { emptyForm, type FinancialsDraft, toForm } from './financialsDraft';
+import type { FinancialsDraftDispatch } from './financialsDraftReducer';
 import type { BillFormState, DraftBill } from './financialsTypes';
-
-type MonthlyWithdrawalsDraftSource = Pick<
-  FinancialsDraftState,
-  'draftBills' | 'payPeriodEnd' | 'payPeriodStart'
->;
 
 type MonthlyWithdrawalsDraftTotals = {
   paidTotal: number;
@@ -22,29 +11,23 @@ type MonthlyWithdrawalsDraftTotals = {
   unpaidTotal: number;
 };
 
-export function useMonthlyWithdrawalsDraft(onChange: () => void) {
-  const [draftBills, setDraftBills] = useState<DraftBill[]>([]);
+const emptyBills: DraftBill[] = [];
+
+export function useMonthlyWithdrawalsDraft(
+  draft: FinancialsDraft | null,
+  dispatch: FinancialsDraftDispatch,
+  resetGeneration: number
+) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<BillFormState>(emptyForm);
-  const [nextDraftId, setNextDraftId] = useState(-1);
-  const [payPeriodEnd, setPayPeriodEnd] = useState('');
-  const [payPeriodStart, setPayPeriodStart] = useState('');
-
-  const loadDraft = useCallback((draft: MonthlyWithdrawalsDraftSource) => {
-    setDraftBills(draft.draftBills);
-    setPayPeriodEnd(draft.payPeriodEnd);
-    setPayPeriodStart(draft.payPeriodStart);
-    setEditingId(null);
-    setForm(emptyForm);
-  }, []);
+  const draftBills = draft?.bills ?? emptyBills;
+  const payPeriodEnd = draft?.payPeriodEnd ?? '';
+  const payPeriodStart = draft?.payPeriodStart ?? '';
 
   useEffect(() => {
-    if (payPeriodStart && payPeriodEnd) {
-      setDraftBills((current) =>
-        current.map((bill) => toDraftBill(bill, payPeriodStart, payPeriodEnd))
-      );
-    }
-  }, [payPeriodEnd, payPeriodStart]);
+    setEditingId(null);
+    setForm(emptyForm);
+  }, [resetGeneration]);
 
   const sortedBills = useMemo(
     () => [...draftBills].sort((left, right) => left.dueDay - right.dueDay),
@@ -76,30 +59,10 @@ export function useMonthlyWithdrawalsDraft(onChange: () => void) {
   function submitBill(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (editingId) {
-      setDraftBills((current) =>
-        current.map((bill) =>
-          bill.id === editingId
-            ? formToDraftBill(
-                editingId,
-                isRentWithdrawal(bill) ? { ...form, bill: bill.bill } : form,
-                payPeriodStart,
-                payPeriodEnd
-              )
-            : bill
-        )
-      );
-    } else {
-      setDraftBills((current) => [
-        ...current,
-        formToDraftBill(nextDraftId, form, payPeriodStart, payPeriodEnd),
-      ]);
-      setNextDraftId((current) => current - 1);
-    }
+    dispatch({ editingId, form, type: 'save-bill' });
 
     setEditingId(null);
     setForm(emptyForm);
-    onChange();
   }
 
   function startEdit(bill: DraftBill) {
@@ -112,19 +75,12 @@ export function useMonthlyWithdrawalsDraft(onChange: () => void) {
     setForm(emptyForm);
   }
 
-  function removeBill(id: number) {
-    setDraftBills((current) => current.filter((bill) => bill.id !== id || isRentWithdrawal(bill)));
-    onChange();
-  }
-
   function updatePayPeriodStart(value: string) {
-    setPayPeriodStart(value);
-    onChange();
+    dispatch({ type: 'update-pay-period-start', value });
   }
 
   function updatePayPeriodEnd(value: string) {
-    setPayPeriodEnd(value);
-    onChange();
+    dispatch({ type: 'update-pay-period-end', value });
   }
 
   return {
@@ -133,10 +89,8 @@ export function useMonthlyWithdrawalsDraft(onChange: () => void) {
     editingId,
     form,
     formTitle,
-    loadDraft,
     payPeriodEnd,
     payPeriodStart,
-    removeBill,
     sortedBills,
     startEdit,
     submitBill,

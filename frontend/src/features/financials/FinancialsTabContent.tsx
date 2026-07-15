@@ -30,7 +30,9 @@ export function FinancialsTabContent({
     case 'overview':
       return <Overview {...workspace.overview} onNavigate={onNavigate} />;
     case 'projection':
-      return <ProjectionTab projection={workspace.projection} />;
+      return (
+        <ProjectionTab projection={workspace.projection} settings={workspace.projectionSettings} />
+      );
     case 'monthly-withdrawals':
       return <MonthlyWithdrawalsTab {...workspace.monthlyWithdrawals} />;
     case 'annual-withdrawals':
@@ -75,6 +77,7 @@ function renderAssetTab(activeTab: FinancialTab, workspace: FinancialsDraftWorks
       category={category}
       editingAsset={editingAsset}
       requestRemoveAsset={requestRemoveAsset}
+      rentReserveAssetAccountId={workspace.assetAccounts.rentReserveAssetAccountId}
       startAssetEdit={startAssetEdit}
       submitAsset={submitAsset}
       updateAssetForm={updateAssetForm}

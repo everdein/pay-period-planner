@@ -5,21 +5,26 @@ import com.example.backend.domain.financials.AssetAccount;
 import com.example.backend.domain.financials.DebtAccount;
 import com.example.backend.domain.financials.ExpenseBill;
 import com.example.backend.domain.financials.FinancialAuditEvent;
+import com.example.backend.domain.financials.FinancialPlanningSettings;
+import com.example.backend.domain.financials.FinancialProjectionRoles;
 import com.example.backend.domain.financials.FinancialProjectionSummary;
 import com.example.backend.domain.financials.FinancialSnapshot;
 import com.example.backend.domain.financials.ImportantDate;
 import com.example.backend.domain.financials.IncomeEvent;
 import com.example.backend.domain.financials.IncomeSummaryItem;
+import com.example.backend.domain.financials.PayCadence;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.ParameterizedPreparedStatementSetter;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionOperations;
@@ -27,6 +32,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Repository
 public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancialSnapshotStore {
+
+  private static final int WRITE_BATCH_SIZE = 100;
 
   private final JdbcTemplate jdbcTemplate;
   private final TransactionOperations transactionOperations;
@@ -45,10 +52,6 @@ public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancia
 
   @Override
   public Optional<FinancialSnapshot> loadActiveSnapshot(long workspaceId) {
-    return loadActiveData(workspaceId).map(FinancialsData::toSnapshot);
-  }
-
-  public Optional<FinancialsData> loadActiveData(long workspaceId) {
     Optional<StoredSnapshot> storedSnapshot = activeSnapshot(workspaceId, false);
 
     if (storedSnapshot.isEmpty()) {
@@ -57,25 +60,35 @@ public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancia
 
     long snapshotId = storedSnapshot.get().id();
     return Optional.of(
-        new FinancialsData(
+        new FinancialSnapshot(
             storedSnapshot.get().version(),
             storedSnapshot.get().payPeriodStart(),
             storedSnapshot.get().payPeriodEnd(),
+            new FinancialPlanningSettings(
+                storedSnapshot.get().payCadence(), storedSnapshot.get().planningTimeZone()),
+            projectionRoles(snapshotId),
             bills(snapshotId),
             annualWithdrawals(snapshotId),
             assetAccounts(snapshotId),
             debtAccounts(snapshotId),
             incomeSummaryItems(snapshotId),
             incomeEvents(snapshotId),
-            importantDates(snapshotId),
-            auditEvents(workspaceId)));
+            importantDates(snapshotId)));
   }
 
-  public void replaceActiveData(
-      long workspaceId, long expectedVersion, FinancialsData replacementData) {
-    if (replacementData.version() != expectedVersion + 1) {
+  public void replaceActiveSnapshot(
+      long workspaceId,
+      long expectedVersion,
+      FinancialSnapshot replacementSnapshot,
+      FinancialAuditEvent auditEvent) {
+    if (replacementSnapshot.version() != expectedVersion + 1) {
       throw new IllegalArgumentException(
           "Replacement snapshot version must be exactly one greater than the expected version");
+    }
+    if (auditEvent.versionBefore() != expectedVersion
+        || auditEvent.versionAfter() != replacementSnapshot.version()) {
+      throw new IllegalArgumentException(
+          "Audit event versions must describe the replacement snapshot transition");
     }
 
     transactionOperations.executeWithoutResult(
@@ -99,10 +112,9 @@ public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancia
             throw new SnapshotVersionConflictException(expectedVersion, current.version());
           }
 
-          long snapshotId = insertSnapshot(workspaceId, replacementData.toSnapshot());
-          replacementData.auditEvents().stream()
-              .filter((event) -> event.versionAfter() > expectedVersion)
-              .forEach((event) -> insertAuditEvent(snapshotId, event));
+          long appEventId = nextAuditEventId(workspaceId);
+          long snapshotId = insertSnapshot(workspaceId, replacementSnapshot);
+          insertAuditEvent(snapshotId, appEventId, auditEvent);
         });
   }
 
@@ -160,476 +172,36 @@ public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancia
         == 1;
   }
 
-  public Optional<ExpenseBill> findBill(long workspaceId, long appRecordId) {
-    return queryOptional(
-        """
-        select record.app_record_id, record.bill, record.due_day, record.amount, record.account, record.paid
-        from financial_record_monthly_bill record
-        join financial_record_snapshot snapshot on snapshot.id = record.snapshot_id
-        where snapshot.active = true
-          and snapshot.workspace_id = ?
-          and record.app_record_id = ?
-        order by record.id
-        limit 1
-        """,
-        this::mapBill,
-        workspaceId,
-        appRecordId);
-  }
-
-  public ExpenseBill createBill(long workspaceId, ExpenseBill bill) {
-    return transactionOperations.execute(
-        (status) -> {
-          StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-          ExpenseBill created =
-              bill.withId(nextAppRecordId(snapshot.id(), RecordTable.MONTHLY_BILL));
-          insertBill(snapshot.id(), created);
-          bumpSnapshotVersion(snapshot.id());
-          return created;
-        });
-  }
-
-  public Optional<ExpenseBill> updateBill(long workspaceId, long appRecordId, ExpenseBill bill) {
-    return transactionOperations.execute(
-        (status) -> {
-          StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-          ExpenseBill updated = bill.withId(appRecordId);
-          int rows =
-              jdbcTemplate.update(
-                  """
-                  update financial_record_monthly_bill
-                  set bill = ?,
-                      due_day = ?,
-                      amount = ?,
-                      account = ?,
-                      paid = ?
-                  where snapshot_id = ?
-                    and app_record_id = ?
-                  """,
-                  updated.bill(),
-                  updated.dueDay(),
-                  updated.amount(),
-                  updated.account(),
-                  updated.paid(),
-                  snapshot.id(),
-                  appRecordId);
-          if (rows == 0) {
-            return Optional.empty();
-          }
-          bumpSnapshotVersion(snapshot.id());
-          return Optional.of(updated);
-        });
-  }
-
-  public boolean deleteBill(long workspaceId, long appRecordId) {
-    return deleteRecord(workspaceId, RecordTable.MONTHLY_BILL, appRecordId);
-  }
-
-  public Optional<AnnualWithdrawal> findAnnualWithdrawal(long workspaceId, long appRecordId) {
-    return queryOptional(
-        """
-        select record.app_record_id, record.bill, record.month, record.day, record.amount, record.account, record.paid
-        from financial_record_annual_withdrawal record
-        join financial_record_snapshot snapshot on snapshot.id = record.snapshot_id
-        where snapshot.active = true
-          and snapshot.workspace_id = ?
-          and record.app_record_id = ?
-        order by record.id
-        limit 1
-        """,
-        this::mapAnnualWithdrawal,
-        workspaceId,
-        appRecordId);
-  }
-
-  public AnnualWithdrawal createAnnualWithdrawal(long workspaceId, AnnualWithdrawal withdrawal) {
-    return transactionOperations.execute(
-        (status) -> {
-          StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-          AnnualWithdrawal created =
-              withdrawal.withId(nextAppRecordId(snapshot.id(), RecordTable.ANNUAL_WITHDRAWAL));
-          insertAnnualWithdrawal(snapshot.id(), created);
-          bumpSnapshotVersion(snapshot.id());
-          return created;
-        });
-  }
-
-  public Optional<AnnualWithdrawal> updateAnnualWithdrawal(
-      long workspaceId, long appRecordId, AnnualWithdrawal withdrawal) {
-    return transactionOperations.execute(
-        (status) -> {
-          StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-          AnnualWithdrawal updated = withdrawal.withId(appRecordId);
-          int rows =
-              jdbcTemplate.update(
-                  """
-                  update financial_record_annual_withdrawal
-                  set bill = ?,
-                      month = ?,
-                      day = ?,
-                      amount = ?,
-                      account = ?,
-                      paid = ?
-                  where snapshot_id = ?
-                    and app_record_id = ?
-                  """,
-                  updated.bill(),
-                  updated.month(),
-                  updated.day(),
-                  updated.amount(),
-                  updated.account(),
-                  updated.paid(),
-                  snapshot.id(),
-                  appRecordId);
-          if (rows == 0) {
-            return Optional.empty();
-          }
-          bumpSnapshotVersion(snapshot.id());
-          return Optional.of(updated);
-        });
-  }
-
-  public boolean deleteAnnualWithdrawal(long workspaceId, long appRecordId) {
-    return deleteRecord(workspaceId, RecordTable.ANNUAL_WITHDRAWAL, appRecordId);
-  }
-
-  public Optional<AssetAccount> findAssetAccount(long workspaceId, long appRecordId) {
-    return queryOptional(
-        """
-        select record.app_record_id, record.category_key, record.category_label, record.account, record.company, record.amount
-        from financial_record_asset_account record
-        join financial_record_snapshot snapshot on snapshot.id = record.snapshot_id
-        where snapshot.active = true
-          and snapshot.workspace_id = ?
-          and record.app_record_id = ?
-        order by record.id
-        limit 1
-        """,
-        this::mapAssetAccount,
-        workspaceId,
-        appRecordId);
-  }
-
-  public AssetAccount createAssetAccount(long workspaceId, AssetAccount account) {
-    return transactionOperations.execute(
-        (status) -> {
-          StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-          AssetAccount created =
-              account.withId(nextAppRecordId(snapshot.id(), RecordTable.ASSET_ACCOUNT));
-          insertAssetAccount(snapshot.id(), created);
-          bumpSnapshotVersion(snapshot.id());
-          return created;
-        });
-  }
-
-  public Optional<AssetAccount> updateAssetAccount(
-      long workspaceId, long appRecordId, AssetAccount account) {
-    return transactionOperations.execute(
-        (status) -> {
-          StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-          AssetAccount updated = account.withId(appRecordId);
-          int rows =
-              jdbcTemplate.update(
-                  """
-                  update financial_record_asset_account
-                  set category_key = ?,
-                      category_label = ?,
-                      account = ?,
-                      company = ?,
-                      amount = ?
-                  where snapshot_id = ?
-                    and app_record_id = ?
-                  """,
-                  updated.categoryKey(),
-                  updated.categoryLabel(),
-                  updated.account(),
-                  updated.company(),
-                  updated.amount(),
-                  snapshot.id(),
-                  appRecordId);
-          if (rows == 0) {
-            return Optional.empty();
-          }
-          bumpSnapshotVersion(snapshot.id());
-          return Optional.of(updated);
-        });
-  }
-
-  public boolean deleteAssetAccount(long workspaceId, long appRecordId) {
-    return deleteRecord(workspaceId, RecordTable.ASSET_ACCOUNT, appRecordId);
-  }
-
-  public Optional<DebtAccount> findDebtAccount(long workspaceId, long appRecordId) {
-    return queryOptional(
-        """
-        select record.app_record_id, record.account, record.company, record.amount
-        from financial_record_debt_account record
-        join financial_record_snapshot snapshot on snapshot.id = record.snapshot_id
-        where snapshot.active = true
-          and snapshot.workspace_id = ?
-          and record.app_record_id = ?
-        order by record.id
-        limit 1
-        """,
-        this::mapDebtAccount,
-        workspaceId,
-        appRecordId);
-  }
-
-  public DebtAccount createDebtAccount(long workspaceId, DebtAccount account) {
-    return transactionOperations.execute(
-        (status) -> {
-          StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-          DebtAccount created =
-              account.withId(nextAppRecordId(snapshot.id(), RecordTable.DEBT_ACCOUNT));
-          insertDebtAccount(snapshot.id(), created);
-          bumpSnapshotVersion(snapshot.id());
-          return created;
-        });
-  }
-
-  public Optional<DebtAccount> updateDebtAccount(
-      long workspaceId, long appRecordId, DebtAccount account) {
-    return transactionOperations.execute(
-        (status) -> {
-          StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-          DebtAccount updated = account.withId(appRecordId);
-          int rows =
-              jdbcTemplate.update(
-                  """
-                  update financial_record_debt_account
-                  set account = ?,
-                      company = ?,
-                      amount = ?
-                  where snapshot_id = ?
-                    and app_record_id = ?
-                  """,
-                  updated.account(),
-                  updated.company(),
-                  updated.amount(),
-                  snapshot.id(),
-                  appRecordId);
-          if (rows == 0) {
-            return Optional.empty();
-          }
-          bumpSnapshotVersion(snapshot.id());
-          return Optional.of(updated);
-        });
-  }
-
-  public boolean deleteDebtAccount(long workspaceId, long appRecordId) {
-    return deleteRecord(workspaceId, RecordTable.DEBT_ACCOUNT, appRecordId);
-  }
-
-  public Optional<IncomeSummaryItem> findIncomeSummaryItem(long workspaceId, long appRecordId) {
-    return queryOptional(
-        """
-        select record.app_record_id, record.category, record.interval, record.amount
-        from financial_record_income_summary_item record
-        join financial_record_snapshot snapshot on snapshot.id = record.snapshot_id
-        where snapshot.active = true
-          and snapshot.workspace_id = ?
-          and record.app_record_id = ?
-        order by record.id
-        limit 1
-        """,
-        this::mapIncomeSummaryItem,
-        workspaceId,
-        appRecordId);
-  }
-
-  public IncomeSummaryItem createIncomeSummaryItem(long workspaceId, IncomeSummaryItem item) {
-    return transactionOperations.execute(
-        (status) -> {
-          StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-          IncomeSummaryItem created =
-              item.withId(nextAppRecordId(snapshot.id(), RecordTable.INCOME_SUMMARY_ITEM));
-          insertIncomeSummaryItem(snapshot.id(), created);
-          bumpSnapshotVersion(snapshot.id());
-          return created;
-        });
-  }
-
-  public Optional<IncomeSummaryItem> updateIncomeSummaryItem(
-      long workspaceId, long appRecordId, IncomeSummaryItem item) {
-    return transactionOperations.execute(
-        (status) -> {
-          StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-          IncomeSummaryItem updated = item.withId(appRecordId);
-          int rows =
-              jdbcTemplate.update(
-                  """
-                  update financial_record_income_summary_item
-                  set category = ?,
-                      interval = ?,
-                      amount = ?
-                  where snapshot_id = ?
-                    and app_record_id = ?
-                  """,
-                  updated.category(),
-                  updated.interval(),
-                  updated.amount(),
-                  snapshot.id(),
-                  appRecordId);
-          if (rows == 0) {
-            return Optional.empty();
-          }
-          bumpSnapshotVersion(snapshot.id());
-          return Optional.of(updated);
-        });
-  }
-
-  public boolean deleteIncomeSummaryItem(long workspaceId, long appRecordId) {
-    return deleteRecord(workspaceId, RecordTable.INCOME_SUMMARY_ITEM, appRecordId);
-  }
-
-  public Optional<IncomeEvent> findIncomeEvent(long workspaceId, long appRecordId) {
-    return queryOptional(
-        """
-        select record.app_record_id, record.date, record.label, record.type, record.check_number
-        from financial_record_income_event record
-        join financial_record_snapshot snapshot on snapshot.id = record.snapshot_id
-        where snapshot.active = true
-          and snapshot.workspace_id = ?
-          and record.app_record_id = ?
-        order by record.id
-        limit 1
-        """,
-        this::mapIncomeEvent,
-        workspaceId,
-        appRecordId);
-  }
-
-  public IncomeEvent createIncomeEvent(long workspaceId, IncomeEvent event) {
-    return transactionOperations.execute(
-        (status) -> {
-          StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-          IncomeEvent created =
-              event.withId(nextAppRecordId(snapshot.id(), RecordTable.INCOME_EVENT));
-          insertIncomeEvent(snapshot.id(), created);
-          bumpSnapshotVersion(snapshot.id());
-          return created;
-        });
-  }
-
-  public Optional<IncomeEvent> updateIncomeEvent(
-      long workspaceId, long appRecordId, IncomeEvent event) {
-    return transactionOperations.execute(
-        (status) -> {
-          StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-          IncomeEvent updated = event.withId(appRecordId);
-          int rows =
-              jdbcTemplate.update(
-                  """
-                  update financial_record_income_event
-                  set date = ?,
-                      label = ?,
-                      type = ?,
-                      check_number = ?
-                  where snapshot_id = ?
-                    and app_record_id = ?
-                  """,
-                  Date.valueOf(updated.date()),
-                  updated.label(),
-                  updated.type(),
-                  updated.checkNumber(),
-                  snapshot.id(),
-                  appRecordId);
-          if (rows == 0) {
-            return Optional.empty();
-          }
-          bumpSnapshotVersion(snapshot.id());
-          return Optional.of(updated);
-        });
-  }
-
-  public boolean deleteIncomeEvent(long workspaceId, long appRecordId) {
-    return deleteRecord(workspaceId, RecordTable.INCOME_EVENT, appRecordId);
-  }
-
-  public Optional<ImportantDate> findImportantDate(long workspaceId, long appRecordId) {
-    return queryOptional(
-        """
-        select record.app_record_id, record.date, record.event, record.type
-        from financial_record_important_date record
-        join financial_record_snapshot snapshot on snapshot.id = record.snapshot_id
-        where snapshot.active = true
-          and snapshot.workspace_id = ?
-          and record.app_record_id = ?
-        order by record.id
-        limit 1
-        """,
-        this::mapImportantDate,
-        workspaceId,
-        appRecordId);
-  }
-
-  public ImportantDate createImportantDate(long workspaceId, ImportantDate importantDate) {
-    return transactionOperations.execute(
-        (status) -> {
-          StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-          ImportantDate created =
-              importantDate.withId(nextAppRecordId(snapshot.id(), RecordTable.IMPORTANT_DATE));
-          insertImportantDate(snapshot.id(), created);
-          bumpSnapshotVersion(snapshot.id());
-          return created;
-        });
-  }
-
-  public Optional<ImportantDate> updateImportantDate(
-      long workspaceId, long appRecordId, ImportantDate importantDate) {
-    return transactionOperations.execute(
-        (status) -> {
-          StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-          ImportantDate updated = importantDate.withId(appRecordId);
-          int rows =
-              jdbcTemplate.update(
-                  """
-                  update financial_record_important_date
-                  set date = ?,
-                      event = ?,
-                      type = ?
-                  where snapshot_id = ?
-                    and app_record_id = ?
-                  """,
-                  Date.valueOf(updated.date()),
-                  updated.event(),
-                  updated.type(),
-                  snapshot.id(),
-                  appRecordId);
-          if (rows == 0) {
-            return Optional.empty();
-          }
-          bumpSnapshotVersion(snapshot.id());
-          return Optional.of(updated);
-        });
-  }
-
-  public boolean deleteImportantDate(long workspaceId, long appRecordId) {
-    return deleteRecord(workspaceId, RecordTable.IMPORTANT_DATE, appRecordId);
-  }
-
   private record StoredSnapshot(
       long id,
       long version,
       java.time.LocalDate payPeriodStart,
-      java.time.LocalDate payPeriodEnd) {}
+      java.time.LocalDate payPeriodEnd,
+      PayCadence payCadence,
+      String planningTimeZone) {}
 
   private long insertSnapshot(long workspaceId, FinancialSnapshot snapshot) {
+    FinancialPlanningSettings planningSettings =
+        snapshot.planningSettings() == null
+            ? FinancialPlanningSettings.legacyDefaults()
+            : snapshot.planningSettings();
     Long snapshotId =
         jdbcTemplate.queryForObject(
             """
             insert into financial_record_snapshot
-                (workspace_id, active, version, pay_period_start, pay_period_end)
+                (workspace_id, active, version, pay_period_start, pay_period_end,
+                 pay_cadence, planning_time_zone)
             values
-                (?, true, ?, ?, ?)
+                (?, true, ?, ?, ?, ?, ?)
             returning id
             """,
             Long.class,
             workspaceId,
             snapshot.version(),
             Date.valueOf(snapshot.payPeriodStart()),
-            Date.valueOf(snapshot.payPeriodEnd()));
+            Date.valueOf(snapshot.payPeriodEnd()),
+            planningSettings.payCadence().name(),
+            planningSettings.timeZone());
     if (snapshotId == null) {
       throw new IllegalStateException("PostgreSQL did not return the created snapshot ID");
     }
@@ -641,23 +213,8 @@ public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancia
     writeIncomeSummaryItems(snapshotId, snapshot.incomeSummaryItems());
     writeIncomeEvents(snapshotId, snapshot.incomeEvents());
     writeImportantDates(snapshotId, snapshot.importantDates());
+    writeProjectionRoles(snapshotId, snapshot.projectionRoles());
     return snapshotId;
-  }
-
-  private enum RecordTable {
-    MONTHLY_BILL("financial_record_monthly_bill"),
-    ANNUAL_WITHDRAWAL("financial_record_annual_withdrawal"),
-    ASSET_ACCOUNT("financial_record_asset_account"),
-    DEBT_ACCOUNT("financial_record_debt_account"),
-    INCOME_SUMMARY_ITEM("financial_record_income_summary_item"),
-    INCOME_EVENT("financial_record_income_event"),
-    IMPORTANT_DATE("financial_record_important_date");
-
-    private final String tableName;
-
-    RecordTable(String tableName) {
-      this.tableName = tableName;
-    }
   }
 
   private Optional<StoredSnapshot> activeSnapshot(long workspaceId, boolean lockForUpdate) {
@@ -665,7 +222,7 @@ public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancia
     StoredSnapshot storedSnapshot =
         jdbcTemplate.query(
             """
-            select id, version, pay_period_start, pay_period_end
+            select id, version, pay_period_start, pay_period_end, pay_cadence, planning_time_zone
             from financial_record_snapshot
             where active = true
               and workspace_id = ?
@@ -680,7 +237,9 @@ public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancia
                         resultSet.getLong("id"),
                         resultSet.getLong("version"),
                         resultSet.getDate("pay_period_start").toLocalDate(),
-                        resultSet.getDate("pay_period_end").toLocalDate())
+                        resultSet.getDate("pay_period_end").toLocalDate(),
+                        PayCadence.valueOf(resultSet.getString("pay_cadence")),
+                        resultSet.getString("planning_time_zone"))
                     : null);
     return Optional.ofNullable(storedSnapshot);
   }
@@ -702,56 +261,6 @@ public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancia
     if (lockedWorkspaceId == null) {
       throw new IllegalStateException("Workspace " + workspaceId + " does not exist");
     }
-  }
-
-  private void bumpSnapshotVersion(long snapshotId) {
-    jdbcTemplate.update(
-        """
-        update financial_record_snapshot
-        set version = version + 1,
-            updated_at = now()
-        where id = ?
-        """,
-        snapshotId);
-  }
-
-  private long nextAppRecordId(long snapshotId, RecordTable table) {
-    return jdbcTemplate.queryForObject(
-        """
-        select greatest(coalesce(max(app_record_id), 0), 0) + 1
-        from
-        """
-            + table.tableName
-            + """
-
-        where snapshot_id = ?
-        """,
-        Long.class,
-        snapshotId);
-  }
-
-  private boolean deleteRecord(long workspaceId, RecordTable table, long appRecordId) {
-    return Boolean.TRUE.equals(
-        transactionOperations.execute(
-            (status) -> {
-              StoredSnapshot snapshot = requireActiveSnapshotForUpdate(workspaceId);
-              int rows =
-                  jdbcTemplate.update(
-                      "delete from "
-                          + table.tableName
-                          + " where snapshot_id = ? and app_record_id = ?",
-                      snapshot.id(),
-                      appRecordId);
-              if (rows == 0) {
-                return false;
-              }
-              bumpSnapshotVersion(snapshot.id());
-              return true;
-            }));
-  }
-
-  private <T> Optional<T> queryOptional(String sql, RowMapper<T> rowMapper, Object... args) {
-    return jdbcTemplate.query(sql, rowMapper, args).stream().findFirst();
   }
 
   private List<ExpenseBill> bills(long snapshotId) {
@@ -838,7 +347,42 @@ public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancia
         snapshotId);
   }
 
-  private List<FinancialAuditEvent> auditEvents(long workspaceId) {
+  private FinancialProjectionRoles projectionRoles(long snapshotId) {
+    Map<String, Long> roles =
+        jdbcTemplate.query(
+            """
+            select role_key, app_record_id
+            from financial_record_projection_role
+            where snapshot_id = ?
+            """,
+            (resultSet) -> {
+              Map<String, Long> values = new java.util.HashMap<>();
+              while (resultSet.next()) {
+                values.put(resultSet.getString("role_key"), resultSet.getLong("app_record_id"));
+              }
+              return values;
+            },
+            snapshotId);
+    if (!roles
+        .keySet()
+        .containsAll(
+            List.of(
+                FinancialProjectionRoles.RENT_BILL,
+                FinancialProjectionRoles.RENT_RESERVE_ASSET_ACCOUNT,
+                FinancialProjectionRoles.PRIMARY_PAYCHECK_INCOME_SUMMARY_ITEM))) {
+      return null;
+    }
+    return new FinancialProjectionRoles(
+        roles.get(FinancialProjectionRoles.RENT_BILL),
+        roles.get(FinancialProjectionRoles.RENT_RESERVE_ASSET_ACCOUNT),
+        roles.get(FinancialProjectionRoles.PRIMARY_PAYCHECK_INCOME_SUMMARY_ITEM));
+  }
+
+  public List<FinancialAuditEvent> loadAuditEvents(long workspaceId, int limit) {
+    if (limit < 1) {
+      throw new IllegalArgumentException("Audit history limit must be at least 1");
+    }
+
     return jdbcTemplate.query(
         """
         select event.app_event_id,
@@ -866,10 +410,12 @@ public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancia
         from financial_record_audit_event event
         join financial_record_snapshot snapshot on snapshot.id = event.snapshot_id
         where snapshot.workspace_id = ?
-        order by event.occurred_at, event.id
+        order by event.occurred_at desc, event.id desc
+        limit ?
         """,
         this::mapAuditEvent,
-        workspaceId);
+        workspaceId,
+        limit);
   }
 
   private ExpenseBill mapBill(ResultSet resultSet, int rowNumber) throws SQLException {
@@ -970,7 +516,21 @@ public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancia
             resultSet.getBigDecimal("projection_net_worth")));
   }
 
-  private void insertAuditEvent(long snapshotId, FinancialAuditEvent event) {
+  private long nextAuditEventId(long workspaceId) {
+    Long currentMaximum =
+        jdbcTemplate.queryForObject(
+            """
+            select coalesce(max(event.app_event_id), 0)
+            from financial_record_audit_event event
+            join financial_record_snapshot snapshot on snapshot.id = event.snapshot_id
+            where snapshot.workspace_id = ?
+            """,
+            Long.class,
+            workspaceId);
+    return currentMaximum == null ? 1 : currentMaximum + 1;
+  }
+
+  private void insertAuditEvent(long snapshotId, long appEventId, FinancialAuditEvent event) {
     FinancialProjectionSummary projection = event.projectionSummary();
     jdbcTemplate.update(
         """
@@ -1001,7 +561,7 @@ public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancia
         ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         snapshotId,
-        event.id(),
+        appEventId,
         Timestamp.from(event.occurredAt()),
         event.action(),
         event.resourceType(),
@@ -1026,137 +586,164 @@ public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancia
   }
 
   private void writeBills(Long snapshotId, List<ExpenseBill> bills) {
-    bills.forEach((bill) -> insertBill(snapshotId, bill));
-  }
-
-  private void insertBill(Long snapshotId, ExpenseBill bill) {
-    jdbcTemplate.update(
+    batchUpdate(
         """
         insert into financial_record_monthly_bill
             (snapshot_id, app_record_id, bill, due_day, amount, account, paid)
         values (?, ?, ?, ?, ?, ?, ?)
         """,
-        snapshotId,
-        bill.id(),
-        bill.bill(),
-        bill.dueDay(),
-        bill.amount(),
-        bill.account(),
-        bill.paid());
+        bills,
+        (statement, bill) -> {
+          statement.setLong(1, snapshotId);
+          statement.setLong(2, bill.id());
+          statement.setString(3, bill.bill());
+          statement.setInt(4, bill.dueDay());
+          statement.setBigDecimal(5, bill.amount());
+          statement.setString(6, bill.account());
+          statement.setBoolean(7, bill.paid());
+        });
   }
 
   private void writeAnnualWithdrawals(Long snapshotId, List<AnnualWithdrawal> annualWithdrawals) {
-    annualWithdrawals.forEach((withdrawal) -> insertAnnualWithdrawal(snapshotId, withdrawal));
-  }
-
-  private void insertAnnualWithdrawal(Long snapshotId, AnnualWithdrawal withdrawal) {
-    jdbcTemplate.update(
+    batchUpdate(
         """
         insert into financial_record_annual_withdrawal
             (snapshot_id, app_record_id, bill, month, day, amount, account, paid)
         values (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        snapshotId,
-        withdrawal.id(),
-        withdrawal.bill(),
-        withdrawal.month(),
-        withdrawal.day(),
-        withdrawal.amount(),
-        withdrawal.account(),
-        withdrawal.paid());
+        annualWithdrawals,
+        (statement, withdrawal) -> {
+          statement.setLong(1, snapshotId);
+          statement.setLong(2, withdrawal.id());
+          statement.setString(3, withdrawal.bill());
+          statement.setInt(4, withdrawal.month());
+          statement.setInt(5, withdrawal.day());
+          statement.setBigDecimal(6, withdrawal.amount());
+          statement.setString(7, withdrawal.account());
+          statement.setBoolean(8, withdrawal.paid());
+        });
   }
 
   private void writeAssetAccounts(Long snapshotId, List<AssetAccount> assetAccounts) {
-    assetAccounts.forEach((account) -> insertAssetAccount(snapshotId, account));
-  }
-
-  private void insertAssetAccount(Long snapshotId, AssetAccount account) {
-    jdbcTemplate.update(
+    batchUpdate(
         """
         insert into financial_record_asset_account
             (snapshot_id, app_record_id, category_key, category_label, account, company, amount)
         values (?, ?, ?, ?, ?, ?, ?)
         """,
-        snapshotId,
-        account.id(),
-        account.categoryKey(),
-        account.categoryLabel(),
-        account.account(),
-        account.company(),
-        account.amount());
+        assetAccounts,
+        (statement, account) -> {
+          statement.setLong(1, snapshotId);
+          statement.setLong(2, account.id());
+          statement.setString(3, account.categoryKey());
+          statement.setString(4, account.categoryLabel());
+          statement.setString(5, account.account());
+          statement.setString(6, account.company());
+          statement.setBigDecimal(7, account.amount());
+        });
   }
 
   private void writeDebtAccounts(Long snapshotId, List<DebtAccount> debtAccounts) {
-    debtAccounts.forEach((account) -> insertDebtAccount(snapshotId, account));
-  }
-
-  private void insertDebtAccount(Long snapshotId, DebtAccount account) {
-    jdbcTemplate.update(
+    batchUpdate(
         """
         insert into financial_record_debt_account
             (snapshot_id, app_record_id, account, company, amount)
         values (?, ?, ?, ?, ?)
         """,
-        snapshotId,
-        account.id(),
-        account.account(),
-        account.company(),
-        account.amount());
+        debtAccounts,
+        (statement, account) -> {
+          statement.setLong(1, snapshotId);
+          statement.setLong(2, account.id());
+          statement.setString(3, account.account());
+          statement.setString(4, account.company());
+          statement.setBigDecimal(5, account.amount());
+        });
   }
 
   private void writeIncomeSummaryItems(
       Long snapshotId, List<IncomeSummaryItem> incomeSummaryItems) {
-    incomeSummaryItems.forEach((item) -> insertIncomeSummaryItem(snapshotId, item));
-  }
-
-  private void insertIncomeSummaryItem(Long snapshotId, IncomeSummaryItem item) {
-    jdbcTemplate.update(
+    batchUpdate(
         """
         insert into financial_record_income_summary_item
             (snapshot_id, app_record_id, category, interval, amount)
         values (?, ?, ?, ?, ?)
         """,
-        snapshotId,
-        item.id(),
-        item.category(),
-        item.interval(),
-        item.amount());
+        incomeSummaryItems,
+        (statement, item) -> {
+          statement.setLong(1, snapshotId);
+          statement.setLong(2, item.id());
+          statement.setString(3, item.category());
+          statement.setString(4, item.interval());
+          statement.setBigDecimal(5, item.amount());
+        });
   }
 
   private void writeIncomeEvents(Long snapshotId, List<IncomeEvent> incomeEvents) {
-    incomeEvents.forEach((event) -> insertIncomeEvent(snapshotId, event));
-  }
-
-  private void insertIncomeEvent(Long snapshotId, IncomeEvent event) {
-    jdbcTemplate.update(
+    batchUpdate(
         """
         insert into financial_record_income_event
             (snapshot_id, app_record_id, date, label, type, check_number)
         values (?, ?, ?, ?, ?, ?)
         """,
-        snapshotId,
-        event.id(),
-        Date.valueOf(event.date()),
-        event.label(),
-        event.type(),
-        event.checkNumber());
+        incomeEvents,
+        (statement, event) -> {
+          statement.setLong(1, snapshotId);
+          statement.setLong(2, event.id());
+          statement.setDate(3, Date.valueOf(event.date()));
+          statement.setString(4, event.label());
+          statement.setString(5, event.type());
+          if (event.checkNumber() == null) {
+            statement.setNull(6, Types.INTEGER);
+          } else {
+            statement.setInt(6, event.checkNumber());
+          }
+        });
   }
 
   private void writeImportantDates(Long snapshotId, List<ImportantDate> importantDates) {
-    importantDates.forEach((importantDate) -> insertImportantDate(snapshotId, importantDate));
-  }
-
-  private void insertImportantDate(Long snapshotId, ImportantDate importantDate) {
-    jdbcTemplate.update(
+    batchUpdate(
         """
         insert into financial_record_important_date
             (snapshot_id, app_record_id, date, event, type)
         values (?, ?, ?, ?, ?)
         """,
-        snapshotId,
-        importantDate.id(),
-        Date.valueOf(importantDate.date()),
-        importantDate.event(),
-        importantDate.type());
+        importantDates,
+        (statement, importantDate) -> {
+          statement.setLong(1, snapshotId);
+          statement.setLong(2, importantDate.id());
+          statement.setDate(3, Date.valueOf(importantDate.date()));
+          statement.setString(4, importantDate.event());
+          statement.setString(5, importantDate.type());
+        });
+  }
+
+  private void writeProjectionRoles(Long snapshotId, FinancialProjectionRoles roles) {
+    if (roles == null) {
+      return;
+    }
+    jdbcTemplate.batchUpdate(
+        """
+        insert into financial_record_projection_role (snapshot_id, role_key, app_record_id)
+        values (?, ?, ?)
+        """,
+        List.of(
+            new Object[] {snapshotId, FinancialProjectionRoles.RENT_BILL, roles.rentBillId()},
+            new Object[] {
+              snapshotId,
+              FinancialProjectionRoles.RENT_RESERVE_ASSET_ACCOUNT,
+              roles.rentReserveAssetAccountId()
+            },
+            new Object[] {
+              snapshotId,
+              FinancialProjectionRoles.PRIMARY_PAYCHECK_INCOME_SUMMARY_ITEM,
+              roles.primaryPaycheckIncomeSummaryItemId()
+            }));
+  }
+
+  private <T> void batchUpdate(
+      String sql, List<T> records, ParameterizedPreparedStatementSetter<T> setter) {
+    if (!records.isEmpty()) {
+      jdbcTemplate.batchUpdate(sql, records, WRITE_BATCH_SIZE, setter);
+    }
   }
 }

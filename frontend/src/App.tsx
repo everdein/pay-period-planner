@@ -152,7 +152,7 @@ export default function App() {
     return (
       <main className="expenses-shell auth-shell">
         <section className="auth-card auth-status" aria-live="polite">
-          <p className="eyebrow">Personal finance</p>
+          <p className="eyebrow">Household planning</p>
           <h1>Financials</h1>
           <p>Checking your session...</p>
         </section>
@@ -166,7 +166,7 @@ export default function App() {
     return (
       <main className="expenses-shell auth-shell">
         <section className="auth-card" aria-labelledby="account-heading">
-          <p className="eyebrow">Personal finance</p>
+          <p className="eyebrow">Household planning</p>
           <h1>Financials</h1>
           <div className="auth-tabs" role="tablist" aria-label="Account access">
             <button
@@ -310,7 +310,7 @@ function sessionRecoveryFailureMessage(error: unknown) {
 
 function actionFailureMessage(error: unknown, action: string) {
   if (error instanceof ApiError) {
-    return `Unable to ${action}. ${error.message}`;
+    return `Unable to ${action}. ${error.detail} Reference: ${error.requestId}.`;
   }
   if (error instanceof Error) {
     return `Unable to ${action}: ${error.message}`;

@@ -2,7 +2,6 @@ import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
 import { EmptyTableRow } from './EmptyTableRow';
-import { isPrimaryPaycheck } from './financialsAnchors';
 import { currency } from './financialsFormatters';
 import type { DraftIncomeSummaryItem, IncomeSummaryFormState } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
@@ -13,6 +12,7 @@ export function IncomeSummaryTab({
   derivedIncomeSummaryItems,
   editingIncomeSummaryItemId,
   incomeSummaryForm,
+  primaryPaycheckIncomeSummaryItemId,
   requestRemoveIncomeSummaryItem,
   sourceIncomeSummaryItems,
   startIncomeSummaryItemEdit,
@@ -23,6 +23,7 @@ export function IncomeSummaryTab({
   derivedIncomeSummaryItems: DraftIncomeSummaryItem[];
   editingIncomeSummaryItemId: number | null;
   incomeSummaryForm: IncomeSummaryFormState;
+  primaryPaycheckIncomeSummaryItemId: number;
   requestRemoveIncomeSummaryItem: (item: DraftIncomeSummaryItem) => void;
   sourceIncomeSummaryItems: DraftIncomeSummaryItem[];
   startIncomeSummaryItemEdit: (item: DraftIncomeSummaryItem) => void;
@@ -35,11 +36,6 @@ export function IncomeSummaryTab({
   const derivedCategories = Array.from(
     new Set(derivedIncomeSummaryItems.map((item) => item.category))
   );
-  const editingSource = sourceIncomeSummaryItems.find(
-    (item) => item.id === editingIncomeSummaryItemId
-  );
-  const isEditingPrimaryPaycheck = editingSource ? isPrimaryPaycheck(editingSource) : false;
-
   return (
     <>
       <section className="section-header">
@@ -85,7 +81,7 @@ export function IncomeSummaryTab({
                         onClick={() => startIncomeSummaryItemEdit(item)}
                       />
                       <RemoveButton
-                        disabled={isPrimaryPaycheck(item)}
+                        disabled={item.id === primaryPaycheckIncomeSummaryItemId}
                         label={`Remove ${item.category} ${item.interval}`}
                         onClick={() => requestRemoveIncomeSummaryItem(item)}
                       />
@@ -132,7 +128,6 @@ export function IncomeSummaryTab({
           <label>
             Category
             <input
-              disabled={isEditingPrimaryPaycheck}
               onChange={(event) => updateIncomeSummaryForm('category', event.target.value)}
               required
               value={incomeSummaryForm.category}
@@ -141,7 +136,6 @@ export function IncomeSummaryTab({
           <label>
             Interval
             <input
-              disabled={isEditingPrimaryPaycheck}
               onChange={(event) => updateIncomeSummaryForm('interval', event.target.value)}
               required
               value={incomeSummaryForm.interval}
@@ -158,16 +152,10 @@ export function IncomeSummaryTab({
               value={incomeSummaryForm.amount}
             />
           </label>
-          {isEditingPrimaryPaycheck && (
-            <p className="helper-text">
-              Net Income / Bi-Weekly is required for projections. You can edit the amount, but the
-              category and interval stay fixed.
-            </p>
-          )}
           <p className="helper-text">
-            Disposable income is calculated from primary monthly net income minus monthly
-            withdrawals. Additional source rows are saved for planning, but they do not yet change
-            projection math.
+            Disposable income annualizes the primary paycheck using the planning cadence, then
+            subtracts monthly withdrawals. Additional source rows are saved for planning, but they
+            do not yet change projection math.
           </p>
           <div className="form-actions">
             <button type="submit">

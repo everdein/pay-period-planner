@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted; persistence statements superseded by ADR 0014
+Superseded by ADR 0016
 
 ## Context
 
@@ -17,8 +17,9 @@ adapter CRUD support, but switching the active runtime store is a separate
 decision.
 
 Historical note: ADR 0014 later activated workspace-scoped relational
-PostgreSQL persistence. The endpoint and client-version decisions below remain
-active.
+PostgreSQL persistence. ADR 0016 subsequently selected the versioned workspace
+aggregate as the sole mutation boundary and superseded the endpoint and
+client-version decisions below.
 
 ## Decision
 

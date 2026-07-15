@@ -40,6 +40,9 @@ try {
             -IncludePostgres
     }
     Invoke-Step "Spell check" { npm run spell }
+    Invoke-Step "Frontend dependency compatibility" {
+        npm --prefix frontend run check:dependency-compat
+    }
     Invoke-Step "Frontend type check" { npm --prefix frontend run type-check }
     Invoke-Step "Frontend lint" { npm --prefix frontend run lint }
     Invoke-Step "Frontend tests and coverage" {

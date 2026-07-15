@@ -1,9 +1,10 @@
 package com.example.backend.service;
 
+import com.example.backend.domain.financials.FinancialSnapshot;
 import com.example.backend.dto.financials.PayPeriodRequest;
 
 @FunctionalInterface
 public interface WorkspaceFinancialSnapshotInitializer {
 
-  void initialize(PayPeriodRequest payPeriod);
+  FinancialSnapshot initialize(PayPeriodRequest payPeriod);
 }

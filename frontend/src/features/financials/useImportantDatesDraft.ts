@@ -1,29 +1,32 @@
-import { type FormEvent, useCallback, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 
 import {
   emptyImportantDateForm,
-  type FinancialsDraftState,
-  formToImportantDate,
+  type FinancialsDraft,
   getNextImportantDate,
   toImportantDateForm,
   withImportantDateStatuses,
 } from './financialsDraft';
+import type { FinancialsDraftDispatch } from './financialsDraftReducer';
 import type { DraftImportantDate, ImportantDateFormState } from './financialsTypes';
 
-type ImportantDatesDraftSource = Pick<FinancialsDraftState, 'draftImportantDates'>;
+const emptyImportantDates: DraftImportantDate[] = [];
 
-export function useImportantDatesDraft(onChange: () => void, todayIso: string) {
-  const [draftImportantDates, setDraftImportantDates] = useState<DraftImportantDate[]>([]);
+export function useImportantDatesDraft(
+  draft: FinancialsDraft | null,
+  dispatch: FinancialsDraftDispatch,
+  resetGeneration: number,
+  todayIso: string
+) {
   const [editingImportantDateId, setEditingImportantDateId] = useState<number | null>(null);
   const [importantDateForm, setImportantDateForm] =
     useState<ImportantDateFormState>(emptyImportantDateForm);
-  const [nextDraftImportantDateId, setNextDraftImportantDateId] = useState(-1);
+  const draftImportantDates = draft?.importantDates ?? emptyImportantDates;
 
-  const loadDraft = useCallback((draft: ImportantDatesDraftSource) => {
-    setDraftImportantDates(draft.draftImportantDates);
+  useEffect(() => {
     setEditingImportantDateId(null);
     setImportantDateForm(emptyImportantDateForm);
-  }, []);
+  }, [resetGeneration]);
 
   const importantDates = useMemo(
     () => withImportantDateStatuses(draftImportantDates, todayIso),
@@ -44,24 +47,13 @@ export function useImportantDatesDraft(onChange: () => void, todayIso: string) {
   function submitImportantDate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (editingImportantDateId) {
-      setDraftImportantDates((current) =>
-        current.map((importantDate) =>
-          importantDate.id === editingImportantDateId
-            ? formToImportantDate(editingImportantDateId, importantDateForm)
-            : importantDate
-        )
-      );
-    } else {
-      setDraftImportantDates((current) => [
-        ...current,
-        formToImportantDate(nextDraftImportantDateId, importantDateForm),
-      ]);
-      setNextDraftImportantDateId((current) => current - 1);
-    }
+    dispatch({
+      editingId: editingImportantDateId,
+      form: importantDateForm,
+      type: 'save-important-date',
+    });
 
     cancelImportantDateEdit();
-    onChange();
   }
 
   function startImportantDateEdit(importantDate: DraftImportantDate) {
@@ -74,20 +66,13 @@ export function useImportantDatesDraft(onChange: () => void, todayIso: string) {
     setImportantDateForm(emptyImportantDateForm);
   }
 
-  function removeImportantDate(id: number) {
-    setDraftImportantDates((current) => current.filter((importantDate) => importantDate.id !== id));
-    onChange();
-  }
-
   return {
     cancelImportantDateEdit,
     draftImportantDates,
     editingImportantDateId,
     importantDateForm,
     importantDates,
-    loadDraft,
     nextImportantDate,
-    removeImportantDate,
     startImportantDateEdit,
     submitImportantDate,
     updateImportantDateForm,

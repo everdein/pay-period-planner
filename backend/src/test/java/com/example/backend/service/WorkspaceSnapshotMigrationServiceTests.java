@@ -73,7 +73,7 @@ class WorkspaceSnapshotMigrationServiceTests {
     assertThat(migrated.metadataMatches()).isTrue();
     assertThat(migrated.rollbackEligible()).isTrue();
     assertThat(migrated.currentCounts())
-        .isEqualTo(new FinancialSnapshotCounts(1, 1, 1, 1, 1, 1, 1, 1));
+        .isEqualTo(new FinancialSnapshotCounts(2, 1, 2, 1, 2, 1, 1, 1));
     assertThat(repository.sourceDocumentBySnapshot).containsEntry(migrated.snapshotId(), null);
 
     WorkspaceSnapshotMigration rolledBack = service.rollback(migrated.id());

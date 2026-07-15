@@ -1,43 +1,43 @@
-import { type FormEvent, useCallback, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 
+import type { PayCadence } from '../../api/endpoints/financials';
 import {
   defaultRecurringPaydayForm,
   emptyIncomeEventForm,
-  type FinancialsDraftState,
-  formToIncomeEvent,
-  generateRecurringPaydays,
+  type FinancialsDraft,
   getCurrentPaycheck,
-  isNumberedIncomeEventInYear,
   toIncomeEventForm,
   withIncomeEventStatuses,
 } from './financialsDraft';
+import type { FinancialsDraftDispatch } from './financialsDraftReducer';
 import type {
   DraftIncomeEvent,
   IncomeEventFormState,
   RecurringPaydayFormState,
 } from './financialsTypes';
 
-type IncomeCalendarDraftSource = Pick<FinancialsDraftState, 'draftIncomeEvents'>;
+const emptyIncomeEvents: DraftIncomeEvent[] = [];
 
-export function useIncomeCalendarDraft(onChange: () => void, todayIso: string) {
-  const [draftIncomeEvents, setDraftIncomeEvents] = useState<DraftIncomeEvent[]>([]);
+export function useIncomeCalendarDraft(
+  draft: FinancialsDraft | null,
+  dispatch: FinancialsDraftDispatch,
+  resetGeneration: number,
+  todayIso: string,
+  payCadence: PayCadence = 'BIWEEKLY'
+) {
   const [editingIncomeEventId, setEditingIncomeEventId] = useState<number | null>(null);
   const [incomeEventForm, setIncomeEventForm] =
     useState<IncomeEventFormState>(emptyIncomeEventForm);
   const [recurringPaydayForm, setRecurringPaydayForm] = useState<RecurringPaydayFormState>(() =>
-    defaultRecurringPaydayForm(todayIso)
+    defaultRecurringPaydayForm(todayIso, payCadence)
   );
-  const [nextDraftIncomeEventId, setNextDraftIncomeEventId] = useState(-1);
+  const draftIncomeEvents = draft?.incomeEvents ?? emptyIncomeEvents;
 
-  const loadDraft = useCallback(
-    (draft: IncomeCalendarDraftSource) => {
-      setDraftIncomeEvents(draft.draftIncomeEvents);
-      setEditingIncomeEventId(null);
-      setIncomeEventForm(emptyIncomeEventForm);
-      setRecurringPaydayForm(defaultRecurringPaydayForm(todayIso));
-    },
-    [todayIso]
-  );
+  useEffect(() => {
+    setEditingIncomeEventId(null);
+    setIncomeEventForm(emptyIncomeEventForm);
+    setRecurringPaydayForm(defaultRecurringPaydayForm(todayIso, payCadence));
+  }, [payCadence, resetGeneration, todayIso]);
 
   const incomeEvents = useMemo(
     () => withIncomeEventStatuses(draftIncomeEvents, todayIso),
@@ -61,51 +61,22 @@ export function useIncomeCalendarDraft(onChange: () => void, todayIso: string) {
   ) {
     setRecurringPaydayForm((current) => {
       const next = { ...current, [key]: value };
-      return key === 'year' ? { ...next, firstPayDate: '' } : next;
+      return key === 'year' ? { ...next, firstPayDate: '', secondPayDate: '' } : next;
     });
   }
 
   function submitIncomeEvent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (editingIncomeEventId) {
-      setDraftIncomeEvents((current) =>
-        current.map((incomeEvent) =>
-          incomeEvent.id === editingIncomeEventId
-            ? formToIncomeEvent(editingIncomeEventId, incomeEventForm)
-            : incomeEvent
-        )
-      );
-    } else {
-      setDraftIncomeEvents((current) => [
-        ...current,
-        formToIncomeEvent(nextDraftIncomeEventId, incomeEventForm),
-      ]);
-      setNextDraftIncomeEventId((current) => current - 1);
-    }
+    dispatch({ editingId: editingIncomeEventId, form: incomeEventForm, type: 'save-income-event' });
 
     cancelIncomeEventEdit();
-    onChange();
   }
 
   function submitRecurringPaydays(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const generatedPaydays = generateRecurringPaydays(recurringPaydayForm, nextDraftIncomeEventId);
-    if (generatedPaydays.length === 0) {
-      return;
-    }
-
-    setDraftIncomeEvents((current) => {
-      const retainedEvents = recurringPaydayForm.replaceExistingYear
-        ? current.filter(
-            (incomeEvent) => !isNumberedIncomeEventInYear(incomeEvent, recurringPaydayForm.year)
-          )
-        : current;
-      return [...retainedEvents, ...generatedPaydays];
-    });
-    setNextDraftIncomeEventId((current) => current - generatedPaydays.length);
-    onChange();
+    dispatch({ form: recurringPaydayForm, type: 'generate-recurring-paydays' });
   }
 
   function startIncomeEventEdit(event: DraftIncomeEvent) {
@@ -118,11 +89,6 @@ export function useIncomeCalendarDraft(onChange: () => void, todayIso: string) {
     setIncomeEventForm(emptyIncomeEventForm);
   }
 
-  function removeIncomeEvent(id: number) {
-    setDraftIncomeEvents((current) => current.filter((event) => event.id !== id));
-    onChange();
-  }
-
   return {
     cancelIncomeEventEdit,
     currentPaycheck,
@@ -130,9 +96,7 @@ export function useIncomeCalendarDraft(onChange: () => void, todayIso: string) {
     editingIncomeEventId,
     incomeEventForm,
     incomeEvents,
-    loadDraft,
     recurringPaydayForm,
-    removeIncomeEvent,
     startIncomeEventEdit,
     submitIncomeEvent,
     submitRecurringPaydays,

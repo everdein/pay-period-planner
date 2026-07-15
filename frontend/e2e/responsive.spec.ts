@@ -42,7 +42,7 @@ test('keeps every financial workflow contained and operable across supported wid
   await page.getByLabel('Confirm password').fill(accountPassword);
   await page.getByRole('button', { name: 'Create Account' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Start your financial workspace' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start your planning workspace' })).toBeVisible();
   await expectResponsiveLayout(page, 'narrow phone onboarding');
   await page.getByRole('button', { name: 'Create Financial Snapshot' }).click();
   await expect(page.getByRole('heading', { name: 'Income Summary' }).first()).toBeVisible();

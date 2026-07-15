@@ -138,6 +138,13 @@ Install frontend dependencies:
 npm --prefix frontend ci
 ```
 
+The frontend install is lockfile-defined and does not modify dependency source
+files. Verify its temporary ESLint compatibility override with:
+
+```powershell
+npm --prefix frontend run check:dependency-compat
+```
+
 ---
 
 ## PostgreSQL persistence
@@ -163,9 +170,10 @@ Important: `financial_app_user` is a database user used by the backend. It is no
 a frontend login user.
 
 The backend reads and writes the
-V3/V4/V6/V7 `financial_record_*` relational model. V5 account sessions select
+V3/V4/V6/V7/V8/V9 `financial_record_*` relational model. V5 account sessions select
 a current workspace membership, writes use optimistic versions under a
-workspace lock, and V7 preserves relational audit history. The V2 JSONB table
+workspace lock, record families are written in batches, and V7 preserves
+relational audit history through a separately limited query. The V2 JSONB table
 is retained only as an explicit migration/rollback source. The normalized V1
 tables remain inactive historical groundwork. The frontend session conversion
 is complete: the browser now uses account sessions, fresh CSRF proof for writes,
@@ -349,6 +357,7 @@ financial_record_important_date
 financial_record_income_event
 financial_record_income_summary_item
 financial_record_monthly_bill
+financial_record_projection_role
 financial_record_snapshot
 important_date
 income_event
@@ -359,10 +368,11 @@ monthly_withdrawal
 A count of `0` in `financial_snapshot_document` is acceptable on a fresh
 database because that table is now a legacy migration source.
 
-The PostgreSQL runtime uses V3/V4/V6/V7 `financial_record_*` tables. They remain
-empty until a snapshot is explicitly migrated or created for a workspace. V1
-tables are inactive historical groundwork. V5 identity, workspace, membership,
-and session tables remain empty until account flows are used.
+The PostgreSQL runtime uses V3/V4/V6/V7/V8/V9 `financial_record_*` tables. They
+remain empty until a snapshot is explicitly migrated or created for a
+workspace. V8 stores projection-input role IDs with each snapshot. V1 tables
+are inactive historical groundwork. V5 identity, workspace, membership, and
+session tables remain empty until account flows are used.
 
 ---
 
@@ -469,38 +479,9 @@ Financial snapshot endpoints:
 GET /api/v1/financials
 GET /api/v1/financials/history
 GET /api/v1/financials/export
-GET /api/v1/financials/export/csv
-GET /api/v1/financials/export/xlsx
-POST /api/v1/financials/import/csv
-POST /api/v1/financials/import/xlsx
+POST /api/v1/financials
+POST /api/v1/financials/restore?expectedVersion=<current-version>
 PUT /api/v1/financials
-PUT /api/v1/financials/pay-period
-```
-
-Granular record endpoints:
-
-```http
-POST /api/v1/financials/bills
-PUT /api/v1/financials/bills/{id}
-DELETE /api/v1/financials/bills/{id}
-POST /api/v1/financials/annual-withdrawals
-PUT /api/v1/financials/annual-withdrawals/{id}
-DELETE /api/v1/financials/annual-withdrawals/{id}
-POST /api/v1/financials/asset-accounts
-PUT /api/v1/financials/asset-accounts/{id}
-DELETE /api/v1/financials/asset-accounts/{id}
-POST /api/v1/financials/debt-accounts
-PUT /api/v1/financials/debt-accounts/{id}
-DELETE /api/v1/financials/debt-accounts/{id}
-POST /api/v1/financials/income-summary-items
-PUT /api/v1/financials/income-summary-items/{id}
-DELETE /api/v1/financials/income-summary-items/{id}
-POST /api/v1/financials/income-events
-PUT /api/v1/financials/income-events/{id}
-DELETE /api/v1/financials/income-events/{id}
-POST /api/v1/financials/important-dates
-PUT /api/v1/financials/important-dates/{id}
-DELETE /api/v1/financials/important-dates/{id}
 ```
 
 The Financials UI currently uses a draft/save workflow:
@@ -517,40 +498,44 @@ The history endpoint returns recent saved-change audit events with version
 movement, coarse resource metadata, and aggregate projection summaries. Treat
 audit history as personal financial data.
 
-The export endpoints download the currently saved source snapshot as JSON, CSV,
-or XLSX. The JSON file preserves the full request-shaped backup envelope; CSV
-and XLSX use one tabular exchange format that can also be imported back through
-the version-checked restore endpoints. Imports replace the complete snapshot,
-so stale files return `409 Conflict` instead of silently overwriting newer
-data. Source-shaped exports do not currently include audit history. Export and
-import files should be handled as personal financial data.
+The export endpoint downloads the currently saved source snapshot as a JSON
+backup envelope. Restore accepts that envelope unchanged and requires the
+target workspace's current version separately. The backup's embedded version
+remains source metadata, so an older backup can be restored deliberately while
+a concurrent target write still returns `409 Conflict`. Application backups do
+not include complete relational audit history and should be handled as personal
+financial data.
 
 PowerShell helpers are available for local operators:
 
 ```powershell
 $env:FINANCIALS_ACCOUNT_EMAIL = "owner@example.com"
 $env:FINANCIALS_ACCOUNT_PASSWORD = "<account password>"
-.\scripts\export-financial-snapshot.ps1 -Format csv -OutputPath "$HOME\Downloads\financial-snapshot.csv"
-.\scripts\import-financial-snapshot.ps1 -InputPath "$HOME\Downloads\financial-snapshot.csv" -ConfirmRestore
+.\scripts\export-financial-snapshot.ps1 -OutputPath "$HOME\Downloads\financial-snapshot.json"
+.\scripts\restore-financial-snapshot.ps1 -InputPath "$HOME\Downloads\financial-snapshot.json" -ConfirmRestore
 ```
 
 The export helper refuses repository output paths unless `-AllowRepositoryPath`
-is supplied for synthetic/mock data. Both helpers create an account session,
-use `-WorkspaceId` when explicitly supplied, and revoke the session afterward.
+is supplied for synthetic/mock data. The restore helper reads the current
+target version immediately before submitting the backup. Both helpers create
+an account session, use `-WorkspaceId` when explicitly supplied, and revoke the
+session afterward.
 
-The individual record endpoints remain available as granular API options, but
-the current UI treats the snapshot as the source of truth.
+The versioned full-snapshot save is the sole supported financial mutation
+boundary. Record and pay-period edits stay local until the user saves the
+complete workspace.
 
 ---
 
 ## Financials feature
 
-The application includes a personal financial snapshot area with sidebar
+The application includes a household cash-flow planning workspace with sidebar
 sections for:
 
 - overview totals, including assets, debt, net worth, and disposable income
-- next pay period projections for paycheck income, bills, rent set-asides, debt
-  payoff, and possible HYSA transfer
+- configurable record-ID projection inputs for paycheck income, rent, and rent reserve
+- next pay period projections for paycheck income, bills, housing set-asides,
+  possible debt payments, and possible savings transfers
 - monthly withdrawals with pay period planning
 - annual withdrawals that can be included in the active pay period
 - income summary source rows plus derived net/disposable income values
@@ -571,17 +556,27 @@ Pay period dates are automatically derived from the saved schedule and today's
 date when the app opens. Manually changing the pay period dates updates that
 schedule anchor on the next save.
 
-The Income Calendar can generate bi-weekly paycheck rows for a selected year
-from the first payday, starting check number, label, and type. By default it
-replaces existing numbered income rows in that year while preserving one-time
-income events such as tax returns or bonuses.
+The Income Calendar generates weekly, biweekly, semimonthly, or monthly
+paycheck rows for a selected year from cadence-appropriate anchor dates,
+starting check number, label, and type. Calendar-month dates clamp to shorter
+months. By default it replaces existing numbered income rows in that year
+while preserving one-time income events such as tax returns or bonuses.
 
 The Projection view is derived from the saved snapshot and current draft state.
-It focuses on the next pay period, using bi-weekly net income, bills due, annual
-withdrawals due, the rent bill, the rent savings account, and current debt to
-estimate what can go toward credit card debt. If debt is covered, remaining cash
-is shown as a possible Apple HYSA transfer. The current period is shown only as
-supporting context.
+It focuses on the next pay period, using primary paycheck income annualized
+from the workspace cadence, bills due, annual withdrawals due, the selected
+housing payment, the housing reserve account, and current debt to estimate a
+possible debt payment. If debt is covered, remaining cash is shown as a
+possible savings transfer. The current period is shown only as supporting
+context.
+
+This product is scoped to household cash-flow and pay-period planning. Its
+projections are estimates, not accounting records, transaction reconciliation,
+transfer instructions, or financial advice.
+
+Each versioned snapshot stores its pay cadence and IANA planning time zone.
+The backend returns one zone-derived `currentDate` for active-period decisions,
+while date-only inputs remain stable across browser and server time zones.
 
 ---
 
@@ -592,6 +587,9 @@ supporting context.
 ```powershell
 npm run lint
 ```
+
+The default verifier also runs the frontend dependency compatibility assertion
+documented in `docs/dependency-update-triage.md`.
 
 ### Auto-fix lint issues
 
@@ -659,7 +657,7 @@ cd backend
 
 ### Required PostgreSQL integration gate
 
-After local PostgreSQL setup, the default verifier runs the snapshot-store, V3/V4/V6/V7
+After local PostgreSQL setup, the default verifier runs the snapshot-store, V3/V4/V6/V7/V8/V9
 workspace-scoped record-adapter, V5 identity-schema, V6 legacy-upgrade,
 account/session, and backed-up migration/rollback API integration tests in
 dedicated isolated schemas. Set the dedicated local

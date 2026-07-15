@@ -30,7 +30,7 @@ test('creates and saves a first financial snapshot from an empty workspace', asy
   await expect(page.getByRole('cell', { name: '$3,200.00' }).first()).toBeVisible();
 
   await page.getByRole('button', { name: 'Overview' }).click();
-  await expect(page.getByRole('heading', { name: 'Financial Overview' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Household Overview' })).toBeVisible();
   await page.getByRole('button', { name: 'Open monthly workflow' }).click();
   await expect(page.getByRole('heading', { name: 'Monthly Withdrawals' })).toBeVisible();
 
@@ -108,9 +108,27 @@ test('keeps browser sessions isolated while editing the live PostgreSQL workspac
   await page.reload();
   await page.getByRole('button', { name: 'Monthly Withdrawals' }).click();
   await expect(transferRow).toBeHidden();
+
+  await page.getByRole('button', { name: 'Projection' }).click();
+  const selectedRentLabel = (
+    await page.getByLabel('Housing payment').locator('option:checked').textContent()
+  )?.trim();
+  if (!selectedRentLabel) {
+    throw new Error('The rent projection role did not resolve to a labeled bill');
+  }
+
+  await page.getByRole('button', { name: 'Monthly Withdrawals' }).click();
   await expect(
-    monthlyWithdrawalsTable.getByRole('cell', { exact: true, name: 'Rent' })
+    monthlyWithdrawalsTable.getByRole('cell', {
+      exact: true,
+      name: selectedRentLabel,
+    })
   ).toBeVisible();
+  await expect(
+    monthlyWithdrawalsTable.getByRole('button', {
+      name: `Remove ${selectedRentLabel}`,
+    })
+  ).toBeDisabled();
 });
 
 test('keeps a stale draft visible and reloads after a concurrent save conflict', async ({
@@ -157,7 +175,7 @@ async function signUp(page: Page, displayName: string, email: string) {
   await page.getByLabel('Password', { exact: true }).fill(accountPassword);
   await page.getByLabel('Confirm password').fill(accountPassword);
   await page.getByRole('button', { name: 'Create Account' }).click();
-  await expect(page.getByRole('heading', { name: 'Start your financial workspace' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start your planning workspace' })).toBeVisible();
 }
 
 async function signIn(page: Page, email: string) {

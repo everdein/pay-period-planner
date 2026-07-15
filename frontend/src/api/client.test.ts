@@ -7,7 +7,6 @@ import {
   httpGet,
   httpPostVoid,
   httpPut,
-  setActiveWorkspaceId,
   setUnauthorizedHandler,
 } from './client';
 
@@ -37,7 +36,31 @@ describe('API request correlation', () => {
     expect(init).toMatchObject({ credentials: 'same-origin' });
   });
 
-  it('bootstraps CSRF and scopes mutations to the active workspace', async () => {
+  it('aborts requests that outlive their account session context', async () => {
+    const fetchMock = vi.fn(
+      (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            'abort',
+            () => reject(new DOMException('The request was aborted.', 'AbortError')),
+            { once: true }
+          );
+        })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const request = httpGet('/api/v1/financials', { workspaceId: 42 });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+
+    clearApiSessionContext();
+
+    await expect(request).rejects.toMatchObject({ name: 'AbortError' });
+    expect(
+      (fetchMock.mock.calls[0]?.[1] as NonNullable<Parameters<typeof fetch>[1]>).signal?.aborted
+    ).toBe(true);
+  });
+
+  it('bootstraps CSRF and scopes mutations to the requested workspace', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -60,9 +83,8 @@ describe('API request correlation', () => {
       );
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetchMock);
-    setActiveWorkspaceId(42);
 
-    await httpPut('/api/v1/financials', { version: 2 });
+    await httpPut('/api/v1/financials', { version: 2 }, { workspaceId: 42 });
     await httpPostVoid('/api/v1/auth/signout');
 
     expect(fetchMock).toHaveBeenCalledTimes(4);
@@ -104,9 +126,11 @@ describe('API request correlation', () => {
 
     await expect(request).rejects.toBeInstanceOf(ApiError);
     await expect(request).rejects.toMatchObject({
+      detail: 'The financial snapshot changed after it was loaded.',
+      message: 'The financial snapshot changed after it was loaded.',
       requestId: 'server-request-456',
       status: 409,
+      title: '409 CONFLICT',
     });
-    await expect(request).rejects.toThrow('Request ID: server-request-456');
   });
 });

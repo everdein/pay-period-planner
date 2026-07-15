@@ -55,7 +55,7 @@ export function Overview({
       <section className="overview-header">
         <div>
           <p className="eyebrow">Dashboard</p>
-          <h2>Financial Overview</h2>
+          <h2>Household Overview</h2>
         </div>
         <nav aria-label="Financial workflows" className="dashboard-workflows">
           {dashboardWorkflows.map((workflow) => (
@@ -72,29 +72,29 @@ export function Overview({
           ))}
         </nav>
       </section>
-      <section aria-label="Financial overview" className="overview-sections">
+      <section aria-label="Household overview" className="overview-sections">
         <OverviewGroup title="Projection">
           <MetricCard
             label="Cash after bills"
             tone={projection.nextPayPeriodCashAfterBills >= 0 ? 'good' : 'bad'}
             value={currency.format(projection.nextPayPeriodCashAfterBills)}
-            detail="Next period after bills and rent"
+            detail="Next period after bills and housing"
           />
           <MetricCard
-            label="Debt left after payment"
+            label="Debt left after plan"
             tone={projection.nextPayPeriodDebtRemaining > 0 ? 'bad' : 'good'}
             value={currency.format(projection.nextPayPeriodDebtRemaining)}
-            detail="After next period payment"
+            detail="After the possible debt payment"
           />
           <MetricCard
-            label="Possible HYSA transfer"
-            tone={projection.nextPayPeriodHysaTransfer > 0 ? 'good' : 'neutral'}
-            value={currency.format(projection.nextPayPeriodHysaTransfer)}
-            detail="Only after debt is covered"
+            label="Possible savings transfer"
+            tone={projection.nextPayPeriodSavingsTransfer > 0 ? 'good' : 'neutral'}
+            value={currency.format(projection.nextPayPeriodSavingsTransfer)}
+            detail="After the planned debt balance reaches zero"
           />
         </OverviewGroup>
 
-        <OverviewGroup title="Balance Sheet">
+        <OverviewGroup title="Balances">
           <MetricCard
             label="Tracked assets"
             tone="good"

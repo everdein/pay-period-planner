@@ -129,7 +129,9 @@ class WorkspaceSnapshotMigrationApiIT {
             .andExpect(jsonPath("$.sourceVersion").value(7))
             .andExpect(jsonPath("$.metadataMatches").value(true))
             .andExpect(jsonPath("$.rollbackEligible").value(true))
-            .andExpect(jsonPath("$.currentCounts.monthlyBills").value(1))
+            .andExpect(jsonPath("$.currentCounts.monthlyBills").value(2))
+            .andExpect(jsonPath("$.currentCounts.assetAccounts").value(2))
+            .andExpect(jsonPath("$.currentCounts.incomeSummaryItems").value(2))
             .andExpect(jsonPath("$.currentCounts.auditEvents").value(1))
             .andReturn();
     UUID migrationId = migrationId(applied);
@@ -149,12 +151,18 @@ class WorkspaceSnapshotMigrationApiIT {
             "select count(*) from financial_record_audit_event where snapshot_id = ?",
             Integer.class,
             snapshotId);
+    Integer projectionRoleCount =
+        jdbcTemplate.queryForObject(
+            "select count(*) from financial_record_projection_role where snapshot_id = ?",
+            Integer.class,
+            snapshotId);
     Long legacyVersion =
         jdbcTemplate.queryForObject(
             "select version from financial_snapshot_document where active", Long.class);
 
     org.assertj.core.api.Assertions.assertThat(sourceDocumentId).isNotNull();
     org.assertj.core.api.Assertions.assertThat(auditCount).isEqualTo(1);
+    org.assertj.core.api.Assertions.assertThat(projectionRoleCount).isEqualTo(3);
     org.assertj.core.api.Assertions.assertThat(legacyVersion).isEqualTo(7);
 
     mockMvc
@@ -182,7 +190,13 @@ class WorkspaceSnapshotMigrationApiIT {
             "select count(*) from financial_record_monthly_bill where snapshot_id = ?",
             Integer.class,
             snapshotId);
-    org.assertj.core.api.Assertions.assertThat(retainedRecordCount).isEqualTo(1);
+    Integer retainedProjectionRoleCount =
+        jdbcTemplate.queryForObject(
+            "select count(*) from financial_record_projection_role where snapshot_id = ?",
+            Integer.class,
+            snapshotId);
+    org.assertj.core.api.Assertions.assertThat(retainedRecordCount).isEqualTo(2);
+    org.assertj.core.api.Assertions.assertThat(retainedProjectionRoleCount).isEqualTo(3);
   }
 
   @Test

@@ -4,9 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.backend.domain.financials.FinancialSnapshot;
+import com.example.backend.domain.financials.PayCadence;
+import com.example.backend.dto.financials.FinancialPlanningSettingsRequest;
 import com.example.backend.dto.financials.PayPeriodRequest;
 import com.example.backend.repository.WorkspaceFinancialSnapshotStore;
-import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
@@ -14,8 +15,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.web.server.ResponseStatusException;
 
 class WorkspaceFinancialSnapshotInitializationServiceTests {
 
@@ -27,33 +26,56 @@ class WorkspaceFinancialSnapshotInitializationServiceTests {
   @BeforeEach
   void setUp() {
     snapshotStore = new TestSnapshotStore();
-    AuthenticatedWorkspaceResolver resolver =
-        new AuthenticatedWorkspaceResolver() {
-          @Override
-          public long requireWorkspaceId(HttpServletRequest request) {
-            return WORKSPACE_ID;
-          }
-        };
     service =
-        new WorkspaceFinancialSnapshotInitializationService(
-            snapshotStore, resolver, new MockHttpServletRequest());
+        new WorkspaceFinancialSnapshotInitializationService(snapshotStore, () -> WORKSPACE_ID);
   }
 
   @Test
-  void createsAnEmptyVersionOneSnapshotForTheAuthenticatedWorkspace() {
-    service.initialize(new PayPeriodRequest(LocalDate.of(2026, 7, 10), LocalDate.of(2026, 7, 23)));
+  void createsAProjectionReadyVersionOneSnapshotForTheAuthenticatedWorkspace() {
+    FinancialSnapshot created =
+        service.initialize(
+            new PayPeriodRequest(LocalDate.of(2026, 7, 10), LocalDate.of(2026, 7, 23)));
 
     FinancialSnapshot snapshot = snapshotStore.loadActiveSnapshot(WORKSPACE_ID).orElseThrow();
+    assertThat(created).isSameAs(snapshot);
     assertThat(snapshot.version()).isEqualTo(1);
     assertThat(snapshot.payPeriodStart()).isEqualTo(LocalDate.of(2026, 7, 10));
     assertThat(snapshot.payPeriodEnd()).isEqualTo(LocalDate.of(2026, 7, 23));
-    assertThat(snapshot.bills()).isEmpty();
+    assertThat(snapshot.planningSettings().payCadence()).isEqualTo(PayCadence.BIWEEKLY);
+    assertThat(snapshot.planningSettings().timeZone()).isEqualTo("UTC");
+    assertThat(snapshot.bills())
+        .singleElement()
+        .extracting((bill) -> bill.bill())
+        .isEqualTo("Rent");
     assertThat(snapshot.annualWithdrawals()).isEmpty();
-    assertThat(snapshot.assetAccounts()).isEmpty();
+    assertThat(snapshot.assetAccounts())
+        .singleElement()
+        .extracting((account) -> account.account())
+        .isEqualTo("Rent Reserve");
     assertThat(snapshot.debtAccounts()).isEmpty();
-    assertThat(snapshot.incomeSummaryItems()).isEmpty();
+    assertThat(snapshot.incomeSummaryItems())
+        .singleElement()
+        .satisfies(
+            (item) -> {
+              assertThat(item.category()).isEqualTo("Net Income");
+              assertThat(item.interval()).isEqualTo("Bi-Weekly");
+            });
     assertThat(snapshot.incomeEvents()).isEmpty();
     assertThat(snapshot.importantDates()).isEmpty();
+    assertThat(snapshot.projectionRoles().rentBillId()).isEqualTo(snapshot.bills().getFirst().id());
+  }
+
+  @Test
+  void createsTheSnapshotWithTheRequestedCadenceAndTimeZone() {
+    FinancialSnapshot snapshot =
+        service.initialize(
+            new PayPeriodRequest(
+                LocalDate.of(2026, 7, 1),
+                LocalDate.of(2026, 7, 31),
+                new FinancialPlanningSettingsRequest("monthly", "America/New_York")));
+
+    assertThat(snapshot.planningSettings().payCadence()).isEqualTo(PayCadence.MONTHLY);
+    assertThat(snapshot.planningSettings().timeZone()).isEqualTo("America/New_York");
   }
 
   @Test
@@ -62,7 +84,7 @@ class WorkspaceFinancialSnapshotInitializationServiceTests {
             () ->
                 service.initialize(
                     new PayPeriodRequest(LocalDate.of(2026, 7, 23), LocalDate.of(2026, 7, 10))))
-        .isInstanceOf(ResponseStatusException.class)
+        .isInstanceOf(FinancialRequestException.class)
         .hasMessageContaining("must be on or after");
 
     service.initialize(new PayPeriodRequest(LocalDate.of(2026, 7, 10), LocalDate.of(2026, 7, 23)));

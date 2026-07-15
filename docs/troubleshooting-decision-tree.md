@@ -131,8 +131,8 @@ not found` means the workspace has not received an explicit snapshot.
 ### Save fails or draft looks stale
 
 1. Preserve the browser draft; do not reload before capturing the error.
-2. Check whether the response is validation (`400`), missing granular ID
-   (`404`), or persistence (`500`).
+2. Check whether the response is validation (`400`), missing snapshot (`404`),
+   stale snapshot (`409`), or persistence (`500`).
 3. Compare request field names with `docs/api-contract.md`.
 4. Remember that a full snapshot save replaces every collection after its
    version check passes.
@@ -241,10 +241,10 @@ does not seed it.
 ### Normalized V1 tables are empty
 
 Expected. They are inactive V1 historical groundwork. Active PostgreSQL data
-uses V3/V4/V6/V7 workspace tables. Do not backfill V1 as a troubleshooting
+uses V3/V4/V6/V7/V8/V9 workspace tables. Do not backfill V1 as a troubleshooting
 step.
 
-### V3/V4/V6/V7 `financial_record_*` tables are empty
+### V3/V4/V6/V7/V8/V9 `financial_record_*` tables are empty
 
 Expected only when no workspace has received an explicit initial or migrated
 snapshot. The runtime never seeds one from local/example JSON. Recover the
@@ -337,10 +337,11 @@ migration workflow; startup never synchronizes or seeds it.
 
 ### Data changed after read
 
-The service can normalize missing name-based anchors (`Rent`, `Rent Reserve`,
-and `Net Income` / `Bi-Weekly`) in responses. A later full save can persist
-them. Check `docs/domain-glossary.md` and `LIM-007` before treating those records
-as corruption.
+Current snapshots resolve projection inputs by stored record IDs. If a legacy
+source without roles is loaded, compatibility normalization may select historical
+labels or add zero-value defaults without renaming existing records. Check the
+snapshot's `projectionRoles`, the three target records, ADR 0026, and LIM-007
+before treating those records as corruption.
 
 ## 6. Local Verification Failure
 

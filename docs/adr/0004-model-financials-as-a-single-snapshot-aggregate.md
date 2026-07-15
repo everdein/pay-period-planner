@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Partially superseded by ADR 0026
 
 ## Context
 
@@ -10,7 +10,7 @@ The financials feature now tracks several related planning tables: monthly
 withdrawals, annual withdrawals, income summary assumptions, income calendar
 events, asset accounts, debt accounts, and important dates.
 
-These records are edited together in one personal finance workspace. The
+These records are edited together in one household planning workspace. The
 current app is single-user and file-backed, so splitting each table into a
 separate persistence workflow would add complexity before the domain requires
 it.
@@ -38,11 +38,11 @@ backward until it contains today's date. If the user edits the dates and saves,
 those edited dates become the new anchor.
 
 Keep pay period projections as a derived planning view for now. The projection
-uses the current snapshot/draft data to estimate remaining cash from bi-weekly
-net income, next pay period withdrawals, annual withdrawals due in the period,
-rent reserve needs, and current debt. It focuses on the next paycheck, applies
-leftover cash to current credit card debt first, and shows remaining cash as a
-possible Apple HYSA transfer only after debt is covered. Current pay period
+uses the current snapshot/draft data to estimate remaining cash from the
+selected primary paycheck and cadence, next pay period withdrawals, annual
+withdrawals due in the period, housing reserve needs, and current debt. It
+focuses on the next paycheck, shows a possible debt payment first, and shows a
+possible savings transfer only after debt is covered. Current pay period
 values can be displayed as context, but they should not compete with the next
 paycheck projection. Projection history and saved projection plans are
 intentionally deferred until there is a clearer workflow for comparing planned
@@ -57,6 +57,14 @@ Income summary persistence follows the same source-row idea: only the
 bi-weekly net income source needs to be saved, while annual, monthly, weekly,
 and disposable income values are derived from that source and monthly
 withdrawals.
+
+ADR 0026 supersedes the protected-name portion of this decision. Projection
+meaning now uses versioned role IDs, while the single-snapshot aggregate and
+derived projection decisions remain accepted.
+
+ADR 0027 supersedes the biweekly-only and machine-local date assumptions. The
+aggregate now stores pay cadence and planning time zone, and projections
+support weekly, biweekly, semimonthly, and monthly schedules.
 
 Displayed dates should use `MM/DD/YYYY`. Native browser date inputs may use the
 browser's internal ISO date value while editing.

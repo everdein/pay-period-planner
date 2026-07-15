@@ -21,6 +21,13 @@ const mockFinancialsState = {
     version: 1,
     payPeriodStart: '2026-06-12',
     payPeriodEnd: '2026-06-26',
+    currentDate: '2026-06-18',
+    planningSettings: { payCadence: 'BIWEEKLY', timeZone: 'America/New_York' },
+    projectionRoles: {
+      primaryPaycheckIncomeSummaryItemId: 2,
+      rentBillId: 1,
+      rentReserveAssetAccountId: 2,
+    },
     totalMonthlyExpenses: 4890.92,
     paidTotal: 1784.76,
     unpaidTotal: 3106.16,
@@ -38,8 +45,8 @@ const mockFinancialsState = {
         accounts: [
           {
             id: 1,
-            account: '401k 10%',
-            company: 'Vanguard',
+            account: 'Workplace Retirement',
+            company: 'Example Retirement Provider',
             amount: 110653.42,
           },
         ],
@@ -67,8 +74,8 @@ const mockFinancialsState = {
     debtAccounts: [
       {
         id: 1,
-        account: 'Apple',
-        company: 'Apple Card',
+        account: 'Rewards Card',
+        company: 'Example Card Issuer',
         amount: 2130.03,
       },
     ],
@@ -111,13 +118,13 @@ const mockFinancialsState = {
     annualWithdrawals: [
       {
         id: 1,
-        bill: 'Amazon Prime',
+        bill: 'Annual Membership',
         month: 1,
         day: 11,
         dateLabel: '01/11/2026',
         dueDate: '2026-01-11',
         amount: 140.58,
-        account: 'Apple',
+        account: 'Rewards Card',
         paid: true,
         inPayPeriod: false,
       },
@@ -153,7 +160,9 @@ const mockFinancialsError: {
     kind: 'conflict' | 'error';
     message: string;
     operation: 'save';
+    requestId?: string;
     status?: number;
+    title?: string;
   };
 } = { current: null };
 
@@ -273,8 +282,8 @@ describe('App', () => {
       })
     );
 
-    expect(screen.getByRole('heading', { name: /financials/i })).toBeInTheDocument();
-    expect(screen.getByText('alex@example.com')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /financials/i })).toBeInTheDocument();
+    expect(await screen.findByText('alex@example.com')).toBeInTheDocument();
   });
 
   it('creates an account and validates password confirmation', async () => {
@@ -381,7 +390,7 @@ describe('App', () => {
     expect(screen.getByText('#12')).toBeInTheDocument();
     expect(screen.getByText(/^Cash after bills$/i)).toBeInTheDocument();
     expect(screen.getAllByText('$2,096.25')).not.toHaveLength(0);
-    expect(screen.getByText(/^Debt left after payment$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Debt left after plan$/i)).toBeInTheDocument();
     expect(screen.getAllByText('$33.78')).not.toHaveLength(0);
     expect(screen.getByText('$140.58')).toBeInTheDocument();
     expect(screen.getByText(/^Next important date$/i)).toBeInTheDocument();
@@ -410,16 +419,19 @@ describe('App', () => {
   it('keeps the draft visible and offers conflict recovery', async () => {
     mockFinancialsError.current = {
       kind: 'conflict',
-      message: 'HTTP 409 Conflict: Snapshot version conflict (Request ID: request-conflict)',
+      message: 'Snapshot version conflict',
       operation: 'save',
+      requestId: 'request-conflict',
       status: 409,
+      title: '409 CONFLICT',
     };
 
     await renderAuthenticatedApp();
 
     const alert = screen.getByRole('alert');
     expect(within(alert).getByText('A newer snapshot is available')).toBeVisible();
-    expect(screen.getByText('Financial Overview')).toBeVisible();
+    expect(within(alert).getByText('Request reference: request-conflict')).toBeVisible();
+    expect(screen.getByText('Household Overview')).toBeVisible();
 
     fireEvent.click(within(alert).getByRole('button', { name: 'Discard Draft and Reload' }));
 
@@ -460,7 +472,7 @@ describe('App', () => {
     await renderAuthenticatedApp();
 
     fireEvent.click(screen.getByRole('button', { name: /retirement/i }));
-    fireEvent.click(screen.getByRole('button', { name: /edit 401k 10%/i }));
+    fireEvent.click(screen.getByRole('button', { name: /edit workplace retirement/i }));
     fireEvent.change(screen.getByLabelText(/^amount$/i), { target: { value: '110700' } });
     fireEvent.click(screen.getByRole('button', { name: /update draft/i }));
 
@@ -505,7 +517,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /annual withdrawals/i }));
 
     expect(screen.getByRole('heading', { name: /annual withdrawals/i })).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: /amazon prime/i })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: /annual membership/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/^date$/i)).toHaveAttribute('type', 'date');
     expect(screen.getAllByText('$140.58')).not.toHaveLength(0);
   });
@@ -518,9 +530,16 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /next paycheck projection/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /next pay period/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /current period context/i })).toBeInTheDocument();
-    expect(screen.getAllByRole('cell', { name: /rent set aside/i })).not.toHaveLength(0);
-    expect(screen.getAllByRole('cell', { name: /rent paid from savings/i })).not.toHaveLength(0);
-    expect(screen.getByText(/^Possible HYSA transfer$/i)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /housing payment/i })).toHaveValue('1');
+    expect(screen.getByRole('combobox', { name: /housing reserve/i })).toHaveValue('2');
+    expect(screen.getByRole('combobox', { name: /primary paycheck/i })).toHaveValue('2');
+    expect(screen.getByRole('combobox', { name: /pay cadence/i })).toHaveValue('BIWEEKLY');
+    expect(screen.getByRole('combobox', { name: /planning time zone/i })).toHaveValue(
+      'America/New_York'
+    );
+    expect(screen.getAllByRole('cell', { name: /housing reserve set-aside/i })).not.toHaveLength(0);
+    expect(screen.getAllByRole('cell', { name: /housing paid from reserve/i })).not.toHaveLength(0);
+    expect(screen.getByText(/^Possible savings transfer$/i)).toBeInTheDocument();
     expect(screen.getAllByText('$0.00')).not.toHaveLength(0);
     expect(screen.getAllByText('$33.78')).not.toHaveLength(0);
   });
@@ -534,7 +553,7 @@ describe('App', () => {
     expect(screen.getAllByText(/net income/i)).not.toHaveLength(0);
     expect(screen.getAllByRole('cell', { name: /bi-weekly/i })).not.toHaveLength(0);
     expect(screen.getByDisplayValue('3396.25')).toBeInTheDocument();
-    expect(screen.getByText('$4,192.50')).toBeInTheDocument();
+    expect(screen.getByText('$4,758.54')).toBeInTheDocument();
   });
 
   it('renders and edits persisted non-primary income summary source rows', async () => {
@@ -562,7 +581,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /^debt$/i }));
 
     expect(screen.getByRole('heading', { name: /^debt$/i })).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: /^apple$/i })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: /^rewards card$/i })).toBeInTheDocument();
     expect(screen.getAllByText('$2,130.03')).not.toHaveLength(0);
   });
 
@@ -570,7 +589,7 @@ describe('App', () => {
     await renderAuthenticatedApp();
 
     fireEvent.click(screen.getByRole('button', { name: /^debt$/i }));
-    fireEvent.click(screen.getByRole('button', { name: /edit apple/i }));
+    fireEvent.click(screen.getByRole('button', { name: /edit rewards card/i }));
     fireEvent.change(screen.getByLabelText(/^balance$/i), { target: { value: '2000' } });
     fireEvent.click(screen.getByRole('button', { name: /update draft/i }));
 
@@ -585,21 +604,21 @@ describe('App', () => {
     expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
   });
 
-  it('locks projection anchors and confirms before removing non-anchor withdrawals', async () => {
+  it('locks configured projection records and confirms other removals', async () => {
     await renderAuthenticatedApp();
 
     fireEvent.click(screen.getByRole('button', { name: /monthly withdrawals/i }));
     expect(screen.getByRole('button', { name: /remove rent/i })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: /annual withdrawals/i }));
-    const removeButton = screen.getByRole('button', { name: /remove amazon prime/i });
+    const removeButton = screen.getByRole('button', { name: /remove annual membership/i });
     removeButton.focus();
     fireEvent.click(removeButton);
 
     const dialog = screen.getByRole('dialog', { name: /remove annual withdrawal/i });
 
     expect(dialog).toBeInTheDocument();
-    expect(within(dialog).getByText(/amazon prime/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/annual membership/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /cancel/i })).toHaveFocus();
 
     fireEvent.keyDown(dialog, { key: 'Tab' });
@@ -612,6 +631,6 @@ describe('App', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(removeButton).toHaveFocus();
-    expect(screen.getByRole('cell', { name: /amazon prime/i })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: /annual membership/i })).toBeInTheDocument();
   });
 });

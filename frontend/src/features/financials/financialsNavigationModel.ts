@@ -23,7 +23,7 @@ export const navigationSections: FinancialNavigationSection[] = [
     ],
   },
   {
-    label: 'Balance Sheet',
+    label: 'Balances',
     items: [
       ['retirement', 'Retirement'],
       ['investments', 'Investments'],

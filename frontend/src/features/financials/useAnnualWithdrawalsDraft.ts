@@ -1,50 +1,34 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 
 import {
   emptyAnnualWithdrawalForm,
-  type FinancialsDraftState,
-  formToAnnualWithdrawal,
+  type FinancialsDraft,
   toAnnualWithdrawalForm,
-  toDraftAnnualWithdrawal,
 } from './financialsDraft';
+import type { FinancialsDraftDispatch } from './financialsDraftReducer';
 import type { AnnualWithdrawalFormState, DraftAnnualWithdrawal } from './financialsTypes';
-
-type AnnualWithdrawalsDraftSource = Pick<
-  FinancialsDraftState,
-  'annualWithdrawalForm' | 'draftAnnualWithdrawals'
->;
 
 type AnnualWithdrawalsDraftTotals = {
   annualPayPeriodTotal: number;
   totalAnnualWithdrawals: number;
 };
 
+const emptyAnnualWithdrawals: DraftAnnualWithdrawal[] = [];
+
 export function useAnnualWithdrawalsDraft(
-  onChange: () => void,
-  payPeriodStart: string,
-  payPeriodEnd: string
+  draft: FinancialsDraft | null,
+  dispatch: FinancialsDraftDispatch,
+  resetGeneration: number
 ) {
   const [annualWithdrawalForm, setAnnualWithdrawalForm] =
     useState<AnnualWithdrawalFormState>(emptyAnnualWithdrawalForm);
-  const [draftAnnualWithdrawals, setDraftAnnualWithdrawals] = useState<DraftAnnualWithdrawal[]>([]);
   const [editingAnnualWithdrawalId, setEditingAnnualWithdrawalId] = useState<number | null>(null);
-  const [nextDraftAnnualWithdrawalId, setNextDraftAnnualWithdrawalId] = useState(-1);
-
-  const loadDraft = useCallback((draft: AnnualWithdrawalsDraftSource) => {
-    setAnnualWithdrawalForm(draft.annualWithdrawalForm);
-    setDraftAnnualWithdrawals(draft.draftAnnualWithdrawals);
-    setEditingAnnualWithdrawalId(null);
-  }, []);
+  const draftAnnualWithdrawals = draft?.annualWithdrawals ?? emptyAnnualWithdrawals;
 
   useEffect(() => {
-    if (payPeriodStart && payPeriodEnd) {
-      setDraftAnnualWithdrawals((current) =>
-        current.map((withdrawal) =>
-          toDraftAnnualWithdrawal(withdrawal, payPeriodStart, payPeriodEnd)
-        )
-      );
-    }
-  }, [payPeriodEnd, payPeriodStart]);
+    setAnnualWithdrawalForm(emptyAnnualWithdrawalForm);
+    setEditingAnnualWithdrawalId(null);
+  }, [resetGeneration]);
 
   const annualWithdrawals = useMemo(
     () =>
@@ -80,34 +64,13 @@ export function useAnnualWithdrawalsDraft(
   function submitAnnualWithdrawal(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (editingAnnualWithdrawalId) {
-      setDraftAnnualWithdrawals((current) =>
-        current.map((withdrawal) =>
-          withdrawal.id === editingAnnualWithdrawalId
-            ? formToAnnualWithdrawal(
-                editingAnnualWithdrawalId,
-                annualWithdrawalForm,
-                payPeriodStart,
-                payPeriodEnd
-              )
-            : withdrawal
-        )
-      );
-    } else {
-      setDraftAnnualWithdrawals((current) => [
-        ...current,
-        formToAnnualWithdrawal(
-          nextDraftAnnualWithdrawalId,
-          annualWithdrawalForm,
-          payPeriodStart,
-          payPeriodEnd
-        ),
-      ]);
-      setNextDraftAnnualWithdrawalId((current) => current - 1);
-    }
+    dispatch({
+      editingId: editingAnnualWithdrawalId,
+      form: annualWithdrawalForm,
+      type: 'save-annual-withdrawal',
+    });
 
     cancelAnnualWithdrawalEdit();
-    onChange();
   }
 
   function startAnnualWithdrawalEdit(withdrawal: DraftAnnualWithdrawal) {
@@ -120,19 +83,12 @@ export function useAnnualWithdrawalsDraft(
     setAnnualWithdrawalForm(emptyAnnualWithdrawalForm);
   }
 
-  function removeAnnualWithdrawal(id: number) {
-    setDraftAnnualWithdrawals((current) => current.filter((withdrawal) => withdrawal.id !== id));
-    onChange();
-  }
-
   return {
     annualWithdrawalForm,
     annualWithdrawals,
     annualWithdrawalsInPayPeriod,
     cancelAnnualWithdrawalEdit,
     editingAnnualWithdrawalId,
-    loadDraft,
-    removeAnnualWithdrawal,
     startAnnualWithdrawalEdit,
     submitAnnualWithdrawal,
     totals,

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 
@@ -32,6 +33,26 @@ class PayPeriodDatePolicyTests {
 
     assertThat(payPeriod.startDate()).isEqualTo(LocalDate.of(2025, 12, 17));
     assertThat(payPeriod.endDate()).isEqualTo(LocalDate.of(2025, 12, 31));
+  }
+
+  @Test
+  void derivesThePlanningDateFromTheWorkspaceTimeZone() {
+    Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:30:00Z"), ZoneOffset.UTC);
+
+    assertThat(PayPeriodDatePolicy.currentDate(clock, ZoneId.of("UTC")))
+        .isEqualTo(LocalDate.of(2026, 1, 1));
+    assertThat(PayPeriodDatePolicy.currentDate(clock, ZoneId.of("America/Los_Angeles")))
+        .isEqualTo(LocalDate.of(2025, 12, 31));
+
+    PayPeriodDatePolicy.PayPeriod westCoastPeriod =
+        PayPeriodDatePolicy.currentPayPeriod(
+            LocalDate.of(2025, 12, 18),
+            LocalDate.of(2025, 12, 31),
+            clock,
+            ZoneId.of("America/Los_Angeles"));
+
+    assertThat(westCoastPeriod.startDate()).isEqualTo(LocalDate.of(2025, 12, 18));
+    assertThat(westCoastPeriod.endDate()).isEqualTo(LocalDate.of(2025, 12, 31));
   }
 
   @Test

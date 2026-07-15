@@ -12,6 +12,8 @@ public record ExpenseSnapshotRequest(
         Long version,
     @NotNull(message = "Pay period start date is required") LocalDate payPeriodStart,
     @NotNull(message = "Pay period end date is required") LocalDate payPeriodEnd,
+    @Valid FinancialPlanningSettingsRequest planningSettings,
+    @Valid FinancialProjectionRolesRequest projectionRoles,
     @NotNull(message = "Bills are required")
         List<@NotNull(message = "Bill record is required") @Valid ExpenseBillSnapshotRequest> bills,
     List<
@@ -38,4 +40,58 @@ public record ExpenseSnapshotRequest(
         List<
                 @NotNull(message = "Important date record is required") @Valid
                 ImportantDateSnapshotRequest>
-            importantDates) {}
+            importantDates) {
+
+  public ExpenseSnapshotRequest(
+      Long version,
+      LocalDate payPeriodStart,
+      LocalDate payPeriodEnd,
+      FinancialProjectionRolesRequest projectionRoles,
+      List<ExpenseBillSnapshotRequest> bills,
+      List<AnnualWithdrawalSnapshotRequest> annualWithdrawals,
+      List<AssetCategorySnapshotRequest> assetCategories,
+      List<DebtAccountSnapshotRequest> debtAccounts,
+      List<IncomeSummaryItemSnapshotRequest> incomeSummaryItems,
+      List<IncomeEventSnapshotRequest> incomeEvents,
+      List<ImportantDateSnapshotRequest> importantDates) {
+    this(
+        version,
+        payPeriodStart,
+        payPeriodEnd,
+        null,
+        projectionRoles,
+        bills,
+        annualWithdrawals,
+        assetCategories,
+        debtAccounts,
+        incomeSummaryItems,
+        incomeEvents,
+        importantDates);
+  }
+
+  public ExpenseSnapshotRequest(
+      Long version,
+      LocalDate payPeriodStart,
+      LocalDate payPeriodEnd,
+      List<ExpenseBillSnapshotRequest> bills,
+      List<AnnualWithdrawalSnapshotRequest> annualWithdrawals,
+      List<AssetCategorySnapshotRequest> assetCategories,
+      List<DebtAccountSnapshotRequest> debtAccounts,
+      List<IncomeSummaryItemSnapshotRequest> incomeSummaryItems,
+      List<IncomeEventSnapshotRequest> incomeEvents,
+      List<ImportantDateSnapshotRequest> importantDates) {
+    this(
+        version,
+        payPeriodStart,
+        payPeriodEnd,
+        null,
+        null,
+        bills,
+        annualWithdrawals,
+        assetCategories,
+        debtAccounts,
+        incomeSummaryItems,
+        incomeEvents,
+        importantDates);
+  }
+}

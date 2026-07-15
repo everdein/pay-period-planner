@@ -1,7 +1,6 @@
 package com.example.backend.config;
 
 import com.example.backend.service.AccountSessionService;
-import com.example.backend.service.AuthenticatedWorkspaceResolver;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -117,7 +116,7 @@ public class ApiSecurityConfig {
             "Content-Type",
             "Accept",
             "X-XSRF-TOKEN",
-            AuthenticatedWorkspaceResolver.WORKSPACE_ID_HEADER,
+            AuthenticatedRequestWorkspace.WORKSPACE_ID_HEADER,
             RequestObservabilityFilter.REQUEST_ID_HEADER));
     configuration.setAllowCredentials(true);
     configuration.setExposedHeaders(

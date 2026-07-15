@@ -2,13 +2,16 @@ import { act, renderHook } from '@testing-library/react';
 import { type FormEvent } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { FinancialsDraft } from './financialsDraft';
+import {
+  createTestFinancialsDraft,
+  useCanonicalDraftTestState,
+} from './financialsDraftTestSupport';
 import type { DraftAssetAccount, DraftAssetCategory } from './financialsTypes';
 import { useAssetAccountsDraft } from './useAssetAccountsDraft';
 
 const preventDefault = vi.fn();
 const submitEvent = { preventDefault } as unknown as FormEvent<HTMLFormElement>;
-
-type AssetAccountsDraftHook = ReturnType<typeof useAssetAccountsDraft>;
 
 function account(overrides: Partial<DraftAssetAccount> = {}): DraftAssetAccount {
   return {
@@ -30,11 +33,13 @@ function category(overrides: Partial<DraftAssetCategory> = {}): DraftAssetCatego
   };
 }
 
-function loadDraft(
-  result: { readonly current: AssetAccountsDraftHook },
-  draftAssetCategories: DraftAssetCategory[]
-) {
-  act(() => result.current.loadDraft({ draftAssetCategories }));
+function useAssetHarness(initialDraft: FinancialsDraft) {
+  const { dispatch, state } = useCanonicalDraftTestState(initialDraft);
+  return {
+    ...useAssetAccountsDraft(state.draft, dispatch, state.resetGeneration),
+    dispatch,
+    state,
+  };
 }
 
 describe('useAssetAccountsDraft', () => {
@@ -42,27 +47,27 @@ describe('useAssetAccountsDraft', () => {
     preventDefault.mockClear();
   });
 
-  it('loads asset categories and totals without marking the draft dirty', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useAssetAccountsDraft(onChange));
-
-    loadDraft(result, [
-      category(),
-      category({ accounts: [], key: 'investments', label: 'Investments', total: 50 }),
-    ]);
+  it('selects canonical asset categories and totals without changing revision', () => {
+    const draft = createTestFinancialsDraft({
+      assetCategories: [
+        category(),
+        category({ accounts: [], key: 'investments', label: 'Investments', total: 50 }),
+      ],
+    });
+    const { result } = renderHook(() => useAssetHarness(draft));
 
     expect(result.current.assetCategories.map(({ key }) => key)).toEqual([
       'retirement',
       'investments',
     ]);
     expect(result.current.totalTrackedAssets).toBe(150);
-    expect(onChange).not.toHaveBeenCalled();
+    expect(result.current.state.revision).toBe(0);
   });
 
-  it('adds a temporary asset account and recalculates its category total', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useAssetAccountsDraft(onChange));
-    loadDraft(result, [category()]);
+  it('dispatches a temporary asset and recalculates the category total', () => {
+    const { result } = renderHook(() =>
+      useAssetHarness(createTestFinancialsDraft({ assetCategories: [category()] }))
+    );
 
     act(() => result.current.updateAssetForm('account', ' Brokerage '));
     act(() => result.current.updateAssetForm('company', ' Example investments '));
@@ -86,16 +91,17 @@ describe('useAssetAccountsDraft', () => {
     );
     expect(result.current.editingAsset).toBeNull();
     expect(result.current.totalTrackedAssets).toBe(150.25);
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 
-  it('preserves the Rent Reserve anchor while editing it', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useAssetAccountsDraft(onChange));
+  it('allows the selected rent reserve label to be edited', () => {
     const rentReserve = account({ account: 'Rent Reserve' });
-    loadDraft(result, [
-      category({ accounts: [rentReserve], key: 'cash-savings', label: 'Cash & Savings' }),
-    ]);
+    const draft = createTestFinancialsDraft({
+      assetCategories: [
+        category({ accounts: [rentReserve], key: 'cash-savings', label: 'Cash & Savings' }),
+      ],
+    });
+    const { result } = renderHook(() => useAssetHarness(draft));
 
     act(() => result.current.startAssetEdit('cash-savings', rentReserve));
     act(() => result.current.updateAssetForm('account', 'Renamed reserve'));
@@ -107,7 +113,7 @@ describe('useAssetAccountsDraft', () => {
       expect.objectContaining({
         accounts: [
           {
-            account: 'Rent Reserve',
+            account: 'Renamed reserve',
             amount: 125,
             company: 'Updated provider',
             id: rentReserve.id,
@@ -116,29 +122,53 @@ describe('useAssetAccountsDraft', () => {
         total: 125,
       })
     );
-    expect(onChange).toHaveBeenCalledOnce();
+    expect(result.current.state.revision).toBe(1);
   });
 
-  it('protects Rent Reserve while removing ordinary asset accounts', () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() => useAssetAccountsDraft(onChange));
+  it('protects Rent Reserve while confirming an ordinary asset removal', () => {
     const rentReserve = account({ account: 'Rent Reserve' });
     const savings = account({ account: 'Emergency savings', amount: 50, id: 2 });
-    loadDraft(result, [
-      category({
-        accounts: [rentReserve, savings],
-        key: 'cash-savings',
-        label: 'Cash & Savings',
-        total: 150,
-      }),
-    ]);
+    const draft = createTestFinancialsDraft({
+      assetCategories: [
+        category({
+          accounts: [rentReserve, savings],
+          key: 'cash-savings',
+          label: 'Cash & Savings',
+          total: 150,
+        }),
+      ],
+    });
+    const { result } = renderHook(() => useAssetHarness(draft));
 
-    act(() => result.current.removeAsset('cash-savings', rentReserve.id));
-    act(() => result.current.removeAsset('cash-savings', savings.id));
+    act(() =>
+      result.current.dispatch({
+        removal: {
+          categoryKey: 'cash-savings',
+          id: rentReserve.id,
+          name: rentReserve.account,
+          type: 'asset',
+        },
+        type: 'request-removal',
+      })
+    );
+    expect(result.current.state.pendingRemoval).toBeNull();
+
+    act(() =>
+      result.current.dispatch({
+        removal: {
+          categoryKey: 'cash-savings',
+          id: savings.id,
+          name: savings.account,
+          type: 'asset',
+        },
+        type: 'request-removal',
+      })
+    );
+    act(() => result.current.dispatch({ type: 'confirm-removal' }));
 
     expect(result.current.assetCategories[0]).toEqual(
       expect.objectContaining({ accounts: [rentReserve], total: 100 })
     );
-    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(result.current.state.revision).toBe(1);
   });
 });

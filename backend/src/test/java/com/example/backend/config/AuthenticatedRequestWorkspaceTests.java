@@ -1,10 +1,12 @@
-package com.example.backend.service;
+package com.example.backend.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.backend.domain.identity.AuthenticatedSession;
 import com.example.backend.domain.identity.WorkspaceAccess;
+import com.example.backend.service.WorkspaceAccessDeniedException;
+import com.example.backend.service.WorkspaceSelectionException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -15,9 +17,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-class AuthenticatedWorkspaceResolverTests {
-
-  private final AuthenticatedWorkspaceResolver resolver = new AuthenticatedWorkspaceResolver();
+class AuthenticatedRequestWorkspaceTests {
 
   @AfterEach
   void clearAuthentication() {
@@ -28,7 +28,7 @@ class AuthenticatedWorkspaceResolverTests {
   void selectsTheOnlyWorkspaceWithoutAHeader() {
     authenticate(List.of(new WorkspaceAccess(41, "Personal", "owner")));
 
-    assertThat(resolver.requireWorkspaceId(new MockHttpServletRequest())).isEqualTo(41);
+    assertThat(currentWorkspace(new MockHttpServletRequest()).requireWorkspaceId()).isEqualTo(41);
   }
 
   @Test
@@ -38,9 +38,9 @@ class AuthenticatedWorkspaceResolverTests {
             new WorkspaceAccess(41, "Personal", "owner"),
             new WorkspaceAccess(42, "Household", "member")));
 
-    assertThatThrownBy(() -> resolver.requireWorkspaceId(new MockHttpServletRequest()))
+    assertThatThrownBy(() -> currentWorkspace(new MockHttpServletRequest()).requireWorkspaceId())
         .isInstanceOf(WorkspaceSelectionException.class)
-        .hasMessageContaining(AuthenticatedWorkspaceResolver.WORKSPACE_ID_HEADER);
+        .hasMessageContaining(AuthenticatedRequestWorkspace.WORKSPACE_ID_HEADER);
   }
 
   @Test
@@ -50,29 +50,33 @@ class AuthenticatedWorkspaceResolverTests {
             new WorkspaceAccess(41, "Personal", "owner"),
             new WorkspaceAccess(42, "Household", "member")));
     MockHttpServletRequest request = new MockHttpServletRequest();
-    request.addHeader(AuthenticatedWorkspaceResolver.WORKSPACE_ID_HEADER, "42");
+    request.addHeader(AuthenticatedRequestWorkspace.WORKSPACE_ID_HEADER, "42");
 
-    assertThat(resolver.requireWorkspaceId(request)).isEqualTo(42);
+    assertThat(currentWorkspace(request).requireWorkspaceId()).isEqualTo(42);
   }
 
   @Test
   void rejectsMalformedAndUnauthorizedSelections() {
     authenticate(List.of(new WorkspaceAccess(41, "Personal", "owner")));
     MockHttpServletRequest malformed = new MockHttpServletRequest();
-    malformed.addHeader(AuthenticatedWorkspaceResolver.WORKSPACE_ID_HEADER, "invalid");
+    malformed.addHeader(AuthenticatedRequestWorkspace.WORKSPACE_ID_HEADER, "invalid");
     MockHttpServletRequest unauthorized = new MockHttpServletRequest();
-    unauthorized.addHeader(AuthenticatedWorkspaceResolver.WORKSPACE_ID_HEADER, "99");
+    unauthorized.addHeader(AuthenticatedRequestWorkspace.WORKSPACE_ID_HEADER, "99");
 
-    assertThatThrownBy(() -> resolver.requireWorkspaceId(malformed))
+    assertThatThrownBy(() -> currentWorkspace(malformed).requireWorkspaceId())
         .isInstanceOf(WorkspaceSelectionException.class);
-    assertThatThrownBy(() -> resolver.requireWorkspaceId(unauthorized))
+    assertThatThrownBy(() -> currentWorkspace(unauthorized).requireWorkspaceId())
         .isInstanceOf(WorkspaceAccessDeniedException.class);
   }
 
   @Test
   void requiresAnAccountSessionPrincipal() {
-    assertThatThrownBy(() -> resolver.requireWorkspaceId(new MockHttpServletRequest()))
+    assertThatThrownBy(() -> currentWorkspace(new MockHttpServletRequest()).requireWorkspaceId())
         .isInstanceOf(WorkspaceAccessDeniedException.class);
+  }
+
+  private AuthenticatedRequestWorkspace currentWorkspace(MockHttpServletRequest request) {
+    return new AuthenticatedRequestWorkspace(request);
   }
 
   private void authenticate(List<WorkspaceAccess> workspaces) {

@@ -1,6 +1,4 @@
 param(
-    [ValidateSet("json", "csv", "xlsx")]
-    [string]$Format = "json",
     [string]$BaseUrl = "http://localhost:8080",
     [string]$AccountEmail = $env:FINANCIALS_ACCOUNT_EMAIL,
     [string]$AccountPassword = $env:FINANCIALS_ACCOUNT_PASSWORD,
@@ -35,17 +33,11 @@ if ((Test-Path $resolvedOutputPath) -and -not $Force) {
     throw "Output file already exists: $resolvedOutputPath. Rerun with -Force to overwrite it."
 }
 
+if ([System.IO.Path]::GetExtension($resolvedOutputPath).ToLowerInvariant() -ne ".json") {
+    throw "Financial snapshot backups must use a .json file extension."
+}
+
 $financialsBaseUrl = $BaseUrl.TrimEnd("/") + "/api/v1/financials"
-$exportPath = switch ($Format) {
-    "json" { "export" }
-    "csv" { "export/csv" }
-    "xlsx" { "export/xlsx" }
-}
-$accept = switch ($Format) {
-    "json" { "application/json" }
-    "csv" { "text/csv" }
-    "xlsx" { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
-}
 
 $apiSession = $null
 try {
@@ -55,11 +47,11 @@ try {
         -AccountPassword $AccountPassword `
         -WorkspaceId $WorkspaceId
     $headers = New-FinancialApiHeaders -Session $apiSession
-    $headers["Accept"] = $accept
+    $headers["Accept"] = "application/json"
 
     Invoke-WebRequest `
         -Method Get `
-        -Uri "$financialsBaseUrl/$exportPath" `
+        -Uri "$financialsBaseUrl/export" `
         -WebSession $apiSession.WebSession `
         -Headers $headers `
         -OutFile $resolvedOutputPath | Out-Null
@@ -75,4 +67,4 @@ finally {
     }
 }
 
-Write-Host "Exported $Format financial snapshot to $resolvedOutputPath." -ForegroundColor Green
+Write-Host "Exported JSON financial snapshot backup to $resolvedOutputPath." -ForegroundColor Green

@@ -1,4 +1,4 @@
-import { isRentReserveAccount, isRentWithdrawal } from './financialsAnchors';
+import type { FinancialProjectionRoles } from '../../api/endpoints/financials';
 import { nextPayPeriod } from './financialsDatePolicy';
 import { toDraftAnnualWithdrawal, toDraftBill } from './financialsDraft';
 import type {
@@ -12,10 +12,11 @@ import type {
 type ProjectionInput = {
   annualWithdrawals: DraftAnnualWithdrawal[];
   annualWithdrawalsInPayPeriod: DraftAnnualWithdrawal[];
-  cashSavings?: DraftAssetCategory;
+  assetCategories: DraftAssetCategory[];
   paycheckIncome: number;
   payPeriodEnd: string;
   payPeriodStart: string;
+  projectionRoles: FinancialProjectionRoles;
   sortedBills: DraftBill[];
   totalDebt: number;
 };
@@ -23,15 +24,19 @@ type ProjectionInput = {
 export function buildProjectionSummary({
   annualWithdrawals,
   annualWithdrawalsInPayPeriod,
-  cashSavings,
+  assetCategories,
   paycheckIncome,
   payPeriodEnd,
   payPeriodStart,
+  projectionRoles,
   sortedBills,
   totalDebt,
 }: ProjectionInput): ProjectionSummary {
-  const rentBill = sortedBills.find(isRentWithdrawal);
-  const rentSavingsBalance = cashSavings?.accounts.find(isRentReserveAccount)?.amount ?? 0;
+  const rentBill = sortedBills.find(({ id }) => id === projectionRoles.rentBillId);
+  const rentSavingsBalance =
+    assetCategories
+      .flatMap((category) => category.accounts)
+      .find(({ id }) => id === projectionRoles.rentReserveAssetAccountId)?.amount ?? 0;
   const currentPeriod = buildProjectionPeriod(
     'Current Pay Period',
     payPeriodStart,
@@ -63,7 +68,7 @@ export function buildProjectionSummary({
   const nextPayPeriodCashAfterBills = nextPeriod.period.projectedBeforeDebt;
   const nextPayPeriodDebtPayment = Math.min(Math.max(nextPayPeriodCashAfterBills, 0), totalDebt);
   const nextPayPeriodDebtRemaining = Math.max(totalDebt - nextPayPeriodDebtPayment, 0);
-  const nextPayPeriodHysaTransfer = Math.max(nextPayPeriodCashAfterBills - totalDebt, 0);
+  const nextPayPeriodSavingsTransfer = Math.max(nextPayPeriodCashAfterBills - totalDebt, 0);
 
   return {
     currentDebt: totalDebt,
@@ -72,7 +77,7 @@ export function buildProjectionSummary({
     nextPayPeriodCashAfterBills,
     nextPayPeriodDebtPayment,
     nextPayPeriodDebtRemaining,
-    nextPayPeriodHysaTransfer,
+    nextPayPeriodSavingsTransfer,
     projectedAfterDebt: nextPayPeriodCashAfterBills - totalDebt,
     projectedBeforeDebt: nextPayPeriodCashAfterBills,
     remainingDebtAfterProjectedCash: nextPayPeriodDebtRemaining,

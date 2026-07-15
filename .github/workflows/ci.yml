@@ -60,6 +60,10 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Verify frontend dependency compatibility
+        working-directory: frontend
+        run: npm run check:dependency-compat
+
       - name: Run ESLint
         working-directory: frontend
         run: npm run lint

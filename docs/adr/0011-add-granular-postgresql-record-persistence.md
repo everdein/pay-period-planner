@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted; record-level CRUD decision superseded by ADR 0016
 
 ## Context
 
@@ -43,7 +43,12 @@ runtime activation, and client concurrency semantics are decided deliberately.
 
 ## Consequences
 
-- The V3 relational path now supports tested internal granular CRUD behavior.
+Historical implementation note: ADR 0016 later removed the record-level
+adapter methods and their tests. The additive V4 uniqueness constraints remain
+applied because they preserve stable record identity and migration history.
+
+- The V3 relational path initially supported tested internal granular CRUD
+  behavior.
 - V4 makes app-record lookups unambiguous without rewriting existing V3 table
   definitions.
 - PostgreSQL setup and documentation must apply and describe V1/V2/V3/V4.

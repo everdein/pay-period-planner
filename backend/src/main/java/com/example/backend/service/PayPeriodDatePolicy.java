@@ -2,6 +2,7 @@ package com.example.backend.service;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 
 final class PayPeriodDatePolicy {
@@ -9,9 +10,21 @@ final class PayPeriodDatePolicy {
   private PayPeriodDatePolicy() {}
 
   static PayPeriod currentPayPeriod(LocalDate anchorStart, LocalDate anchorEnd, Clock clock) {
+    return currentPayPeriod(anchorStart, anchorEnd, LocalDate.now(clock));
+  }
+
+  static PayPeriod currentPayPeriod(
+      LocalDate anchorStart, LocalDate anchorEnd, Clock clock, ZoneId timeZone) {
+    return currentPayPeriod(anchorStart, anchorEnd, currentDate(clock, timeZone));
+  }
+
+  static LocalDate currentDate(Clock clock, ZoneId timeZone) {
+    return LocalDate.ofInstant(clock.instant(), timeZone);
+  }
+
+  static PayPeriod currentPayPeriod(LocalDate anchorStart, LocalDate anchorEnd, LocalDate today) {
     LocalDate startDate = anchorStart;
     LocalDate endDate = anchorEnd;
-    LocalDate today = LocalDate.now(clock);
     long periodDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
 
     while (today.isAfter(endDate)) {

@@ -1,30 +1,26 @@
-import { type FormEvent, useCallback, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 
-import { isRentReserveAccount } from './financialsAnchors';
-import {
-  emptyAssetForm,
-  type FinancialsDraftState,
-  formToAssetAccount,
-  recalculateAssetCategory,
-  toAssetForm,
-} from './financialsDraft';
+import { emptyAssetForm, type FinancialsDraft, toAssetForm } from './financialsDraft';
+import type { FinancialsDraftDispatch } from './financialsDraftReducer';
 import type { AssetFormState, DraftAssetAccount, DraftAssetCategory } from './financialsTypes';
 
-type AssetAccountsDraftSource = Pick<FinancialsDraftState, 'draftAssetCategories'>;
+const emptyAssetCategories: DraftAssetCategory[] = [];
 
-export function useAssetAccountsDraft(onChange: () => void) {
+export function useAssetAccountsDraft(
+  draft: FinancialsDraft | null,
+  dispatch: FinancialsDraftDispatch,
+  resetGeneration: number
+) {
   const [assetForm, setAssetForm] = useState<AssetFormState>(emptyAssetForm);
-  const [draftAssetCategories, setDraftAssetCategories] = useState<DraftAssetCategory[]>([]);
   const [editingAsset, setEditingAsset] = useState<{ categoryKey: string; id: number } | null>(
     null
   );
-  const [nextDraftAssetId, setNextDraftAssetId] = useState(-1);
+  const draftAssetCategories = draft?.assetCategories ?? emptyAssetCategories;
 
-  const loadDraft = useCallback((draft: AssetAccountsDraftSource) => {
+  useEffect(() => {
     setAssetForm(emptyAssetForm);
-    setDraftAssetCategories(draft.draftAssetCategories);
     setEditingAsset(null);
-  }, []);
+  }, [resetGeneration]);
 
   const totalTrackedAssets = useMemo(
     () => draftAssetCategories.reduce((total, category) => total + category.total, 0),
@@ -38,40 +34,13 @@ export function useAssetAccountsDraft(onChange: () => void) {
   function submitAsset(categoryKey: string, event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    setDraftAssetCategories((current) =>
-      current.map((category) => {
-        if (category.key !== categoryKey) {
-          return category;
-        }
-
-        if (editingAsset?.categoryKey === categoryKey) {
-          return recalculateAssetCategory({
-            ...category,
-            accounts: category.accounts.map((account) =>
-              account.id === editingAsset.id
-                ? formToAssetAccount(
-                    account.id,
-                    isRentReserveAccount(account)
-                      ? { ...assetForm, account: account.account }
-                      : assetForm
-                  )
-                : account
-            ),
-          });
-        }
-
-        return recalculateAssetCategory({
-          ...category,
-          accounts: [...category.accounts, formToAssetAccount(nextDraftAssetId, assetForm)],
-        });
-      })
-    );
-
-    if (!editingAsset) {
-      setNextDraftAssetId((current) => current - 1);
-    }
+    dispatch({
+      categoryKey,
+      editingId: editingAsset?.categoryKey === categoryKey ? editingAsset.id : null,
+      form: assetForm,
+      type: 'save-asset',
+    });
     cancelAssetEdit();
-    onChange();
   }
 
   function startAssetEdit(categoryKey: string, account: DraftAssetAccount) {
@@ -84,29 +53,11 @@ export function useAssetAccountsDraft(onChange: () => void) {
     setAssetForm(emptyAssetForm);
   }
 
-  function removeAsset(categoryKey: string, id: number) {
-    setDraftAssetCategories((current) =>
-      current.map((category) =>
-        category.key === categoryKey
-          ? recalculateAssetCategory({
-              ...category,
-              accounts: category.accounts.filter(
-                (account) => account.id !== id || isRentReserveAccount(account)
-              ),
-            })
-          : category
-      )
-    );
-    onChange();
-  }
-
   return {
     assetCategories: draftAssetCategories,
     assetForm,
     cancelAssetEdit,
     editingAsset,
-    loadDraft,
-    removeAsset,
     startAssetEdit,
     submitAsset,
     totalTrackedAssets,

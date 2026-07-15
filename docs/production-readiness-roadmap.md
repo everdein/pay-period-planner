@@ -1,8 +1,13 @@
 # Production Readiness Roadmap
 
 This roadmap tracks the code review findings that should not get lost between
-feature work. The current strategy is organized by product maturity rather than
-by isolated technical concern.
+feature work. The current strategy is organized by product maturity and the
+application's role as a flagship portfolio project. Correctness, coherent
+boundaries, and a defensible engineering story come before hosted operational
+breadth.
+
+Completed items remain historical evidence even when a later ADR deliberately
+supersedes or removes the resulting implementation.
 
 ## Completed Foundations
 
@@ -12,7 +17,7 @@ by isolated technical concern.
 - [x] Document the financials API as a versioned snapshot aggregate.
 - [x] Extract projection logic from `FinancialsPage.tsx` into a pure domain
       module.
-- [x] Add projection unit tests for rent reserves, debt payoff, HYSA transfer,
+- [x] Add projection unit tests for housing reserves, debt payoff, savings transfer,
       annual withdrawals, next pay period math, and date edge cases.
 - [x] Replace fragile label guessing with protected projection anchors for rent,
       rent reserve, and primary paycheck rows.
@@ -43,7 +48,7 @@ by isolated technical concern.
       records.
 - [x] Add granular PostgreSQL CRUD persistence for financial records.
 - [x] Add CRUD APIs for financial records beyond the existing bill endpoints.
-- [x] Add CSV/XLSX import and export tooling.
+- [x] Add CSV import and CSV/XLSX export tooling.
 - [x] Harden and complete validation/error handling across financial endpoints.
 - [x] Add authentication and authorization for all financial APIs.
 - [x] Add production configuration guardrails for CORS, actuator exposure,
@@ -74,7 +79,7 @@ Phase C is complete.
       request IDs, frontend error containment, and safe application metrics.
 
 Phase D is complete for local operational readiness. Hosted telemetry remains
-part of the production-operations phase because provider selection depends on
+part of the portfolio deployment phase because provider selection depends on
 hosting, privacy, and retention decisions.
 
 ## Phase E - Consolidate Persistence, Identity, and Ownership
@@ -97,7 +102,7 @@ transition is verified:
       workspace principals without granting them global financial access.
 - [x] Replace frontend Basic authentication with signup, sign-in, session
       recovery, sign-out, per-mutation CSRF proof, and workspace selection.
-- [x] Activate the V3/V4/V6/V7 relational adapter as the PostgreSQL runtime financial
+- [x] Activate the V3/V4/V6/V7/V8/V9 relational adapter as the PostgreSQL runtime financial
       store while preserving optimistic versioning and the snapshot API.
 - [x] Add live PostgreSQL browser cross-user isolation coverage for distinct
       account sessions, workspace snapshots, saves, sign-out, and recovery.
@@ -109,8 +114,9 @@ transition is verified:
       duplicate startup scripts and instructions.
 
 Do not silently seed or migrate personal financial data. Keep
-`financials.example.json` as synthetic test/demo input and keep explicit
-JSON/CSV/XLSX backup formats after JSON runtime persistence is retired.
+`financials.example.json` as synthetic test/demo input. Preserve explicit
+backup and migration evidence until the owner confirms recovery needs are met;
+Phase H will consolidate the long-term backup/restore format.
 
 ## Phase F - Make the Application Product-Quality
 
@@ -126,28 +132,119 @@ JSON/CSV/XLSX backup formats after JSON runtime persistence is retired.
 
 Phase F is complete.
 
-## Phase G - Complete Production Operations
+## Phase G - Make Runtime Behavior Trustworthy
 
-- [ ] Select hosting and telemetry providers with approved privacy and data
-      retention policies.
-- [ ] Export logs, metrics, and browser errors to centralized telemetry without
-      exposing financial data.
-- [ ] Configure deployment, health verification, rollback, automated backups,
-      restore drills, alerting, and incident/recovery procedures.
+- [x] Carry explicit workspace identity through financial requests and Redux
+      actions, then abort or ignore responses that no longer belong to the
+      active account, workspace, or request generation.
+- [x] Preserve edits made while a save is in flight by tracking the draft
+      revision submitted with each save and accepting the returned baseline
+      only when no newer local edits exist.
+- [x] Add deterministic delayed-request tests for account/workspace switching
+      and save-time editing, plus focused live-browser coverage where it adds
+      confidence beyond the unit tests.
+- [x] Retire XLSX import and its custom decompression code while preserving CSV
+      restore and XLSX export.
 
-## Phase H - Add Financial-Product Enhancements
+## Phase H - Subtract Duplicate Mutation and Recovery Paths
 
+ADR 0016 keeps the versioned financial workspace as the sole mutation
+aggregate. Implement that decision before splitting the remaining services:
+
+- [x] Remove public granular record and pay-period mutation endpoints and the
+      controller, DTO, service, repository, relational-adapter, test, and
+      documentation surface used only by those endpoints.
+- [x] Select one coherent, version-checked backup and restore workflow. Prefer a
+      matching JSON export/restore path unless spreadsheet editing becomes a
+      demonstrated product requirement; then retire unused tabular formats and
+      their custom codec.
+- [ ] Retire legacy JSON/JSONB migration administration only after the owner
+      confirms that personal source data is migrated, independently backed up,
+      and outside the required rollback window.
+- [x] Split current-snapshot loading from audit-history queries, apply history
+      limits in SQL, append only new audit events, and batch relational record
+      writes where whole-snapshot replacement remains.
+- [x] Replace post-install mutation of dependency source files and document the
+      reason, advisory, introduction date, and removal condition for each
+      framework-managed dependency override.
+
+## Phase I - Decompose the Surviving Backend
+
+- [x] Separate current-workspace queries, versioned commands, financial
+      calculations, and API response mapping only after duplicate mutation and
+      import/export responsibilities are removed.
+- [x] Replace servlet-aware application services with a framework-neutral
+      current-workspace boundary and domain/application exceptions mapped at
+      the HTTP boundary.
+- [x] Make workspace initialization return its created aggregate deliberately
+      instead of coordinating a write followed by an unrelated service read.
+- [x] Preserve structured API problem status and request identity through the
+      frontend error path without parsing presentation messages.
+
+## Phase J - Consolidate Frontend Draft and Route State
+
+- [x] Introduce one canonical financial draft with committed baseline,
+      snapshot version, local revision, pending removal, reducer commands, and
+      derived selectors.
+- [x] Keep domain-focused hooks as selector/command facades where they improve
+      readability instead of maintaining independent draft state machines.
+- [x] Extract workspace loading/onboarding/failure composition and workflow
+      feedback from `FinancialsPage` after the draft boundary is stable.
+
+## Phase K - Generalize the Financial Planning Product
+
+- [x] Replace name-based projection identity with configurable workspace roles
+      that reference financial records independently of mutable display names.
+- [x] Support the pay cadence and date/time-zone rules required by the target
+      household-planning audience before hosting the frontend and backend in
+      different environments.
+- [x] Remove institution-specific and personal assumptions from product copy
+      while keeping the scope explicit: household cash-flow and pay-period
+      planning, not accounting, financial advice, or transaction reconciliation.
+
+## Phase L - Build Portfolio Evidence
+
+- [ ] Reframe the project name, Maven metadata, and root README around the
+      problem, intended users, solution, architecture, tradeoffs, and verified
+      behavior rather than a generic reference application.
+- [ ] Create synthetic screenshots or a short walkthrough, a concise
+      architecture diagram, and a STAR case study that explains the migration
+      from local JSON to authenticated PostgreSQL workspaces.
+- [ ] Report unit coverage, PostgreSQL integration coverage, browser coverage,
+      accessibility evidence, and security gates with clear qualifications.
+- [ ] Audit and consolidate documentation so ADRs, architecture maps, selected
+      source, and test narratives form a trustworthy public corpus.
+
+## Phase M - Deploy a Portfolio-Grade Demo
+
+- [ ] Select hosting and managed PostgreSQL providers with approved privacy,
+      retention, cost, and shutdown policies. Use only synthetic demonstration
+      data in the public environment.
+- [ ] Configure HTTPS, secrets, least-privilege database roles, migrations,
+      health verification, rollback, automated backups, and a proved restore
+      path.
+- [ ] Export safe logs, metrics, and browser errors with basic alerting while
+      excluding financial contents. Defer enterprise-scale incident machinery
+      that does not improve the portfolio demonstration.
+- [ ] Provide a repeatable demo-account reset so reviewers can explore the
+      product without encountering another visitor's state.
+
+## Phase N - Add the Portfolio Chatbot and Future Product Enhancements
+
+- [ ] Build the static portfolio and citation-first chatbot only after the
+      public documentation corpus is accurate. Ingest approved public files,
+      exclude secrets and personal data, and cite repository/file context in
+      every architecture answer.
 - [ ] Prioritize new planning, reporting, forecasting, and collaboration
-      features only after identity, ownership, privacy, and recovery boundaries
-      are proven.
+      features only after the core workflow, portfolio evidence, and hosted
+      privacy/recovery boundaries are proven.
 
 ## Current Priority
 
 Next highest-value items:
 
-1. Select hosting and telemetry providers with approved privacy and retention
-   policies.
-2. Export safe operational signals and establish deployment health, rollback,
-   and alerting.
-3. Automate backups and prove recovery through documented restore drills before
-   prioritizing new financial-product features.
+1. Confirm whether personal legacy JSON/JSONB sources are migrated,
+   independently backed up, and outside the rollback window before retiring
+   migration administration.
+2. Remove institution-specific and personal assumptions from product copy
+   while retaining the household cash-flow planning boundary.

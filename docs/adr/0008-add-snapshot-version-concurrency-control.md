@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted; granular-mutation consequence superseded by ADR 0016
 
 ## Context
 
@@ -22,8 +22,7 @@ Expose a numeric `version` on `GET /api/v1/financials` responses and require
 clients to echo it in `PUT /api/v1/financials` requests.
 
 `FinancialsRepository` owns the current version in memory. It increments the
-version before every successful persisted mutation, including granular bill or
-pay-period changes and full-snapshot replacement. A full-snapshot replacement
+version before every successful persisted mutation. A full-snapshot replacement
 checks the client-supplied expected version before mutating the aggregate. A
 mismatch raises a domain conflict that the service maps to `409 Conflict`.
 
@@ -39,8 +38,7 @@ metadata and JSON document.
   before retrying after `409 Conflict`.
 - Existing local JSON fixtures without `version` remain readable because the
   repository data record defaults missing/non-positive versions to 1.
-- Granular endpoints still do not accept client-supplied aggregate versions;
-  they increment the snapshot version so stale full-snapshot drafts are
-  rejected.
+- ADR 0016 later removed the granular endpoints, leaving the version-checked
+  full-snapshot replacement as the sole supported financial mutation.
 - This does not provide multi-user identity, field-level merges, audit history,
   or conflict resolution UI.

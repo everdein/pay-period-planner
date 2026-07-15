@@ -1,26 +1,24 @@
-import { type FormEvent, useCallback, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 
-import {
-  emptyAssetForm,
-  type FinancialsDraftState,
-  formToDebtAccount,
-  toDebtForm,
-} from './financialsDraft';
+import { emptyAssetForm, type FinancialsDraft, toDebtForm } from './financialsDraft';
+import type { FinancialsDraftDispatch } from './financialsDraftReducer';
 import type { AssetFormState, DraftDebtAccount } from './financialsTypes';
 
-type DebtAccountsDraftSource = Pick<FinancialsDraftState, 'draftDebtAccounts'>;
+const emptyDebtAccounts: DraftDebtAccount[] = [];
 
-export function useDebtAccountsDraft(onChange: () => void) {
+export function useDebtAccountsDraft(
+  draft: FinancialsDraft | null,
+  dispatch: FinancialsDraftDispatch,
+  resetGeneration: number
+) {
   const [debtForm, setDebtForm] = useState<AssetFormState>(emptyAssetForm);
-  const [draftDebtAccounts, setDraftDebtAccounts] = useState<DraftDebtAccount[]>([]);
   const [editingDebtId, setEditingDebtId] = useState<number | null>(null);
-  const [nextDraftDebtId, setNextDraftDebtId] = useState(-1);
+  const draftDebtAccounts = draft?.debtAccounts ?? emptyDebtAccounts;
 
-  const loadDraft = useCallback((draft: DebtAccountsDraftSource) => {
+  useEffect(() => {
     setDebtForm(emptyAssetForm);
-    setDraftDebtAccounts(draft.draftDebtAccounts);
     setEditingDebtId(null);
-  }, []);
+  }, [resetGeneration]);
 
   const debtAccounts = useMemo(
     () => [...draftDebtAccounts].sort((left, right) => left.account.localeCompare(right.account)),
@@ -38,19 +36,9 @@ export function useDebtAccountsDraft(onChange: () => void) {
   function submitDebt(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (editingDebtId) {
-      setDraftDebtAccounts((current) =>
-        current.map((account) =>
-          account.id === editingDebtId ? formToDebtAccount(editingDebtId, debtForm) : account
-        )
-      );
-    } else {
-      setDraftDebtAccounts((current) => [...current, formToDebtAccount(nextDraftDebtId, debtForm)]);
-      setNextDraftDebtId((current) => current - 1);
-    }
+    dispatch({ editingId: editingDebtId, form: debtForm, type: 'save-debt' });
 
     cancelDebtEdit();
-    onChange();
   }
 
   function startDebtEdit(account: DraftDebtAccount) {
@@ -63,18 +51,11 @@ export function useDebtAccountsDraft(onChange: () => void) {
     setDebtForm(emptyAssetForm);
   }
 
-  function removeDebt(id: number) {
-    setDraftDebtAccounts((current) => current.filter((account) => account.id !== id));
-    onChange();
-  }
-
   return {
     cancelDebtEdit,
     debtAccounts,
     debtForm,
     editingDebtId,
-    loadDraft,
-    removeDebt,
     startDebtEdit,
     submitDebt,
     totalDebt,

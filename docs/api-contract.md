@@ -4,7 +4,8 @@
 
 - Base path: `/api/v1/financials`
 - Media type: `application/json`
-- Dates: ISO local dates (`YYYY-MM-DD`), without time zone
+- Dates: ISO date-only values (`YYYY-MM-DD`); the saved IANA planning zone
+  determines `currentDate`, while persisted dates never carry an offset
 - Money: JSON decimal numbers mapped to Java `BigDecimal`
 - Authentication/authorization: financial routes require a valid account
   session with `WORKSPACE` authority
@@ -62,6 +63,12 @@ an explicitly created or migrated snapshot returns `404` and is never silently
 seeded from personal JSON. An authenticated member may create an empty version-1
 snapshot with `POST /api/v1/financials`; existing data still uses the explicit
 operator migration workflow.
+
+The frontend captures the selected workspace ID for each financial request and
+sends it as `X-Workspace-ID`, including when only one membership is available.
+It does not derive the header from mutable module-global workspace state, so a
+later selection cannot redirect an earlier in-flight request. Clearing the
+account session also aborts active frontend API requests.
 
 ## Workspace Migration Operations
 
@@ -123,55 +130,31 @@ and secure session cookies.
 
 ## Endpoints
 
-| Method   | Path                                           | Success        | Purpose                                    |
-| -------- | ---------------------------------------------- | -------------- | ------------------------------------------ |
-| `POST`   | `/api/v1/financials`                           | `201` snapshot | Create an empty workspace snapshot         |
-| `GET`    | `/api/v1/financials`                           | `200` snapshot | Load the calculated current workspace      |
-| `GET`    | `/api/v1/financials/history`                   | `200` history  | Load recent saved-change audit events      |
-| `GET`    | `/api/v1/financials/export`                    | `200` export   | Download the saved source snapshot as JSON |
-| `GET`    | `/api/v1/financials/export/csv`                | `200` CSV      | Download the saved source snapshot as CSV  |
-| `GET`    | `/api/v1/financials/export/xlsx`               | `200` XLSX     | Download the saved source snapshot as XLSX |
-| `POST`   | `/api/v1/financials/import/csv`                | `200` snapshot | Restore the full snapshot from CSV         |
-| `POST`   | `/api/v1/financials/import/xlsx`               | `200` snapshot | Restore the full snapshot from XLSX        |
-| `PUT`    | `/api/v1/financials`                           | `200` snapshot | Replace and return the complete snapshot   |
-| `POST`   | `/api/v1/financials/bills`                     | `201` bill     | Add one monthly bill immediately           |
-| `PUT`    | `/api/v1/financials/bills/{id}`                | `200` bill     | Replace one existing monthly bill          |
-| `DELETE` | `/api/v1/financials/bills/{id}`                | `204` empty    | Delete one existing monthly bill           |
-| `POST`   | `/api/v1/financials/annual-withdrawals`        | `201` record   | Add one annual withdrawal immediately      |
-| `PUT`    | `/api/v1/financials/annual-withdrawals/{id}`   | `200` record   | Replace one annual withdrawal              |
-| `DELETE` | `/api/v1/financials/annual-withdrawals/{id}`   | `204` empty    | Delete one annual withdrawal               |
-| `POST`   | `/api/v1/financials/asset-accounts`            | `201` record   | Add one asset account immediately          |
-| `PUT`    | `/api/v1/financials/asset-accounts/{id}`       | `200` record   | Replace one asset account                  |
-| `DELETE` | `/api/v1/financials/asset-accounts/{id}`       | `204` empty    | Delete one asset account                   |
-| `POST`   | `/api/v1/financials/debt-accounts`             | `201` record   | Add one debt account immediately           |
-| `PUT`    | `/api/v1/financials/debt-accounts/{id}`        | `200` record   | Replace one debt account                   |
-| `DELETE` | `/api/v1/financials/debt-accounts/{id}`        | `204` empty    | Delete one debt account                    |
-| `POST`   | `/api/v1/financials/income-summary-items`      | `201` record   | Add one income summary item immediately    |
-| `PUT`    | `/api/v1/financials/income-summary-items/{id}` | `200` record   | Replace one income summary item            |
-| `DELETE` | `/api/v1/financials/income-summary-items/{id}` | `204` empty    | Delete one income summary item             |
-| `POST`   | `/api/v1/financials/income-events`             | `201` record   | Add one income event immediately           |
-| `PUT`    | `/api/v1/financials/income-events/{id}`        | `200` record   | Replace one income event                   |
-| `DELETE` | `/api/v1/financials/income-events/{id}`        | `204` empty    | Delete one income event                    |
-| `POST`   | `/api/v1/financials/important-dates`           | `201` record   | Add one important date immediately         |
-| `PUT`    | `/api/v1/financials/important-dates/{id}`      | `200` record   | Replace one important date                 |
-| `DELETE` | `/api/v1/financials/important-dates/{id}`      | `204` empty    | Delete one important date                  |
-| `PUT`    | `/api/v1/financials/pay-period`                | `200` snapshot | Replace pay-period anchor dates            |
+| Method | Path                                                   | Success        | Purpose                                          |
+| ------ | ------------------------------------------------------ | -------------- | ------------------------------------------------ |
+| `POST` | `/api/v1/financials`                                   | `201` snapshot | Create an empty workspace snapshot               |
+| `GET`  | `/api/v1/financials`                                   | `200` snapshot | Load the calculated current workspace            |
+| `GET`  | `/api/v1/financials/history`                           | `200` history  | Load recent saved-change audit events            |
+| `GET`  | `/api/v1/financials/export`                            | `200` backup   | Download the saved source snapshot as JSON       |
+| `POST` | `/api/v1/financials/restore?expectedVersion=<version>` | `200` snapshot | Restore a JSON backup against the target version |
+| `PUT`  | `/api/v1/financials`                                   | `200` snapshot | Replace and return the complete snapshot         |
 
-The granular endpoints persist through the same aggregate store as the full
-snapshot. The current browser workspace primarily uses `GET` and full-snapshot
-`PUT`. ADR 0012 records the compatibility and concurrency tradeoffs for the
-granular record APIs.
+ADR 0016 retired the record-level and pay-period mutation routes. The
+version-checked full-snapshot `PUT` is the sole interactive financial mutation
+boundary. The explicit restore operation delegates to the same aggregate
+validation and optimistic replacement path.
 
-`POST /api/v1/financials` accepts `startDate` and `endDate` using the same
-shape as the pay-period endpoint. It persists version `1` with empty user
-record collections for the selected authenticated workspace and returns the
-calculated snapshot. That response includes the existing zero-value protected
-projection anchors for rent, rent reserve, and primary bi-weekly income; these
-are application structure, not imported or synthetic financial values. The
+`POST /api/v1/financials` accepts `startDate`, `endDate`, and
+`planningSettings`. The settings require a supported `payCadence` and valid
+IANA `timeZone`. It persists version `1` with zero-value initial records,
+planning settings, and projection roles for the selected authenticated
+workspace and returns the calculated snapshot. These records
+are application structure, not imported financial values. The
 dates are required and the end cannot precede the start. A workspace that
 already has an active snapshot returns `409 Conflict`, including concurrent
 creation attempts. This endpoint never reads example, personal JSON, or legacy
-JSONB data.
+JSONB data. The creation command returns its successfully persisted aggregate
+for response presentation rather than issuing a second current-snapshot query.
 
 Every `GET /api/v1/financials` response includes the current snapshot
 `version`. Clients must echo that value in `PUT /api/v1/financials`. If another
@@ -182,7 +165,8 @@ Conflict` and leaves the newer snapshot intact.
 
 `GET /api/v1/financials/history` returns the newest saved-change events first.
 The optional `limit` query parameter defaults to `50` and must be between `1`
-and `100`.
+and `100`. The limit is applied by PostgreSQL, and this route does not load the
+current financial snapshot.
 
 ```http
 GET /api/v1/financials/history?limit=10
@@ -237,11 +221,49 @@ personal financial data when the underlying snapshot is personal.
   "version": 1,
   "payPeriodStart": "2026-07-01",
   "payPeriodEnd": "2026-07-14",
-  "bills": [],
+  "planningSettings": {
+    "payCadence": "BIWEEKLY",
+    "timeZone": "America/New_York"
+  },
+  "projectionRoles": {
+    "rentBillId": 1,
+    "rentReserveAssetAccountId": 1,
+    "primaryPaycheckIncomeSummaryItemId": 1
+  },
+  "bills": [
+    {
+      "id": 1,
+      "bill": "Housing",
+      "dueDay": 1,
+      "amount": 0,
+      "account": "Example checking",
+      "paid": false
+    }
+  ],
   "annualWithdrawals": [],
-  "assetCategories": [],
+  "assetCategories": [
+    {
+      "key": "cash-savings",
+      "label": "Cash & Savings",
+      "accounts": [
+        {
+          "id": 1,
+          "account": "Housing reserve",
+          "company": "Example institution",
+          "amount": 0
+        }
+      ]
+    }
+  ],
   "debtAccounts": [],
-  "incomeSummaryItems": [],
+  "incomeSummaryItems": [
+    {
+      "id": 1,
+      "category": "Primary paycheck",
+      "interval": "Every two weeks",
+      "amount": 0
+    }
+  ],
   "incomeEvents": [],
   "importantDates": []
 }
@@ -252,6 +274,8 @@ personal financial data when the underlying snapshot is personal.
 | `version`            | Yes      | Current snapshot version returned by the last GET  |
 | `payPeriodStart`     | Yes      | Stored pay-period anchor start                     |
 | `payPeriodEnd`       | Yes      | Stored pay-period anchor end; cannot precede start |
+| `planningSettings`   | Yes*     | Pay cadence and IANA planning time zone            |
+| `projectionRoles`    | Yes*     | Typed IDs used by the paycheck projection          |
 | `bills`              | Yes      | Monthly bill source records                        |
 | `annualWithdrawals`  | No       | Null/missing is normalized to an empty list        |
 | `assetCategories`    | Yes      | Categories containing asset accounts               |
@@ -265,6 +289,17 @@ personal financial data when the underlying snapshot is personal.
 therefore clears it; omitting a required collection yields `400`. Derived
 response fields are not request fields.
 
+`projectionRoles` is required for current clients. Each value must reference
+exactly one record in its corresponding request collection. Negative IDs are
+allowed so a newly added record can be selected and saved in one request; the
+response returns the assigned positive IDs. Legacy backup input without roles is
+accepted through the compatibility normalizer (`Yes*`).
+
+`planningSettings.payCadence` must be `WEEKLY`, `BIWEEKLY`, `SEMIMONTHLY`, or
+`MONTHLY`. `planningSettings.timeZone` must be a Java-supported IANA zone.
+Legacy backup and migration input without settings defaults once to
+`BIWEEKLY` and `UTC` (`Yes*`).
+
 ### Response
 
 ```json
@@ -272,6 +307,16 @@ response fields are not request fields.
   "version": 1,
   "payPeriodStart": "2026-07-01",
   "payPeriodEnd": "2026-07-14",
+  "currentDate": "2026-07-15",
+  "planningSettings": {
+    "payCadence": "BIWEEKLY",
+    "timeZone": "America/New_York"
+  },
+  "projectionRoles": {
+    "rentBillId": 1,
+    "rentReserveAssetAccountId": 1,
+    "primaryPaycheckIncomeSummaryItemId": 1
+  },
   "totalMonthlyExpenses": 0,
   "paidTotal": 0,
   "unpaidTotal": 0,
@@ -281,19 +326,54 @@ response fields are not request fields.
   "totalTrackedAssets": 0,
   "totalDebt": 0,
   "netWorth": 0,
-  "assetCategories": [],
+  "assetCategories": [
+    {
+      "key": "cash-savings",
+      "label": "Cash & Savings",
+      "total": 0,
+      "accounts": [
+        {
+          "id": 1,
+          "account": "Housing reserve",
+          "company": "Example institution",
+          "amount": 0
+        }
+      ]
+    }
+  ],
   "debtAccounts": [],
-  "incomeSummaryItems": [],
-  "bills": [],
+  "incomeSummaryItems": [
+    {
+      "id": 1,
+      "category": "Primary paycheck",
+      "interval": "Every two weeks",
+      "amount": 0
+    }
+  ],
+  "bills": [
+    {
+      "id": 1,
+      "bill": "Housing",
+      "dueDay": 1,
+      "dueLabel": "1st",
+      "dueDate": "2026-07-01",
+      "amount": 0,
+      "account": "Example checking",
+      "paid": false,
+      "inPayPeriod": true
+    }
+  ],
   "annualWithdrawals": [],
   "incomeEvents": [],
   "importantDates": []
 }
 ```
 
-The returned pay period is the current calculated window. The service shifts
-the stored anchor window by its inclusive length until it contains today; that
-shift is a response calculation and does not itself persist new anchors.
+The returned `currentDate` is derived once from the request clock instant and
+the snapshot's planning time zone. The returned pay period is the current
+calculated window: the service shifts the stored anchor window by its inclusive
+length until it contains that same `currentDate`. The shift is a response
+calculation and does not itself persist new anchors.
 
 Derived top-level values:
 
@@ -307,7 +387,7 @@ Derived top-level values:
 - `totalDebt`: sum of debt balances
 - `netWorth`: tracked assets minus debt
 
-## Snapshot Export and Tabular Restore
+## Snapshot Backup and Restore
 
 `GET /api/v1/financials/export` is a read-only backup endpoint. It returns an
 attachment with `Cache-Control: no-store` and a filename like
@@ -323,11 +403,49 @@ The response envelope is:
     "version": 3,
     "payPeriodStart": "2026-07-01",
     "payPeriodEnd": "2026-07-14",
-    "bills": [],
+    "planningSettings": {
+      "payCadence": "BIWEEKLY",
+      "timeZone": "America/New_York"
+    },
+    "projectionRoles": {
+      "rentBillId": 1,
+      "rentReserveAssetAccountId": 1,
+      "primaryPaycheckIncomeSummaryItemId": 1
+    },
+    "bills": [
+      {
+        "id": 1,
+        "bill": "Housing",
+        "dueDay": 1,
+        "amount": 0,
+        "account": "Example checking",
+        "paid": false
+      }
+    ],
     "annualWithdrawals": [],
-    "assetCategories": [],
+    "assetCategories": [
+      {
+        "key": "cash-savings",
+        "label": "Cash & Savings",
+        "accounts": [
+          {
+            "id": 1,
+            "account": "Housing reserve",
+            "company": "Example institution",
+            "amount": 0
+          }
+        ]
+      }
+    ],
     "debtAccounts": [],
-    "incomeSummaryItems": [],
+    "incomeSummaryItems": [
+      {
+        "id": 1,
+        "category": "Primary paycheck",
+        "interval": "Every two weeks",
+        "amount": 0
+      }
+    ],
     "incomeEvents": [],
     "importantDates": []
   }
@@ -338,41 +456,47 @@ The response envelope is:
 IDs. It intentionally excludes calculated totals, labels, due dates,
 pay-period flags, monthly check counts, and projection-only fields.
 
-CSV and XLSX use the same one-sheet tabular exchange format:
+Restore submits the exported envelope unchanged:
 
 ```http
-GET /api/v1/financials/export/csv
-GET /api/v1/financials/export/xlsx
-POST /api/v1/financials/import/csv
-POST /api/v1/financials/import/xlsx
+POST /api/v1/financials/restore?expectedVersion=8
+Content-Type: application/json
 ```
 
-Downloads are attachments named like `financial-snapshot-v3.csv` or
-`financial-snapshot-v3.xlsx`, also with `Cache-Control: no-store`. Imports
-replace the complete saved snapshot through the same service path as
-`PUT /api/v1/financials`, so the imported `version` must match the current
-server version. Stale imports return `409 Conflict`; successful imports
-increment the snapshot version and return the calculated snapshot response.
+The request body is the complete JSON backup envelope shown above.
+`snapshot.version` records the source backup version and is not used as the
+target concurrency token. `expectedVersion` must be the current version of the
+selected target workspace. The service validates the backup format and nested
+snapshot, replaces the aggregate through the same path as
+`PUT /api/v1/financials`, and persists the result at the next target version.
 
-Tabular columns are fixed and must remain in this order:
+This separation allows an older backup to restore deliberately while still
+preventing an unnoticed concurrent target write. A stale `expectedVersion`
+returns `409 Conflict` and leaves the target unchanged. An unsupported `format`
+or invalid nested snapshot returns `400`. Restore requires an authenticated
+workspace session and CSRF proof.
 
-```text
-recordType,version,id,payPeriodStart,payPeriodEnd,bill,dueDay,month,day,amount,account,paid,categoryKey,categoryLabel,company,category,interval,date,label,event,type,checkNumber
-```
-
-The first data row must have `recordType` = `snapshot` and must provide
-`version`, `payPeriodStart`, and `payPeriodEnd`. Remaining rows use these
-record types: `bill`, `annualWithdrawal`, `assetAccount`, `debtAccount`,
-`incomeSummaryItem`, `incomeEvent`, and `importantDate`. Dates are ISO local
-dates (`YYYY-MM-DD`). Blank IDs are treated as new records during restore.
-XLSX imports read the first worksheet and expect the same columns; date cells
-should remain ISO text.
-
-Exports and import files may contain personal financial data and must be
-handled like local profile files and database backups. Do not commit them or
-store them in repository folders.
+JSON backup files may contain personal financial data and must be handled like
+local profile files and database backups. Do not commit them or store them in
+repository folders. They do not contain complete relational audit history and
+do not replace database-native backup tooling.
 
 ## Nested Types
+
+### Planning settings request
+
+```json
+{
+  "payCadence": "SEMIMONTHLY",
+  "timeZone": "America/Chicago"
+}
+```
+
+Cadence controls income annualization and frontend recurring-payday semantics:
+weekly uses 52 periods per year, biweekly 26, semimonthly 24, and monthly 12.
+Calendar-month recurrence clamps requested days to shorter months. The time
+zone controls the workspace's current planning date and active-period
+calculation. It does not convert date-only financial values.
 
 ### Bill snapshot request
 
@@ -457,8 +581,9 @@ Account, company, and nonnegative amount are required.
 }
 ```
 
-Category, interval, and nonnegative amount are required. `Net Income` /
-`Bi-Weekly` is the name-based primary paycheck source used by projections.
+Category, interval, and nonnegative amount are required. The snapshot's
+`primaryPaycheckIncomeSummaryItemId` role selects the item used by projections;
+category and interval remain editable labels.
 
 ### Income event request
 
@@ -489,155 +614,16 @@ non-null check number in that calendar month.
 
 Date, event, and type are required.
 
-## Granular Request Bodies
-
-### Create or update a bill
-
-`POST /bills` and `PUT /bills/{id}` accept the bill fields without an `id`:
-
-```json
-{
-  "bill": "Synthetic utility",
-  "dueDay": 15,
-  "amount": 100.0,
-  "account": "Example checking",
-  "paid": false
-}
-```
-
-An update or delete path ID must be a positive whole number. A non-positive or
-nonnumeric path ID returns `400`; a positive but absent ID returns `404`.
-
-The same create/update/delete pattern applies to the other record collections.
-Requests omit `id`; creates assign a new positive ID, updates preserve the path
-ID, non-positive path IDs return `400`, and absent update/delete IDs return
-`404`.
-
-### Create or update an annual withdrawal
-
-`POST /annual-withdrawals` and `PUT /annual-withdrawals/{id}`:
-
-```json
-{
-  "bill": "Synthetic annual fee",
-  "month": 12,
-  "day": 31,
-  "amount": 50.0,
-  "account": "Example checking",
-  "paid": false
-}
-```
-
-Responses use the annual-withdrawal response shape, including `dateLabel`,
-derived `dueDate`, and `inPayPeriod`.
-
-### Create or update an asset account
-
-`POST /asset-accounts` and `PUT /asset-accounts/{id}`:
-
-```json
-{
-  "categoryKey": "cash-savings",
-  "categoryLabel": "Cash & Savings",
-  "account": "Example savings",
-  "company": "Example institution",
-  "amount": 1000.0
-}
-```
-
-The granular asset-account response is flat so a single record can carry its
-category:
-
-```json
-{
-  "id": 10,
-  "categoryKey": "cash-savings",
-  "categoryLabel": "Cash & Savings",
-  "account": "Example savings",
-  "company": "Example institution",
-  "amount": 1000.0
-}
-```
-
-Snapshot responses remain grouped under `assetCategories`.
-
-### Create or update a debt account
-
-`POST /debt-accounts` and `PUT /debt-accounts/{id}`:
-
-```json
-{
-  "account": "Example card",
-  "company": "Example issuer",
-  "amount": 250.0
-}
-```
-
-### Create or update an income summary item
-
-`POST /income-summary-items` and `PUT /income-summary-items/{id}`:
-
-```json
-{
-  "category": "Net Income",
-  "interval": "Bi-Weekly",
-  "amount": 1500.0
-}
-```
-
-### Create or update an income event
-
-`POST /income-events` and `PUT /income-events/{id}`:
-
-```json
-{
-  "date": "2026-07-10",
-  "label": "Synthetic paycheck",
-  "type": "Paycheck",
-  "checkNumber": 1
-}
-```
-
-Responses include `checksInMonth`, recalculated after the write.
-
-### Create or update an important date
-
-`POST /important-dates` and `PUT /important-dates/{id}`:
-
-```json
-{
-  "date": "2026-12-31",
-  "event": "Synthetic reminder",
-  "type": "Reminder"
-}
-```
-
-### Update pay-period anchors
-
-```json
-{
-  "startDate": "2026-07-01",
-  "endDate": "2026-07-14"
-}
-```
-
-Both dates are required, and end cannot precede start.
-
 ## Normalization
 
-The service guarantees three name-based records used by projections:
+Current snapshots use projection role IDs and never infer runtime behavior from
+display names. Role references are validated against their typed collections.
 
-- A bill named `Rent`
-- An asset account named `Rent Reserve` under cash/savings
-- An income item with category `Net Income` and interval `Bi-Weekly`
-
-Matching is trimmed and case-insensitive. Legacy names containing “rent” may
-be normalized. If an anchor is absent, a zero-valued record can appear in the
-response with a temporary negative ID. A later full-snapshot save sends that
-record as new and assigns a positive ID.
-
-Consumers must not treat these labels as freely interchangeable presentation
-text without updating the normalization and projection contract.
+Legacy JSON, JSONB, or backup input without roles is upgraded at the boundary.
+Historical rent and paycheck labels may be selected without renaming the
+records. Missing responsibilities receive positive-ID, zero-value default
+records, and the resulting role configuration is persisted on migration or the
+next aggregate save.
 
 ## Errors
 
@@ -667,21 +653,21 @@ details or submitted financial values:
   "title": "Malformed request",
   "status": 400,
   "detail": "Request body is malformed or cannot be parsed",
-  "instance": "/api/v1/financials/bills"
+  "instance": "/api/v1/financials"
 }
 ```
 
-Nonnumeric path variables, such as `/bills/not-a-number`, return `400` with
-title `Invalid request`. Unsupported request media types return `415` with
-title `Unsupported media type`.
+Invalid query parameters, such as a nonnumeric audit-history `limit`, return
+`400` with title `Invalid request`. Unsupported request media types return
+`415` with title `Unsupported media type`.
 
-Service-generated `ResponseStatusException` errors preserve their HTTP status
-and reason, including:
+Financial application exceptions are mapped by `ApiExceptionHandler` to their
+HTTP status and safe detail, including:
 
 - `400` when pay-period end precedes start
-- `400` when a granular record update/delete path ID is not positive
-- `409` when a full snapshot save uses a stale `version`
-- `404` when a granular record update/delete ID is absent
+- `400` when a restore backup uses an unsupported format
+- `409` when a full snapshot save uses a stale `version` or restore uses a
+  stale target `expectedVersion`
 
 Unauthenticated or invalid-session financial API requests return `401` without
 a `WWW-Authenticate` challenge header. Operator Basic credentials do not grant
@@ -694,15 +680,21 @@ persistence errors intentionally avoid echoing internal exception text,
 snapshot contents, or submitted financial values.
 
 Handled Problem Detail responses include the same `requestId` returned in the
-`X-Request-ID` response header. The frontend also includes that ID in API error
-messages so failures can be correlated without copying request data.
+`X-Request-ID` response header. The frontend preserves the response `status`,
+safe `detail`, optional `title`, and backend-confirmed `requestId` as separate
+error fields. User-facing failures format the request reference from that
+structured ID; status-based behavior never parses presentation messages.
 
 ## Compatibility Rules
 
 - Keep frontend endpoint types and backend DTOs aligned.
+- Keep `currentDate`, cadence, and planning-zone behavior aligned across the
+  backend calculator and frontend date helpers.
 - Treat fields removed from a full-snapshot request as deleted persisted data.
-- Treat the snapshot `version` as an API concurrency token. Full-snapshot save
-  clients must reload after `409 Conflict` before retrying.
+- Treat the live snapshot `version` as an API concurrency token. Full-snapshot
+  save clients must reload after `409 Conflict` before retrying. During restore,
+  the backup's embedded version is source metadata and the separately supplied
+  `expectedVersion` protects the target workspace.
 - Do not add derived response fields to persistence without an explicit
   contract decision.
 - Preserve decimal precision through the backend; JavaScript consumers still
