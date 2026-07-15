@@ -59,6 +59,10 @@ Use `docs/database-storage-guide.md` for storage, database roles,
 migrations, inspection, backup, and recovery boundaries.
 Use `docs/verification-matrix.md` to choose targeted and completion checks by
 change surface.
+Use `docs/accessibility-verification.md` for automated WCAG browser audits,
+manual screen-reader and keyboard checks, and safe accessibility evidence.
+Use `docs/responsive-verification.md` for supported viewport behavior,
+contained table scrolling, and manual responsive checks.
 Use `docs/known-limitations.md` before changing an intentional simplification;
 update its status and add an ADR when a limitation is resolved architecturally.
 Use `docs/troubleshooting-decision-tree.md` for non-destructive, symptom-driven

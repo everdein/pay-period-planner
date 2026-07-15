@@ -717,6 +717,17 @@ browser test covers signup, sign-in, sign-out, CSRF writes, two-user workspace
 isolation, load, edit, save, refresh persistence, deletion, and post-delete
 refresh without touching personal local data.
 
+Run focused accessibility and responsive browser gates with:
+
+```powershell
+.\scripts\run-browser-checks.ps1 -TestPath e2e/accessibility.spec.ts
+.\scripts\run-browser-checks.ps1 -TestPath e2e/responsive.spec.ts
+```
+
+The responsive gate traverses every financial section at 320, 390, 768, and
+1024 pixels wide. See `docs/accessibility-verification.md` and
+`docs/responsive-verification.md` for automated contracts and manual protocols.
+
 Inspect the local PostgreSQL schema and snapshot metadata without modifying
 data:
 
@@ -936,6 +947,8 @@ GitHub checks and have no complete local equivalent.
 Additional documentation:
 
 - `docs/adr/README.md`
+- `docs/accessibility-verification.md`
+- `docs/responsive-verification.md`
 - `backend/README.md`
 - `frontend/README.md`
 

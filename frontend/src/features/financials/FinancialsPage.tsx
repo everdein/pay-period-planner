@@ -156,7 +156,11 @@ export default function FinancialsPage({
         </div>
       </header>
 
-      {sessionError && <p className="error">{sessionError}</p>}
+      {sessionError && (
+        <p className="error" role="alert">
+          {sessionError}
+        </p>
+      )}
       {snapshotMissing ? (
         <WorkspaceOnboarding
           error={error?.kind === 'not-found' ? null : (error?.message ?? null)}
@@ -210,7 +214,11 @@ export default function FinancialsPage({
                 </div>
               </section>
             )}
-            {workspace.isDirty && !error && <p className="status">You have unsaved changes.</p>}
+            {workspace.isDirty && !error && (
+              <p className="status" role="status">
+                You have unsaved changes.
+              </p>
+            )}
             {saveNotice && !workspace.isDirty && (
               <WorkflowNotice title={saveNotice} tone="success" />
             )}

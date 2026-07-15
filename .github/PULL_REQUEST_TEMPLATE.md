@@ -17,6 +17,10 @@ personal financial values, raw database rows, or full local JSON snapshots.
 - [ ] `.\scripts\verify-local.ps1`
 - [ ] PostgreSQL check, if relevant: `.\scripts\verify-local.ps1 -IncludePostgres`
 - [ ] Browser check, if relevant: `.\scripts\run-browser-checks.ps1`
+- [ ] Accessibility check, if relevant:
+      `.\scripts\run-browser-checks.ps1 -TestPath e2e/accessibility.spec.ts`
+- [ ] Responsive check, if relevant:
+      `.\scripts\run-browser-checks.ps1 -TestPath e2e/responsive.spec.ts`
 - [ ] Security check, if available: `.\scripts\run-security-checks.ps1`
 
 ## Data and security notes

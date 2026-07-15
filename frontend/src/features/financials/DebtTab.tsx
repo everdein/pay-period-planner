@@ -5,6 +5,7 @@ import { EmptyTableRow } from './EmptyTableRow';
 import { currency } from './financialsFormatters';
 import type { AssetFormState, DraftDebtAccount } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
+import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function DebtTab({
   cancelDebtEdit,
@@ -46,7 +47,7 @@ export function DebtTab({
       </section>
 
       <section className="expenses-layout">
-        <div className="table-wrap">
+        <ScrollableTableRegion label="Debt balances">
           <table className="account-table">
             <colgroup>
               <col className="name-column" />
@@ -89,7 +90,7 @@ export function DebtTab({
           <p className="table-total">
             Total debt: <strong>{currency.format(totalDebt)}</strong>
           </p>
-        </div>
+        </ScrollableTableRegion>
 
         <form className="bill-form" onSubmit={submitDebt}>
           <h2>{isEditing ? 'Edit Debt Account' : 'Add Debt Account'}</h2>

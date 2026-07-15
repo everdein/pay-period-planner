@@ -262,6 +262,32 @@ npm run test
 npm run test:e2e
 ```
 
+Run the focused live accessibility audit from the repository root so the
+temporary PostgreSQL schema is always removed:
+
+```powershell
+.\scripts\run-browser-checks.ps1 -TestPath e2e/accessibility.spec.ts
+```
+
+The audit applies axe WCAG A/AA rules to account access, onboarding, all
+financial sections, and the removal dialog. It also checks modal keyboard focus
+and account-tab keyboard navigation. Use
+`../docs/accessibility-verification.md` for the manual screen-reader protocol;
+automated results are not a substitute for an assistive-technology run.
+
+Run the focused responsive workflow audit from the repository root:
+
+```powershell
+.\scripts\run-browser-checks.ps1 -TestPath e2e/responsive.spec.ts
+```
+
+The responsive audit traverses signup, onboarding, compact navigation, and all
+twelve financial sections at 320, 390, 768, and 1024 pixels wide. It rejects
+page-level overflow, controls or table regions outside the viewport, undersized
+controls, and incorrect navigation behavior at the 900-pixel breakpoint. Use
+`../docs/responsive-verification.md` for the complete contract and manual
+viewport, orientation, and zoom checks.
+
 On a new machine, install the local Playwright Chromium browser first:
 
 ```sh

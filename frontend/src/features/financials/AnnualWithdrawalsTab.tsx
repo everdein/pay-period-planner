@@ -5,6 +5,7 @@ import { EmptyTableRow } from './EmptyTableRow';
 import { currency, formatDate } from './financialsFormatters';
 import type { AnnualWithdrawalFormState, DraftAnnualWithdrawal } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
+import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function AnnualWithdrawalsTab({
   annualWithdrawalForm,
@@ -60,7 +61,7 @@ export function AnnualWithdrawalsTab({
       </section>
 
       <section className="expenses-layout">
-        <div className="table-wrap">
+        <ScrollableTableRegion label="Annual withdrawals">
           <table className="withdrawals-table">
             <colgroup>
               <col className="name-column" />
@@ -116,7 +117,7 @@ export function AnnualWithdrawalsTab({
           <p className="table-total">
             Total: <strong>{currency.format(totals.totalAnnualWithdrawals)}</strong>
           </p>
-        </div>
+        </ScrollableTableRegion>
 
         <form className="bill-form" onSubmit={submitAnnualWithdrawal}>
           <h2>{isEditing ? 'Edit Annual Withdrawal' : 'Add Annual Withdrawal'}</h2>

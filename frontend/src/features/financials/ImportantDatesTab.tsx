@@ -5,6 +5,7 @@ import { EmptyTableRow } from './EmptyTableRow';
 import { formatDate } from './financialsFormatters';
 import type { DraftImportantDate, ImportantDateFormState } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
+import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function ImportantDatesTab({
   cancelImportantDateEdit,
@@ -39,7 +40,7 @@ export function ImportantDatesTab({
         </div>
       </section>
       <section className="expenses-layout">
-        <div className="table-wrap">
+        <ScrollableTableRegion label="Important dates">
           <table className="dates-table">
             <colgroup>
               <col className="name-column" />
@@ -89,7 +90,7 @@ export function ImportantDatesTab({
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollableTableRegion>
 
         <form className="bill-form" onSubmit={submitImportantDate}>
           <h2>{isEditing ? 'Edit Important Date' : 'Add Important Date'}</h2>

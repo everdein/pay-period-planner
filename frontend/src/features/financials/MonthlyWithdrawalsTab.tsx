@@ -6,6 +6,7 @@ import { isRentWithdrawal, RENT_WITHDRAWAL_NAME } from './financialsAnchors';
 import { currency, formatDate } from './financialsFormatters';
 import type { BillFormState, DraftAnnualWithdrawal, DraftBill } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
+import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function MonthlyWithdrawalsTab({
   annualPayPeriodTotal,
@@ -99,7 +100,7 @@ export function MonthlyWithdrawalsTab({
 
       <section className="expenses-layout">
         <div className="stacked-tables">
-          <div className="table-wrap">
+          <ScrollableTableRegion label="Monthly withdrawals">
             <table className="withdrawals-table compact-date-table">
               <colgroup>
                 <col className="name-column" />
@@ -153,9 +154,9 @@ export function MonthlyWithdrawalsTab({
             <p className="table-total">
               Total: <strong>{currency.format(totals.totalMonthlyExpenses)}</strong>
             </p>
-          </div>
+          </ScrollableTableRegion>
 
-          <div className="table-wrap">
+          <ScrollableTableRegion label="Annual withdrawals due in this pay period">
             <table className="withdrawals-table">
               <colgroup>
                 <col className="name-column" />
@@ -197,7 +198,7 @@ export function MonthlyWithdrawalsTab({
             <p className="table-total">
               Pay period annual total: <strong>{currency.format(annualPayPeriodTotal)}</strong>
             </p>
-          </div>
+          </ScrollableTableRegion>
         </div>
 
         <form className="bill-form" onSubmit={submitBill}>

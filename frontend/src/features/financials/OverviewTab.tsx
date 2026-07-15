@@ -8,6 +8,7 @@ import type {
   FinancialTab,
   ProjectionSummary,
 } from './financialsTypes';
+import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 const dashboardWorkflows: Array<{
   detail: string;
@@ -156,7 +157,7 @@ export function Overview({
           />
         </OverviewGroup>
       </section>
-      <section className="table-wrap">
+      <ScrollableTableRegion label="Asset category totals">
         <table className="overview-table">
           <colgroup>
             <col className="name-column" />
@@ -184,7 +185,7 @@ export function Overview({
         <p className="table-total">
           Total tracked assets: <strong>{currency.format(totalTrackedAssets)}</strong>
         </p>
-      </section>
+      </ScrollableTableRegion>
     </>
   );
 }

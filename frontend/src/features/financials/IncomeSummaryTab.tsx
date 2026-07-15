@@ -6,6 +6,7 @@ import { isPrimaryPaycheck } from './financialsAnchors';
 import { currency } from './financialsFormatters';
 import type { DraftIncomeSummaryItem, IncomeSummaryFormState } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
+import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function IncomeSummaryTab({
   cancelIncomeSummaryItemEdit,
@@ -52,7 +53,7 @@ export function IncomeSummaryTab({
 
       <section className="expenses-layout">
         <div className="stacked-tables">
-          <div className="table-wrap">
+          <ScrollableTableRegion label="Saved income sources">
             <table className="income-source-table">
               <colgroup>
                 <col className="name-column" />
@@ -93,10 +94,10 @@ export function IncomeSummaryTab({
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollableTableRegion>
 
           {derivedCategories.map((category) => (
-            <div className="table-wrap" key={category}>
+            <ScrollableTableRegion key={category} label={`${category} income summary`}>
               <table className="income-summary-table">
                 <colgroup>
                   <col className="name-column" />
@@ -120,7 +121,7 @@ export function IncomeSummaryTab({
                     ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollableTableRegion>
           ))}
         </div>
 

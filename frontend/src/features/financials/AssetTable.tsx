@@ -6,6 +6,7 @@ import { isRentReserveAccount, RENT_RESERVE_ACCOUNT_NAME } from './financialsAnc
 import { currency } from './financialsFormatters';
 import type { AssetFormState, DraftAssetAccount, DraftAssetCategory } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
+import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function AssetTable({
   assetForm,
@@ -30,7 +31,7 @@ export function AssetTable({
 
   return (
     <section className="expenses-layout">
-      <div className="table-wrap">
+      <ScrollableTableRegion label={`${category.label} table`}>
         <table className="account-table">
           <colgroup>
             <col className="name-column" />
@@ -74,7 +75,7 @@ export function AssetTable({
         <p className="table-total">
           Total: <strong>{currency.format(category.total)}</strong>
         </p>
-      </div>
+      </ScrollableTableRegion>
 
       <form className="bill-form" onSubmit={(event) => submitAsset(category.key, event)}>
         <h2>{isEditingThisCategory ? 'Edit Account' : 'Add Account'}</h2>

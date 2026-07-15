@@ -24,6 +24,7 @@
              runtime. Revisit this when the project needs newer Java language
              features and coverage tooling supports the selected class version. -->
         <maven.compiler.release>21</maven.compiler.release>
+        <jackson-bom.version>3.1.5</jackson-bom.version>
         <logback.version>1.5.36</logback.version>
         <log4j2.version>2.26.1</log4j2.version>
         <postgresql.version>42.7.12</postgresql.version>

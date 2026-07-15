@@ -39,10 +39,10 @@ gate.
 | Controller/DTO/API              | Controller/service tests plus frontend typecheck       | Full local verification                                   | Request/response compatibility and Problem Detail behavior         |
 | Audit/history                   | Repository/service/controller tests                    | Full local verification                                   | Version movement, newest-first order, no request-body logging      |
 | CSV/XLSX import/export          | Controller/service tests plus frontend typecheck       | Full local verification                                   | Stale version rejection, fixed columns, no personal data in output |
-| Legacy JSON migration           | Migration service/API tests                           | Full local verification                                   | Backup fingerprint, explicit owner/workspace, source unchanged     |
+| Legacy JSON migration           | Migration service/API tests                            | Full local verification                                   | Backup fingerprint, explicit owner/workspace, source unchanged     |
 | PostgreSQL store/config/adapter | Focused integration profile                            | Full local verification                                   | Read-only metadata inspection afterward                            |
 | Migration SQL                   | Review ordered migration and constraints               | Full verification with PostgreSQL                         | Fresh and upgraded isolated schema; Flyway history behavior        |
-| Workspace data migration        | Service/controller tests plus script parser             | Full local verification                                   | External backup fingerprint, ownership, counts, audit, rollback    |
+| Workspace data migration        | Service/controller tests plus script parser            | Full local verification                                   | External backup fingerprint, ownership, counts, audit, rollback    |
 | PowerShell scripts              | PowerShell parser plus safest applicable execution     | Full local verification when orchestration changed        | Exit codes, working directory, cleanup, mutation scope             |
 | Dependency/lockfile             | Clean install and affected build/tests                 | Full local verification and authenticated security checks | Direct/transitive path, compatibility, both lock files             |
 | GitHub workflow                 | Run exact local equivalents                            | Hosted PR run required                                    | Events, permissions, job dependencies, cache paths, secrets        |
@@ -54,7 +54,8 @@ gate.
 | Scheduled maintenance           | `scripts/generate-engineering-status.ps1`              | Weekly maintenance workflow                               | Packets are advisory; external writes require user intent          |
 | Security configuration          | Focused configuration inspection                       | Authenticated Snyk scan                                   | Tool/auth state, severity threshold, fixed versions                |
 | Observability/correlation       | Filter, security, API-client, and error-boundary tests | Full local verification                                   | No sensitive fields; bounded metric tags; protected Actuator       |
-| Accessibility                   | JSX accessibility lint plus focused interaction tests  | Full local verification                                   | Manual/browser keyboard and focus review when behavior changed     |
+| Accessibility                   | Focused interaction tests plus live axe browser audit  | Full local verification and hosted Accessibility job      | Manual screen-reader/keyboard protocol when interaction changed    |
+| Responsive UI                   | Focused live responsive browser audit                  | Full local verification and hosted Responsive job         | 320/390/768/1024 widths; contained controls and table scrolling    |
 | Browser workflow                | `scripts/run-browser-checks.ps1`                       | Full local verification plus browser smoke when relevant  | Synthetic data, screenshots/traces only when intentionally shared  |
 | Cross-layer feature             | Narrow checks in every affected layer                  | Full local verification                                   | End-to-end contract and persistence parity                         |
 
@@ -95,6 +96,8 @@ npm --prefix frontend run type-check
 npm --prefix frontend run lint
 npm --prefix frontend run test
 npm --prefix frontend run test -- --coverage
+npm --prefix frontend run test:a11y
+npm --prefix frontend run test:responsive
 npm --prefix frontend run test:e2e
 npm --prefix frontend run build
 ```
@@ -172,11 +175,46 @@ PostgreSQL verification is required for changes to:
 - Identity, workspace, membership, or session constraints
 - Legacy JSON/JSONB migration behavior
 
+### Accessibility
+
+```powershell
+.\scripts\run-browser-checks.ps1 -TestPath e2e/accessibility.spec.ts
+```
+
+This focused Playwright suite uses an isolated PostgreSQL schema and applies
+axe WCAG A/AA rules to account access, onboarding, every financial section,
+and the removal dialog. It also verifies modal focus entry, Escape dismissal,
+and focus return. CI runs the same suite in the `Accessibility` job and makes
+the final `Scans` job depend on it.
+
+Automated checks do not replace a screen reader. Follow
+`docs/accessibility-verification.md` for the synthetic-data-only keyboard and
+assistive-technology protocol and the evidence that must accompany a manual
+run.
+
+### Responsive UI
+
+```powershell
+.\scripts\run-browser-checks.ps1 -TestPath e2e/responsive.spec.ts
+```
+
+This focused Playwright suite uses an isolated PostgreSQL schema and traverses
+signup, onboarding, compact navigation, and all twelve financial sections at
+320, 390, 768, and 1024 pixels wide. It rejects page-level horizontal overflow,
+out-of-viewport controls or table regions, undersized non-table controls, and
+incorrect navigation behavior at the 900-pixel breakpoint. CI runs the same
+suite in the `Responsive` job and makes the final `Scans` job depend on it.
+
+Follow `docs/responsive-verification.md` for the full automated contract and
+the synthetic-data-only manual viewport, orientation, and zoom checks.
+
 ### Browser workflow
 
 ```powershell
 .\scripts\run-browser-checks.ps1
 .\scripts\run-browser-checks.ps1 -InstallBrowsers
+.\scripts\run-browser-checks.ps1 -TestPath e2e/accessibility.spec.ts
+.\scripts\run-browser-checks.ps1 -TestPath e2e/responsive.spec.ts
 ```
 
 The browser smoke test starts Spring Boot and Vite together against a unique
@@ -245,51 +283,51 @@ against the source map and executable sources before posting or changing docs.
 
 ## Mutation and External-Dependency Matrix
 
-| Command                             | Local writes                                                              | Database writes                                    | Network/credentials                          |
-| ----------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------- |
-| `check-environment.ps1`             | None                                                                      | None                                               | None                                         |
-| `bootstrap-local.ps1`               | Dependency directories/hooks                                              | Only with `-IncludePostgres`                       | Package installation may need network        |
-| `verify-local.ps1`                  | Build, test, and coverage output                                      | Creates and drops isolated test schemas            | Local database credentials; Maven may need network |
-| `inspect-postgres.ps1`              | None                                                                      | Explicit read-only transactions                    | Local database credentials                   |
-| `export-financial-snapshot.ps1`     | Writes the requested export file outside the repository by default        | Creates and revokes a temporary account session    | Account credential and selected workspace    |
-| `import-financial-snapshot.ps1`     | None                                                                      | Replaces the saved snapshot; creates/revokes session | Account credential and selected workspace  |
-| `run-browser-checks.ps1`            | Playwright reports/traces in ignored paths                                | None                                               | May install browser binaries with flag       |
-| `run-security-checks.ps1`           | Tool caches/reporting side effects                                        | None                                               | Network and Snyk token                       |
-| `write-coverage-summary.ps1`        | Optional GitHub job summary output                                        | None                                               | None                                         |
-| `check-documentation-drift.ps1`     | Optional GitHub job summary output                                        | None                                               | None                                         |
-| `triage-dependency-updates.ps1`     | Optional GitHub job summary output                                        | None                                               | None                                         |
-| `generate-engineering-status.ps1`   | Optional GitHub job summary output                                        | None                                               | None                                         |
-| `setup-local-postgres.ps1`          | None                                                                      | Creates/updates role/database and invokes Flyway   | PostgreSQL administrator credential          |
-| `migrate-postgres.ps1`              | Maven output/cache                                                        | Applies and validates Flyway migrations            | Application database credential              |
-| `migrate-financial-snapshot-to-workspace.ps1` | External JSON backup and API response metadata                  | Creates workspace relational snapshot/history      | Financial API credential and personal source |
-| `rollback-workspace-snapshot-migration.ps1` | Metadata-only API response                                             | Deactivates unchanged migrated snapshot             | Financial API credential and migration UUID  |
-| `setup-postgres-readonly-role.ps1`  | None                                                                      | Creates/updates read-only role and grants          | PostgreSQL administrator credential          |
-| `start-backend.ps1`                 | Logs/runtime output                                                       | Applies Flyway migrations; later app writes        | Application database credential              |
+| Command                                       | Local writes                                                       | Database writes                                      | Network/credentials                                |
+| --------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------- | -------------------------------------------------- |
+| `check-environment.ps1`                       | None                                                               | None                                                 | None                                               |
+| `bootstrap-local.ps1`                         | Dependency directories/hooks                                       | Only with `-IncludePostgres`                         | Package installation may need network              |
+| `verify-local.ps1`                            | Build, test, and coverage output                                   | Creates and drops isolated test schemas              | Local database credentials; Maven may need network |
+| `inspect-postgres.ps1`                        | None                                                               | Explicit read-only transactions                      | Local database credentials                         |
+| `export-financial-snapshot.ps1`               | Writes the requested export file outside the repository by default | Creates and revokes a temporary account session      | Account credential and selected workspace          |
+| `import-financial-snapshot.ps1`               | None                                                               | Replaces the saved snapshot; creates/revokes session | Account credential and selected workspace          |
+| `run-browser-checks.ps1`                      | Playwright reports/traces in ignored paths                         | None                                                 | May install browser binaries with flag             |
+| `run-security-checks.ps1`                     | Tool caches/reporting side effects                                 | None                                                 | Network and Snyk token                             |
+| `write-coverage-summary.ps1`                  | Optional GitHub job summary output                                 | None                                                 | None                                               |
+| `check-documentation-drift.ps1`               | Optional GitHub job summary output                                 | None                                                 | None                                               |
+| `triage-dependency-updates.ps1`               | Optional GitHub job summary output                                 | None                                                 | None                                               |
+| `generate-engineering-status.ps1`             | Optional GitHub job summary output                                 | None                                                 | None                                               |
+| `setup-local-postgres.ps1`                    | None                                                               | Creates/updates role/database and invokes Flyway     | PostgreSQL administrator credential                |
+| `migrate-postgres.ps1`                        | Maven output/cache                                                 | Applies and validates Flyway migrations              | Application database credential                    |
+| `migrate-financial-snapshot-to-workspace.ps1` | External JSON backup and API response metadata                     | Creates workspace relational snapshot/history        | Financial API credential and personal source       |
+| `rollback-workspace-snapshot-migration.ps1`   | Metadata-only API response                                         | Deactivates unchanged migrated snapshot              | Financial API credential and migration UUID        |
+| `setup-postgres-readonly-role.ps1`            | None                                                               | Creates/updates read-only role and grants            | PostgreSQL administrator credential                |
+| `start-backend.ps1`                           | Logs/runtime output                                                | Applies Flyway migrations; later app writes          | Application database credential                    |
 
 Do not run mutating or credentialed checks solely to make a checklist look
 complete. Explain why they were required and what target they used.
 
 ## CI Mapping
 
-| GitHub job           | Local equivalent                     | Hosted-only concern                                                       |
-| -------------------- | ------------------------------------ | ------------------------------------------------------------------------- |
-| Code Coverage        | Frontend test with `--coverage`      | Artifact upload                                                           |
-| Code Quality         | Frontend lint                        | Linux runner behavior                                                     |
-| Spell Check          | Root spell command                   | Clean checkout/install                                                    |
-| Type Check           | Frontend typecheck                   | Clean checkout/install                                                    |
-| Build & Test Backend | Formatting plus Maven `clean verify` | Linux/JDK action/cache                                                    |
+| GitHub job             | Local equivalent                     | Hosted-only concern                                                       |
+| ---------------------- | ------------------------------------ | ------------------------------------------------------------------------- |
+| Code Coverage          | Frontend test with `--coverage`      | Artifact upload                                                           |
+| Code Quality           | Frontend lint                        | Linux runner behavior                                                     |
+| Spell Check            | Root spell command                   | Clean checkout/install                                                    |
+| Type Check             | Frontend typecheck                   | Clean checkout/install                                                    |
+| Build & Test Backend   | Formatting plus Maven `clean verify` | Linux/JDK action/cache                                                    |
 | PostgreSQL Integration | Maven `postgres-integration` profile | Ephemeral PostgreSQL service container and Linux/JDK action/cache         |
-| Build Frontend       | Frontend build                       | Linux/Node action/cache                                                   |
-| Coverage Summary     | Coverage summary script              | Artifact download and GitHub job summary                                  |
-| Scans                | Security script                      | Repository secret, Dependabot secret restrictions, and hosted Snyk access |
-| Copilot Review       | No local equivalent                  | Copilot policy, budget, and reviewer API                                  |
-| PR Summary Packet    | No local equivalent                  | Pull request event and job summary                                        |
-| CI Failure Summary   | No local equivalent                  | Workflow-run event and Actions metadata                                   |
-| Issue Forms          | No local equivalent                  | GitHub issue form rendering                                               |
-| Documentation Drift  | Documentation drift script           | Pull request diff and job summary                                         |
-| Dependency Triage    | Dependency triage script             | Dependabot and pull request metadata                                      |
-| Weekly Maintenance   | Engineering status script            | Schedule actor, audits, recent CI runs                                    |
-| Deploy               | No real local equivalent             | Manual placeholder only                                                   |
+| Build Frontend         | Frontend build                       | Linux/Node action/cache                                                   |
+| Coverage Summary       | Coverage summary script              | Artifact download and GitHub job summary                                  |
+| Scans                  | Security script                      | Repository secret, Dependabot secret restrictions, and hosted Snyk access |
+| Copilot Review         | No local equivalent                  | Copilot policy, budget, and reviewer API                                  |
+| PR Summary Packet      | No local equivalent                  | Pull request event and job summary                                        |
+| CI Failure Summary     | No local equivalent                  | Workflow-run event and Actions metadata                                   |
+| Issue Forms            | No local equivalent                  | GitHub issue form rendering                                               |
+| Documentation Drift    | Documentation drift script           | Pull request diff and job summary                                         |
+| Dependency Triage      | Dependency triage script             | Dependabot and pull request metadata                                      |
+| Weekly Maintenance     | Engineering status script            | Schedule actor, audits, recent CI runs                                    |
+| Deploy                 | No real local equivalent             | Manual placeholder only                                                   |
 
 CI runs the same `postgres-integration` Maven profile as the default local gate.
 The downstream `Scans` job depends on the PostgreSQL job, so hosted checks do

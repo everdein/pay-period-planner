@@ -120,8 +120,11 @@ JSON/CSV/XLSX backup formats after JSON runtime persistence is retired.
       financial workflows, including a grouped compact-viewport section menu.
 - [x] Complete clear empty, loading, success, conflict, and error states,
       including explicit collection empties and deliberate stale-draft reload.
-- [ ] Expand accessibility automation and manual assistive-technology checks.
-- [ ] Complete responsive and mobile behavior across financial workflows.
+- [x] Expand accessibility automation and establish repeatable manual
+      assistive-technology checks.
+- [x] Complete responsive and mobile behavior across financial workflows.
+
+Phase F is complete.
 
 ## Phase G - Complete Production Operations
 
@@ -142,9 +145,9 @@ JSON/CSV/XLSX backup formats after JSON runtime persistence is retired.
 
 Next highest-value items:
 
-1. Improve product UX and accessibility, including onboarding, workflow states,
-   responsive behavior, and assistive-technology coverage.
-2. Complete hosting, telemetry,
-   backups, retention, and incident recovery.
-3. Add planning and reporting features only after the PostgreSQL-only runtime
-   and operational recovery path are authoritative.
+1. Select hosting and telemetry providers with approved privacy and retention
+   policies.
+2. Export safe operational signals and establish deployment health, rollback,
+   and alerting.
+3. Automate backups and prove recovery through documented restore drills before
+   prioritizing new financial-product features.

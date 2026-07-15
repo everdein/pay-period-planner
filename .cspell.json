@@ -31,6 +31,8 @@
     "TSX",
     "Vite",
     "Vitest",
+    "WCAG",
+    "viewports",
     "worktree"
   ],
   "ignorePaths": [
