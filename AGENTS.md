@@ -1,4 +1,4 @@
-# End-to-End App Agent Guide
+# Pay Period Planner Agent Guide
 
 ## Scope
 
@@ -67,10 +67,15 @@ Use `docs/architecture-map.md` for runtime boundaries, data flow, and
 change-routing guidance. Use `docs/domain-glossary.md` for project-specific
 financial, application-state, and persistence terminology. Use
 `docs/api-contract.md` for HTTP methods, payloads, derived fields, and errors.
+Use `docs/README.md` for canonical documentation ownership and the approved
+public portfolio corpus. Validate `docs/public-corpus.json` before adding files
+to portfolio retrieval or chatbot ingestion.
 Use `docs/database-storage-guide.md` for storage, database roles,
 migrations, inspection, backup, and recovery boundaries.
 Use `docs/verification-matrix.md` to choose targeted and completion checks by
 change surface.
+Use `docs/engineering-evidence.md` for the latest portfolio-facing test,
+coverage, browser, accessibility, and security results and their limitations.
 Use `docs/accessibility-verification.md` for automated WCAG browser audits,
 manual screen-reader and keyboard checks, and safe accessibility evidence.
 Use `docs/responsive-verification.md` for supported viewport behavior,
@@ -151,9 +156,11 @@ From the repository root:
 .\scripts\rollback-workspace-snapshot-migration.ps1 -MigrationId <uuid> -ConfirmRollback
 .\scripts\setup-postgres-readonly-role.ps1
 .\scripts\run-browser-checks.ps1
+.\scripts\capture-portfolio-evidence.ps1
 .\scripts\export-financial-snapshot.ps1 -OutputPath <outside-repo-path.json>
 .\scripts\restore-financial-snapshot.ps1 -InputPath <outside-repo-path.json> -ConfirmRestore
 .\scripts\write-coverage-summary.ps1
+.\scripts\check-public-corpus.ps1
 .\scripts\check-documentation-drift.ps1
 .\scripts\triage-dependency-updates.ps1
 .\scripts\generate-engineering-status.ps1

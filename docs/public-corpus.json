@@ -1,0 +1,437 @@
+{
+  "schemaVersion": 1,
+  "defaultPolicy": "deny",
+  "description": "Exact files approved for Pay Period Planner portfolio retrieval and citation.",
+  "entries": [
+    {
+      "path": "README.md",
+      "kind": "document",
+      "reason": "Product entry point, engineering story, tradeoffs, and boundaries."
+    },
+    {
+      "path": "docs/README.md",
+      "kind": "document",
+      "reason": "Canonical documentation map and corpus policy."
+    },
+    {
+      "path": "docs/portfolio-case-study.md",
+      "kind": "document",
+      "reason": "Synthetic walkthrough, architecture summary, and STAR narrative."
+    },
+    {
+      "path": "docs/architecture-map.md",
+      "kind": "document",
+      "reason": "Current runtime boundaries and data flow."
+    },
+    {
+      "path": "docs/domain-glossary.md",
+      "kind": "document",
+      "reason": "Canonical project terminology."
+    },
+    {
+      "path": "docs/api-contract.md",
+      "kind": "document",
+      "reason": "Current HTTP contract and compatibility rules."
+    },
+    {
+      "path": "docs/database-storage-guide.md",
+      "kind": "document",
+      "reason": "Storage, migration, backup, and ownership boundaries."
+    },
+    {
+      "path": "docs/engineering-evidence.md",
+      "kind": "document",
+      "reason": "Qualified test, coverage, browser, accessibility, and security evidence."
+    },
+    {
+      "path": "docs/verification-matrix.md",
+      "kind": "document",
+      "reason": "Canonical verification scope and command mapping."
+    },
+    {
+      "path": "docs/accessibility-verification.md",
+      "kind": "document",
+      "reason": "Automated and manual accessibility evidence protocol."
+    },
+    {
+      "path": "docs/responsive-verification.md",
+      "kind": "document",
+      "reason": "Responsive behavior contract and evidence protocol."
+    },
+    {
+      "path": "docs/observability-guide.md",
+      "kind": "document",
+      "reason": "Safe logs, metrics, request IDs, and operational boundaries."
+    },
+    {
+      "path": "docs/known-limitations.md",
+      "kind": "document",
+      "reason": "Accepted limitations, mitigations, and revisit triggers."
+    },
+    {
+      "path": "docs/production-readiness-roadmap.md",
+      "kind": "document",
+      "reason": "Completed foundations and explicit next work."
+    },
+    {
+      "path": "docs/adr/README.md",
+      "kind": "document",
+      "reason": "ADR status and supersession index."
+    },
+    {
+      "path": "docs/adr/0001-use-react-and-spring-boot-for-the-reference-app.md",
+      "kind": "document",
+      "reason": "Historical framework decision."
+    },
+    {
+      "path": "docs/adr/0002-use-file-backed-json-for-local-financial-data.md",
+      "kind": "document",
+      "reason": "Superseded prototype persistence decision."
+    },
+    {
+      "path": "docs/adr/0003-use-draft-save-workflow-for-financial-edits.md",
+      "kind": "document",
+      "reason": "Draft/save interaction decision."
+    },
+    {
+      "path": "docs/adr/0004-model-financials-as-a-single-snapshot-aggregate.md",
+      "kind": "document",
+      "reason": "Snapshot aggregate origin and later qualification."
+    },
+    {
+      "path": "docs/adr/0005-enforce-domain-invariants-with-ensure-functions.md",
+      "kind": "document",
+      "reason": "Superseded protected-record identity decision."
+    },
+    {
+      "path": "docs/adr/0006-add-backend-production-readiness-guardrails.md",
+      "kind": "document",
+      "reason": "Backend configuration guardrail decision."
+    },
+    {
+      "path": "docs/adr/0007-introduce-postgresql-for-financial-persistence.md",
+      "kind": "document",
+      "reason": "Initial PostgreSQL decision."
+    },
+    {
+      "path": "docs/adr/0008-add-snapshot-version-concurrency-control.md",
+      "kind": "document",
+      "reason": "Optimistic concurrency decision."
+    },
+    {
+      "path": "docs/adr/0009-keep-v1-normalized-tables-inactive.md",
+      "kind": "document",
+      "reason": "Inactive V1 schema decision."
+    },
+    {
+      "path": "docs/adr/0010-add-v3-relational-financial-record-path.md",
+      "kind": "document",
+      "reason": "Active relational record path decision."
+    },
+    {
+      "path": "docs/adr/0011-add-granular-postgresql-record-persistence.md",
+      "kind": "document",
+      "reason": "Relational persistence history and superseded CRUD scope."
+    },
+    {
+      "path": "docs/adr/0012-add-granular-financial-record-apis.md",
+      "kind": "document",
+      "reason": "Superseded granular API decision."
+    },
+    {
+      "path": "docs/adr/0013-add-tabular-financial-snapshot-import-export.md",
+      "kind": "document",
+      "reason": "Superseded tabular recovery decision."
+    },
+    {
+      "path": "docs/adr/0014-adopt-postgresql-only-workspace-persistence.md",
+      "kind": "document",
+      "reason": "PostgreSQL-only workspace architecture."
+    },
+    {
+      "path": "docs/adr/0015-use-flyway-as-the-single-migration-authority.md",
+      "kind": "document",
+      "reason": "Single migration authority decision."
+    },
+    {
+      "path": "docs/adr/0016-use-financial-workspace-as-the-sole-mutation-aggregate.md",
+      "kind": "document",
+      "reason": "Sole mutation aggregate decision."
+    },
+    {
+      "path": "docs/adr/0017-retire-xlsx-snapshot-import.md",
+      "kind": "document",
+      "reason": "Recovery-format subtraction history."
+    },
+    {
+      "path": "docs/adr/0018-use-json-as-the-sole-application-backup-format.md",
+      "kind": "document",
+      "reason": "Current backup-format decision."
+    },
+    {
+      "path": "docs/adr/0019-separate-current-snapshot-and-audit-persistence.md",
+      "kind": "document",
+      "reason": "Current snapshot and bounded audit separation."
+    },
+    {
+      "path": "docs/adr/0020-use-scoped-overrides-instead-of-install-time-patches.md",
+      "kind": "document",
+      "reason": "Dependency override decision."
+    },
+    {
+      "path": "docs/adr/0021-separate-financial-workspace-queries-and-commands.md",
+      "kind": "document",
+      "reason": "Application query/command boundary."
+    },
+    {
+      "path": "docs/adr/0022-isolate-current-workspace-and-http-errors.md",
+      "kind": "document",
+      "reason": "Framework-neutral workspace and error boundaries."
+    },
+    {
+      "path": "docs/adr/0023-return-the-created-workspace-snapshot.md",
+      "kind": "document",
+      "reason": "Initialization result decision."
+    },
+    {
+      "path": "docs/adr/0024-preserve-structured-frontend-api-failures.md",
+      "kind": "document",
+      "reason": "Structured frontend failure decision."
+    },
+    {
+      "path": "docs/adr/0025-use-one-canonical-frontend-financial-draft.md",
+      "kind": "document",
+      "reason": "Canonical frontend draft decision."
+    },
+    {
+      "path": "docs/adr/0026-use-versioned-record-ids-for-projection-roles.md",
+      "kind": "document",
+      "reason": "Stable projection-role identity decision."
+    },
+    {
+      "path": "docs/adr/0027-store-pay-cadence-and-planning-time-zone.md",
+      "kind": "document",
+      "reason": "Cadence and date/time-zone decision."
+    },
+    {
+      "path": "frontend/src/features/financials/financialsProjection.ts",
+      "kind": "source",
+      "reason": "Pure pay-period projection rules."
+    },
+    {
+      "path": "frontend/src/features/financials/financialsDraftReducer.ts",
+      "kind": "source",
+      "reason": "Canonical draft state and command boundary."
+    },
+    {
+      "path": "frontend/src/features/financials/useFinancialsDraftWorkspace.ts",
+      "kind": "source",
+      "reason": "Draft selectors, domain facades, and save composition."
+    },
+    {
+      "path": "frontend/src/api/client.ts",
+      "kind": "source",
+      "reason": "Session, CSRF, workspace, cancellation, and structured error transport."
+    },
+    {
+      "path": "frontend/src/api/endpoints/financials.ts",
+      "kind": "source",
+      "reason": "Frontend financial API contract types and calls."
+    },
+    {
+      "path": "backend/src/main/java/com/example/backend/config/ApiSecurityConfig.java",
+      "kind": "source",
+      "reason": "HTTP authorization and CSRF boundaries."
+    },
+    {
+      "path": "backend/src/main/java/com/example/backend/config/AuthenticatedRequestWorkspace.java",
+      "kind": "source",
+      "reason": "Database-derived request workspace selection."
+    },
+    {
+      "path": "backend/src/main/java/com/example/backend/service/AccountSessionService.java",
+      "kind": "source",
+      "reason": "Account, workspace, credential, and session orchestration."
+    },
+    {
+      "path": "backend/src/main/java/com/example/backend/service/FinancialWorkspaceQueryService.java",
+      "kind": "source",
+      "reason": "Current snapshot, audit, and backup query boundary."
+    },
+    {
+      "path": "backend/src/main/java/com/example/backend/service/FinancialWorkspaceCommandService.java",
+      "kind": "source",
+      "reason": "Versioned save and restore command boundary."
+    },
+    {
+      "path": "backend/src/main/java/com/example/backend/service/FinancialSnapshotCalculator.java",
+      "kind": "source",
+      "reason": "Backend financial calculations."
+    },
+    {
+      "path": "backend/src/main/java/com/example/backend/service/WorkspaceSnapshotMigrationService.java",
+      "kind": "source",
+      "reason": "Explicit legacy migration, verification, and rollback policy."
+    },
+    {
+      "path": "backend/src/main/java/com/example/backend/repository/PostgresFinancialRecordSnapshotAdapter.java",
+      "kind": "source",
+      "reason": "Workspace-scoped relational persistence and optimistic replacement."
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V5__create_identity_workspace_session_schema.sql",
+      "kind": "source",
+      "reason": "Identity, workspace, membership, and session schema."
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V6__scope_financial_record_snapshots_to_workspace.sql",
+      "kind": "source",
+      "reason": "Workspace ownership constraints."
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V7__add_workspace_snapshot_migration_history.sql",
+      "kind": "source",
+      "reason": "Migration verification and rollback history schema."
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V8__add_financial_projection_roles.sql",
+      "kind": "source",
+      "reason": "Stable projection-role schema."
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V9__add_financial_planning_settings.sql",
+      "kind": "source",
+      "reason": "Pay cadence and planning time-zone schema."
+    },
+    {
+      "path": "frontend/src/features/financials/financialsProjection.test.ts",
+      "kind": "test",
+      "reason": "Projection and financial/date edge cases."
+    },
+    {
+      "path": "frontend/src/features/financials/financialsDraftReducer.test.ts",
+      "kind": "test",
+      "reason": "Canonical draft commands, revisions, and synchronization."
+    },
+    {
+      "path": "frontend/src/features/financials/useFinancialsDraftWorkspace.test.tsx",
+      "kind": "test",
+      "reason": "Draft facade and save composition behavior."
+    },
+    {
+      "path": "frontend/src/api/client.test.ts",
+      "kind": "test",
+      "reason": "HTTP, workspace, cancellation, and error behavior."
+    },
+    {
+      "path": "frontend/src/api/auth.test.ts",
+      "kind": "test",
+      "reason": "Session and CSRF behavior."
+    },
+    {
+      "path": "frontend/e2e/financials-smoke.spec.ts",
+      "kind": "test",
+      "reason": "Live account, workspace, save, reload, isolation, and conflict workflow."
+    },
+    {
+      "path": "frontend/e2e/accessibility.spec.ts",
+      "kind": "test",
+      "reason": "Automated WCAG and focus evidence."
+    },
+    {
+      "path": "frontend/e2e/responsive.spec.ts",
+      "kind": "test",
+      "reason": "Supported viewport and containment evidence."
+    },
+    {
+      "path": "backend/src/test/java/com/example/backend/service/FinancialWorkspaceServicesTests.java",
+      "kind": "test",
+      "reason": "Workspace query/command and calculation boundaries."
+    },
+    {
+      "path": "backend/src/test/java/com/example/backend/service/AccountSessionServiceIT.java",
+      "kind": "test",
+      "reason": "PostgreSQL account, session, and membership integration."
+    },
+    {
+      "path": "backend/src/test/java/com/example/backend/migration/PostgresIdentitySchemaIT.java",
+      "kind": "test",
+      "reason": "Identity and membership schema constraints."
+    },
+    {
+      "path": "backend/src/test/java/com/example/backend/repository/PostgresFinancialRecordSnapshotAdapterIT.java",
+      "kind": "test",
+      "reason": "Relational persistence, batching, audit, and version integration."
+    },
+    {
+      "path": "backend/src/test/java/com/example/backend/api/WorkspaceFinancialRuntimeApiIT.java",
+      "kind": "test",
+      "reason": "Authenticated workspace runtime and cross-user isolation."
+    },
+    {
+      "path": "backend/src/test/java/com/example/backend/api/WorkspaceSnapshotMigrationApiIT.java",
+      "kind": "test",
+      "reason": "Legacy migration, verification, ownership, and rollback integration."
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "kind": "workflow",
+      "reason": "Hosted build, test, PostgreSQL, browser, coverage, and Snyk gates."
+    },
+    {
+      "path": ".github/workflows/codeql.yml",
+      "kind": "workflow",
+      "reason": "Hosted Java and JavaScript/TypeScript static analysis."
+    },
+    {
+      "path": ".github/workflows/dependency-review.yml",
+      "kind": "workflow",
+      "reason": "Pull-request dependency vulnerability gate."
+    },
+    {
+      "path": "scripts/verify-local.ps1",
+      "kind": "workflow",
+      "reason": "Canonical local completion gate."
+    },
+    {
+      "path": "scripts/run-browser-checks.ps1",
+      "kind": "workflow",
+      "reason": "Isolated live browser workflow."
+    },
+    {
+      "path": "scripts/run-security-checks.ps1",
+      "kind": "workflow",
+      "reason": "Authenticated npm and Snyk dependency gate."
+    }
+  ],
+  "excludedPatterns": [
+    {
+      "pattern": "**/.env*",
+      "reason": "Secrets and environment-specific configuration."
+    },
+    {
+      "pattern": "backend/data/**",
+      "reason": "Financial fixtures and possible ignored personal migration sources."
+    },
+    {
+      "pattern": "**/package-lock.json",
+      "reason": "Dependency resolution data with low portfolio explanation value."
+    },
+    {
+      "pattern": "frontend/coverage/**, backend/target/**, frontend/dist/**",
+      "reason": "Generated reports and build output."
+    },
+    {
+      "pattern": ".agents/**, .codex/**, AGENTS.md",
+      "reason": "Repository agent policy rather than application evidence."
+    },
+    {
+      "pattern": "docs/images/**, **/test-results/**",
+      "reason": "Binary or generated evidence; use its approved narrative instead."
+    },
+    {
+      "pattern": "local database contents, exports, logs, traces, and screenshots",
+      "reason": "May contain personal financial data and must never be ingested."
+    }
+  ]
+}

@@ -1,20 +1,17 @@
-# Frontend (React + TypeScript + Redux Toolkit)
+# Pay Period Planner Web
 
-Modern React frontend application built with Vite and TypeScript.
+React and TypeScript client for the Pay Period Planner household cash-flow
+workspace. It owns account access, workspace selection, canonical draft state,
+pay-period projections, and the accessible responsive planning experience.
 
-This frontend is intentionally designed as a lightweight reference application
-focused on:
+The frontend demonstrates:
 
-- frontend/backend communication
-- modern React architecture
-- Redux Toolkit patterns
-- TypeScript strictness
-- draft/save user workflows
-- testing and quality tooling
-- developer experience
-
-The goal is not production complexity, but establishing clean frontend
-engineering patterns that can scale over time.
+- explicit API boundaries and structured request failures
+- Redux Toolkit session and server-snapshot state
+- one reducer-owned financial draft with domain-focused hook facades
+- optimistic save, stale-response, conflict, and in-flight edit handling
+- pure cadence, date, and projection calculations with focused tests
+- live-backend Playwright, WCAG, keyboard, and responsive verification
 
 ---
 
@@ -328,6 +325,21 @@ drops the schema after the run. Using only the committed synthetic example, the
 browser creates two accounts and distinct workspaces, proves cross-user
 isolation, edits and saves a monthly withdrawal, recovers the first account,
 confirms a delete modal, saves again, and verifies the removal after reload.
+
+### Capture portfolio evidence
+
+Run the dedicated capture from the repository root:
+
+```powershell
+.\scripts\capture-portfolio-evidence.ps1
+```
+
+This separate Playwright configuration starts the app on ports `3001` and
+`18081`, loads only `backend/data/financials.example.json` into an isolated
+schema, and writes the approved desktop and mobile PNG files under
+`docs/images/portfolio`. It is not part of the normal browser or CI suite, so
+verification never rewrites committed visual evidence accidentally. See
+`../docs/portfolio-case-study.md` for the walkthrough and data-safety boundary.
 
 ### Run tests in watch mode
 

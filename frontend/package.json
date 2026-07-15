@@ -1,9 +1,10 @@
 {
-  "name": "frontend",
+  "name": "pay-period-planner-web",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "capture:portfolio": "playwright test --config playwright.portfolio.config.ts",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest run",

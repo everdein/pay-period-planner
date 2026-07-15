@@ -129,7 +129,7 @@ export default function FinancialsPage({
       <header className="app-header">
         <div>
           <p className="eyebrow">Household planning</p>
-          <h1>Financials</h1>
+          <h1>Pay Period Planner</h1>
         </div>
         <div className="header-actions">
           {snapshot && (

@@ -11,11 +11,11 @@
         <relativePath></relativePath>
     </parent>
 
-    <groupId>com.example</groupId>
-    <artifactId>backend</artifactId>
+    <groupId>com.everdein</groupId>
+    <artifactId>pay-period-planner-api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>backend</name>
-    <description>Demo project for Spring Boot</description>
+    <name>Pay Period Planner API</name>
+    <description>Authenticated household cash-flow planning API backed by PostgreSQL</description>
 
     <properties>
         <java.version>21</java.version>

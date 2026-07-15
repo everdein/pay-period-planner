@@ -44,11 +44,11 @@ describe('accountSessionService', () => {
     expect(mockHttpGet).toHaveBeenCalledWith('/api/v1/auth/session', {
       notifyUnauthorized: false,
     });
-    expect(sessionStorage.getItem('end-to-end-app.auth.workspaceId')).toBe('11');
+    expect(sessionStorage.getItem('pay-period-planner.auth.workspaceId')).toBe('11');
   });
 
   it('restores a valid workspace preference and rejects an unavailable selection', async () => {
-    sessionStorage.setItem('end-to-end-app.auth.workspaceId', '12');
+    sessionStorage.setItem('pay-period-planner.auth.workspaceId', '12');
     mockHttpGet.mockResolvedValue(account);
     const activeSession = await accountSessionService.recover();
 
@@ -58,14 +58,24 @@ describe('accountSessionService', () => {
     );
   });
 
+  it('migrates the pre-product-name workspace preference', async () => {
+    sessionStorage.setItem('end-to-end-app.auth.workspaceId', '12');
+    mockHttpGet.mockResolvedValue(account);
+
+    await expect(accountSessionService.recover()).resolves.toEqual({ account, workspaceId: 12 });
+
+    expect(sessionStorage.getItem('pay-period-planner.auth.workspaceId')).toBe('12');
+    expect(sessionStorage.getItem('end-to-end-app.auth.workspaceId')).toBeNull();
+  });
+
   it('revokes the server session and clears local transport state', async () => {
-    sessionStorage.setItem('end-to-end-app.auth.workspaceId', '11');
+    sessionStorage.setItem('pay-period-planner.auth.workspaceId', '11');
     mockHttpPostVoid.mockResolvedValue(undefined);
 
     await accountSessionService.signOut();
 
     expect(mockHttpPostVoid).toHaveBeenCalledWith('/api/v1/auth/signout');
-    expect(sessionStorage.getItem('end-to-end-app.auth.workspaceId')).toBeNull();
+    expect(sessionStorage.getItem('pay-period-planner.auth.workspaceId')).toBeNull();
     expect(mockClearApiSessionContext).toHaveBeenCalled();
   });
 });

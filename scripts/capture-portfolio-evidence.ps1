@@ -1,16 +1,13 @@
 param(
     [switch]$InstallBrowsers,
-    [switch]$Headed,
-    [string]$Project = "chromium",
-    [string]$TestPath = "",
     [string]$DatabaseHost = "localhost",
     [int]$DatabasePort = 5432,
     [string]$DatabaseName = "financial_app",
     [string]$DatabaseUsername = "financial_app_user",
     [string]$DatabasePassword = "financial_app_password",
     [string]$PostgresVersion = "18",
-    [int]$BackendPort = 18080,
-    [int]$FrontendPort = 3000
+    [int]$BackendPort = 18081,
+    [int]$FrontendPort = 3001
 )
 
 Set-StrictMode -Version Latest
@@ -52,7 +49,7 @@ $testSchema = $null
 $psqlPath = $null
 Push-Location $repoRoot
 try {
-    $testSchema = "financials_browser_" + [Guid]::NewGuid().ToString("N")
+    $testSchema = "financials_portfolio_" + [Guid]::NewGuid().ToString("N")
     $psqlPath = Resolve-PsqlPath
     $env:BROWSER_TEST_SCHEMA = $testSchema
     $env:BROWSER_TEST_DATABASE_URL =
@@ -63,7 +60,7 @@ try {
     $env:DATABASE_PASSWORD = $DatabasePassword
     $env:PGPASSWORD = $DatabasePassword
 
-    Write-Host "Browser test schema: $testSchema" -ForegroundColor Gray
+    Write-Host "Portfolio capture schema: $testSchema" -ForegroundColor Gray
 
     if ($InstallBrowsers) {
         Invoke-Step "Install Playwright Chromium browser" {
@@ -71,28 +68,19 @@ try {
         }
     }
 
-    $playwrightArgs = @()
-    if (-not [string]::IsNullOrWhiteSpace($TestPath)) {
-        $playwrightArgs += $TestPath
-    }
-    $playwrightArgs += @("--project", $Project)
-    if ($Headed) {
-        $playwrightArgs += "--headed"
-    }
-
-    Invoke-Step "Run Playwright browser checks" {
-        npm --prefix frontend run test:e2e -- @playwrightArgs
+    Invoke-Step "Capture synthetic portfolio evidence" {
+        npm --prefix frontend run capture:portfolio
     }
 }
 finally {
     $cleanupFailure = $null
     if ($null -ne $psqlPath -and $null -ne $testSchema) {
         Write-Host ""
-        Write-Host "Remove isolated browser test schema" -ForegroundColor Cyan
+        Write-Host "Remove isolated portfolio capture schema" -ForegroundColor Cyan
         & $psqlPath -h $DatabaseHost -p $DatabasePort -U $DatabaseUsername -d $DatabaseName `
             -v ON_ERROR_STOP=1 -c "drop schema if exists $testSchema cascade;"
         if ($LASTEXITCODE -ne 0) {
-            $cleanupFailure = "Browser test schema cleanup failed with exit code $LASTEXITCODE."
+            $cleanupFailure = "Portfolio capture schema cleanup failed with exit code $LASTEXITCODE."
         }
     }
     Pop-Location
@@ -102,5 +90,5 @@ finally {
 }
 
 Write-Host ""
-Write-Host "Browser workflow checks passed." -ForegroundColor Green
+Write-Host "Synthetic portfolio evidence captured in docs/images/portfolio." -ForegroundColor Green
 exit 0

@@ -282,8 +282,8 @@ describe('App', () => {
       })
     );
 
-    expect(await screen.findByRole('heading', { name: /financials/i })).toBeInTheDocument();
     expect(await screen.findByText('alex@example.com')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Pay Period Planner' })).toBeInTheDocument();
   });
 
   it('creates an account and validates password confirmation', async () => {
@@ -368,7 +368,7 @@ describe('App', () => {
   it('renders the monthly expenses feature', async () => {
     await renderAuthenticatedApp();
 
-    expect(screen.getByRole('heading', { name: /financials/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Pay Period Planner' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /monthly withdrawals/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Projection' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /annual withdrawals/i })).toBeInTheDocument();

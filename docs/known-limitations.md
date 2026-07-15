@@ -142,18 +142,18 @@ changes in a new ADR.
   migration source, so operators must distinguish it from active relational
   workspace data.
 - **Current mitigation:** PostgreSQL runtime reads and writes only
-  V3/V4/V6/V7/V8/V9 `financial_record_*` rows. Inspection and migration documentation
-  label V2 JSONB as legacy, and the operator workflow leaves it untouched for
-  recovery evidence.
-- **Revisit when:** Reporting, granular concurrency, audit history, relational
-  integrity, or large snapshots are needed. Use ADR 0010 and ADR 0011's
-  V3/V4/V6/V7/V8/V9 relational path, not the inactive V1 tables as-is.
+  V3/V4/V6/V7/V8/V9 `financial_record_*` rows. Inspection and migration
+  documentation label V2 JSONB as legacy, and the operator workflow leaves it
+  untouched for recovery evidence.
 - **Remaining migration boundary:** V6 preserves any preexisting unowned
   relational snapshot without silently assigning it. New and changed rows must
-  have a workspace; the explicit ownership migration must backfill legacy rows,
-  validate the workspace constraint, and remove its transitional unowned index.
-- **Planned resolution:** Remove the legacy JSONB adapter and eventually archive
-  the V2 source table only after migration and restore evidence passes.
+  have a workspace; any preexisting unowned rows require a separate,
+  owner-approved disposition rather than an inferred owner.
+- **Revisit when:** The owner confirms all personal JSON/JSONB sources are
+  migrated, independently backed up, and outside the required rollback window.
+- **Planned resolution:** Retire the operator migration controller, service, and
+  repository surface, then archive or remove the V2 source table through an
+  additive migration only after that owner gate passes.
 
 ### LIM-013 — Normalized V1 tables are inactive
 

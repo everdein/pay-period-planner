@@ -204,16 +204,18 @@ aggregate. Implement that decision before splitting the remaining services:
 
 ## Phase L - Build Portfolio Evidence
 
-- [ ] Reframe the project name, Maven metadata, and root README around the
+- [x] Reframe the project name, Maven metadata, and root README around the
       problem, intended users, solution, architecture, tradeoffs, and verified
       behavior rather than a generic reference application.
-- [ ] Create synthetic screenshots or a short walkthrough, a concise
+- [x] Create synthetic screenshots or a short walkthrough, a concise
       architecture diagram, and a STAR case study that explains the migration
       from local JSON to authenticated PostgreSQL workspaces.
-- [ ] Report unit coverage, PostgreSQL integration coverage, browser coverage,
+- [x] Report unit coverage, PostgreSQL integration coverage, browser coverage,
       accessibility evidence, and security gates with clear qualifications.
-- [ ] Audit and consolidate documentation so ADRs, architecture maps, selected
+- [x] Audit and consolidate documentation so ADRs, architecture maps, selected
       source, and test narratives form a trustworthy public corpus.
+
+Phase L is complete.
 
 ## Phase M - Deploy a Portfolio-Grade Demo
 
@@ -246,5 +248,5 @@ Next highest-value items:
 1. Confirm whether personal legacy JSON/JSONB sources are migrated,
    independently backed up, and outside the rollback window before retiring
    migration administration.
-2. Remove institution-specific and personal assumptions from product copy
-   while retaining the household cash-flow planning boundary.
+2. Decide when to begin Phase M provider and deployment-boundary evaluation;
+   keep the application local-first until those decisions are approved.

@@ -48,6 +48,7 @@ try {
         "scripts/check-environment.ps1",
         "scripts/verify-local.ps1",
         "scripts/run-security-checks.ps1",
+        "scripts/check-public-corpus.ps1",
         "scripts/check-documentation-drift.ps1",
         "scripts/triage-dependency-updates.ps1",
         "scripts/generate-engineering-status.ps1"
