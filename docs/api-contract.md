@@ -25,12 +25,12 @@ authentication returns `401` without a browser Basic-auth challenge.
 
 The account API is exposed under `/api/v1/auth`:
 
-| Method | Path                   | Success       | Purpose                              |
-| ------ | ---------------------- | ------------- | ------------------------------------ |
+| Method | Path                   | Success       | Purpose                               |
+| ------ | ---------------------- | ------------- | ------------------------------------- |
 | `GET`  | `/api/v1/auth/csrf`    | `200` token   | Bootstrap cookie-auth CSRF protection |
-| `POST` | `/api/v1/auth/signup`  | `201` session | Create user, workspace, and session  |
+| `POST` | `/api/v1/auth/signup`  | `201` session | Create user, workspace, and session   |
 | `POST` | `/api/v1/auth/signin`  | `200` session | Verify credentials and create session |
-| `GET`  | `/api/v1/auth/session` | `200` session | Recover the current browser session  |
+| `GET`  | `/api/v1/auth/session` | `200` session | Recover the current browser session   |
 | `POST` | `/api/v1/auth/signout` | `204` empty   | Revoke and expire the current session |
 
 Signup accepts `email`, `password`, and `displayName`; sign-in accepts `email`
@@ -59,7 +59,9 @@ one membership it is selected automatically. Accounts with multiple
 memberships send `X-Workspace-ID`; malformed or missing ambiguous selections
 return `400`, and selecting a non-membership returns `403`. A workspace without
 an explicitly created or migrated snapshot returns `404` and is never silently
-seeded from personal JSON.
+seeded from personal JSON. An authenticated member may create an empty version-1
+snapshot with `POST /api/v1/financials`; existing data still uses the explicit
+operator migration workflow.
 
 ## Workspace Migration Operations
 
@@ -68,13 +70,13 @@ The operator-only transition API is exposed under
 authentication with `FINANCIALS` authority. Account-session `WORKSPACE`
 principals receive `403` and unauthenticated requests receive `401`.
 
-| Method | Path                                                           | Confirmation | Purpose |
-| ------ | -------------------------------------------------------------- | ------------ | ------- |
-| `GET`  | `/legacy-jsonb-backup`                                         | None         | Download the effective active JSONB storage envelope |
-| `POST` | `/apply/json-file`                                             | `APPLY`      | Migrate the request JSON envelope into an empty owned workspace |
-| `POST` | `/apply/jsonb-document`                                        | `APPLY`      | Migrate the current active JSONB document into an empty owned workspace |
-| `GET`  | `/{migrationId}`                                               | None         | Read metadata-only migration verification |
-| `POST` | `/{migrationId}/rollback`                                      | `ROLLBACK`   | Deactivate an unchanged migrated snapshot |
+| Method | Path                      | Confirmation | Purpose                                                                 |
+| ------ | ------------------------- | ------------ | ----------------------------------------------------------------------- |
+| `GET`  | `/legacy-jsonb-backup`    | None         | Download the effective active JSONB storage envelope                    |
+| `POST` | `/apply/json-file`        | `APPLY`      | Migrate the request JSON envelope into an empty owned workspace         |
+| `POST` | `/apply/jsonb-document`   | `APPLY`      | Migrate the current active JSONB document into an empty owned workspace |
+| `GET`  | `/{migrationId}`          | None         | Read metadata-only migration verification                               |
+| `POST` | `/{migrationId}/rollback` | `ROLLBACK`   | Deactivate an unchanged migrated snapshot                               |
 
 Apply requests require `expectedFingerprint`, `destinationEmail`, and positive
 `workspaceId` query parameters. The fingerprint is the lowercase or uppercase
@@ -123,6 +125,7 @@ and secure session cookies.
 
 | Method   | Path                                           | Success        | Purpose                                    |
 | -------- | ---------------------------------------------- | -------------- | ------------------------------------------ |
+| `POST`   | `/api/v1/financials`                           | `201` snapshot | Create an empty workspace snapshot         |
 | `GET`    | `/api/v1/financials`                           | `200` snapshot | Load the calculated current workspace      |
 | `GET`    | `/api/v1/financials/history`                   | `200` history  | Load recent saved-change audit events      |
 | `GET`    | `/api/v1/financials/export`                    | `200` export   | Download the saved source snapshot as JSON |
@@ -158,6 +161,17 @@ The granular endpoints persist through the same aggregate store as the full
 snapshot. The current browser workspace primarily uses `GET` and full-snapshot
 `PUT`. ADR 0012 records the compatibility and concurrency tradeoffs for the
 granular record APIs.
+
+`POST /api/v1/financials` accepts `startDate` and `endDate` using the same
+shape as the pay-period endpoint. It persists version `1` with empty user
+record collections for the selected authenticated workspace and returns the
+calculated snapshot. That response includes the existing zero-value protected
+projection anchors for rent, rent reserve, and primary bi-weekly income; these
+are application structure, not imported or synthetic financial values. The
+dates are required and the end cannot precede the start. A workspace that
+already has an active snapshot returns `409 Conflict`, including concurrent
+creation attempts. This endpoint never reads example, personal JSON, or legacy
+JSONB data.
 
 Every `GET /api/v1/financials` response includes the current snapshot
 `version`. Clients must echo that value in `PUT /api/v1/financials`. If another

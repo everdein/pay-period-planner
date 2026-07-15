@@ -1,5 +1,6 @@
 package com.example.backend.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -20,12 +21,15 @@ import com.example.backend.dto.financials.FinancialAuditHistoryResponse;
 import com.example.backend.dto.financials.FinancialProjectionSummaryResponse;
 import com.example.backend.dto.financials.FinancialSnapshotExportResponse;
 import com.example.backend.dto.financials.FinancialSnapshotFileExport;
+import com.example.backend.dto.financials.PayPeriodRequest;
 import com.example.backend.service.FinancialsService;
+import com.example.backend.service.WorkspaceFinancialSnapshotInitializer;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -234,6 +238,43 @@ class FinancialsControllerTests {
   }
 
   @Test
+  void initializesAnEmptyWorkspaceSnapshotFromPayPeriodDates() throws Exception {
+    AtomicReference<PayPeriodRequest> initializedPayPeriod = new AtomicReference<>();
+    MockMvc mockMvc = mockMvc(new TestFinancialsService(), initializedPayPeriod::set);
+
+    mockMvc
+        .perform(
+            post("/api/v1/financials")
+                .contentType("application/json")
+                .content(
+                    """
+                    {
+                      "startDate": "2026-07-10",
+                      "endDate": "2026-07-23"
+                    }
+                    """))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.version").value(1));
+
+    assertThat(initializedPayPeriod.get())
+        .isEqualTo(new PayPeriodRequest(LocalDate.of(2026, 7, 10), LocalDate.of(2026, 7, 23)));
+  }
+
+  @Test
+  void rejectsSnapshotInitializationWithoutBothPayPeriodDates() throws Exception {
+    MockMvc mockMvc = mockMvc(new TestFinancialsService());
+
+    mockMvc
+        .perform(
+            post("/api/v1/financials")
+                .contentType("application/json")
+                .content("{\"startDate\":\"2026-07-10\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title").value("Invalid request"))
+        .andExpect(jsonPath("$.errors").isArray());
+  }
+
+  @Test
   void rejectsNullNestedSnapshotRecords() throws Exception {
     MockMvc mockMvc = mockMvc(new TestFinancialsService());
 
@@ -352,9 +393,16 @@ class FinancialsControllerTests {
   }
 
   private MockMvc mockMvc(FinancialsService financialsService) {
+    return mockMvc(financialsService, (payPeriod) -> {});
+  }
+
+  private MockMvc mockMvc(
+      FinancialsService financialsService,
+      WorkspaceFinancialSnapshotInitializer snapshotInitializer) {
     LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
     validator.afterPropertiesSet();
-    return MockMvcBuilders.standaloneSetup(new FinancialsController(financialsService))
+    return MockMvcBuilders.standaloneSetup(
+            new FinancialsController(financialsService, snapshotInitializer))
         .setControllerAdvice(new ApiExceptionHandler())
         .setValidator(validator)
         .build();
@@ -364,6 +412,11 @@ class FinancialsControllerTests {
 
     TestFinancialsService() {
       super(null);
+    }
+
+    @Override
+    public ExpenseSnapshotResponse getSnapshot() {
+      return emptySnapshotResponse(1);
     }
 
     @Override

@@ -38,23 +38,23 @@ the version created by each committed write.
 
 ## Ownership
 
-| Concern                             | Owner                                           |
-| ----------------------------------- | ----------------------------------------------- |
-| Domain aggregate and records        | `domain/financials/`                            |
-| Storage envelope                    | `repository/FinancialsData.java`                |
-| In-memory records and ID assignment | `repository/FinancialsRepository.java`          |
-| Adapter contract                    | `repository/FinancialsSnapshotStore.java`       |
-| PostgreSQL load/save/version update | `PostgresFinancialsSnapshotStore.java`          |
-| Relational record adapter path      | `PostgresFinancialRecordSnapshotAdapter.java`   |
-| Workspace migration orchestration   | `WorkspaceSnapshotMigrationService.java`        |
+| Concern                             | Owner                                               |
+| ----------------------------------- | --------------------------------------------------- |
+| Domain aggregate and records        | `domain/financials/`                                |
+| Storage envelope                    | `repository/FinancialsData.java`                    |
+| In-memory records and ID assignment | `repository/FinancialsRepository.java`              |
+| Adapter contract                    | `repository/FinancialsSnapshotStore.java`           |
+| PostgreSQL load/save/version update | `PostgresFinancialsSnapshotStore.java`              |
+| Relational record adapter path      | `PostgresFinancialRecordSnapshotAdapter.java`       |
+| Workspace migration orchestration   | `WorkspaceSnapshotMigrationService.java`            |
 | Migration metadata/audit storage    | `PostgresWorkspaceSnapshotMigrationRepository.java` |
-| Runtime configuration               | `application.properties`                        |
-| Schema history                      | Ordered files under `db/migration/`             |
-| Local role/database creation        | `scripts/setup-local-postgres.ps1`              |
-| Local migration execution           | `scripts/migrate-postgres.ps1`                  |
-| Read-only role creation             | `scripts/setup-postgres-readonly-role.ps1`      |
-| Read-only diagnosis                 | `scripts/inspect-postgres.ps1`                  |
-| Personal-data custody               | The local developer/operator                    |
+| Runtime configuration               | `application.properties`                            |
+| Schema history                      | Ordered files under `db/migration/`                 |
+| Local role/database creation        | `scripts/setup-local-postgres.ps1`                  |
+| Local migration execution           | `scripts/migrate-postgres.ps1`                      |
+| Read-only role creation             | `scripts/setup-postgres-readonly-role.ps1`          |
+| Read-only diagnosis                 | `scripts/inspect-postgres.ps1`                      |
+| Personal-data custody               | The local developer/operator                        |
 
 Controllers and services must not read files or issue SQL. Storage adapters
 must not calculate API totals or presentation fields.
@@ -101,7 +101,12 @@ changing the source.
 Starting the application never copies local JSON or synthetic example data.
 Signup creates identity and membership rows only. A financial request for
 a workspace without an explicitly migrated or created relational snapshot
-returns `404`.
+returns `404`. The browser can create a version-1 relational snapshot with no
+user records by posting its selected pay-period dates to
+`/api/v1/financials`; calculated responses supply the app's zero-value protected
+projection anchors. The unique active workspace constraint rejects duplicate
+and concurrent initialization. Existing data still enters through the
+explicit, backed-up migration workflow.
 
 ### Normalized V1 tables
 
@@ -321,16 +326,16 @@ mismatched, or mixed schemas.
 
 ## Safe Operations
 
-| Operation                           | Mutates data?                   | Preferred command                                |
-| ----------------------------------- | ------------------------------- | ------------------------------------------------ |
-| Check tools/configuration           | No                              | `scripts/check-environment.ps1 -IncludePostgres` |
-| Inspect schema/counts/metadata      | No                              | `scripts/inspect-postgres.ps1`                   |
-| Create role/database and migrate    | Yes                             | `scripts/setup-local-postgres.ps1`               |
-| Run pending migrations/validation   | Yes                             | `scripts/migrate-postgres.ps1`                   |
-| Back up and migrate into workspace  | Yes                             | `scripts/migrate-financial-snapshot-to-workspace.ps1` |
-| Roll back unchanged migration       | Yes                             | `scripts/rollback-workspace-snapshot-migration.ps1` |
-| Start backend                       | No financial seeding; sessions may write through APIs | `scripts/start-backend.ps1`          |
-| Run required PostgreSQL integration tests | Yes, isolated test schemas only | `scripts/verify-local.ps1`                       |
+| Operation                                 | Mutates data?                                         | Preferred command                                     |
+| ----------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------- |
+| Check tools/configuration                 | No                                                    | `scripts/check-environment.ps1 -IncludePostgres`      |
+| Inspect schema/counts/metadata            | No                                                    | `scripts/inspect-postgres.ps1`                        |
+| Create role/database and migrate          | Yes                                                   | `scripts/setup-local-postgres.ps1`                    |
+| Run pending migrations/validation         | Yes                                                   | `scripts/migrate-postgres.ps1`                        |
+| Back up and migrate into workspace        | Yes                                                   | `scripts/migrate-financial-snapshot-to-workspace.ps1` |
+| Roll back unchanged migration             | Yes                                                   | `scripts/rollback-workspace-snapshot-migration.ps1`   |
+| Start backend                             | No financial seeding; sessions may write through APIs | `scripts/start-backend.ps1`                           |
+| Run required PostgreSQL integration tests | Yes, isolated test schemas only                       | `scripts/verify-local.ps1`                            |
 
 Investigation uses explicit read-only transactions. Do not run setup,
 migrations, `ANALYZE`, DDL, DML, or destructive recovery merely to diagnose a

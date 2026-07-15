@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
+import { EmptyTableRow } from './EmptyTableRow';
 import { formatDate } from './financialsFormatters';
 import type { DraftImportantDate, ImportantDateFormState } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
@@ -58,6 +59,9 @@ export function ImportantDatesTab({
               </tr>
             </thead>
             <tbody>
+              {importantDates.length === 0 && (
+                <EmptyTableRow columns={5} message="No important dates yet." />
+              )}
               {importantDates.map((importantDate) => (
                 <tr
                   className={importantDate.status === 'next' ? 'next-important-date' : undefined}

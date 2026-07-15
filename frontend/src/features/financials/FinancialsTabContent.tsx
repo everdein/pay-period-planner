@@ -19,14 +19,16 @@ const assetCategoryKeys: Partial<Record<FinancialTab, string>> = {
 
 export function FinancialsTabContent({
   activeTab,
+  onNavigate,
   workspace,
 }: {
   activeTab: FinancialTab;
+  onNavigate: (tab: FinancialTab) => void;
   workspace: FinancialsDraftWorkspace;
 }) {
   switch (activeTab) {
     case 'overview':
-      return <Overview {...workspace.overview} />;
+      return <Overview {...workspace.overview} onNavigate={onNavigate} />;
     case 'projection':
       return <ProjectionTab projection={workspace.projection} />;
     case 'monthly-withdrawals':

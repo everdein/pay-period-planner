@@ -148,10 +148,18 @@ const mockFinancialsState = {
   saving: false,
   error: null,
 };
+const mockFinancialsError: {
+  current: null | {
+    kind: 'conflict' | 'error';
+    message: string;
+    operation: 'save';
+    status?: number;
+  };
+} = { current: null };
 
 vi.mock('./app/hooks', () => ({
   useAppDispatch: () => mockDispatch,
-  useAppSelector: vi.fn(() => mockFinancialsState),
+  useAppSelector: vi.fn(() => ({ ...mockFinancialsState, error: mockFinancialsError.current })),
 }));
 
 vi.mock('./api/auth', () => ({
@@ -193,6 +201,7 @@ describe('App', () => {
       workspaceId,
     }));
     mockGetMonthlyExpenses.mockResolvedValue(mockFinancialsState.snapshot);
+    mockFinancialsError.current = null;
   });
 
   afterEach(() => {
@@ -304,10 +313,7 @@ describe('App', () => {
     const secondWorkspaceSession = {
       account: {
         ...account,
-        workspaces: [
-          ...account.workspaces,
-          { id: 12, name: 'Household', role: 'MEMBER' },
-        ],
+        workspaces: [...account.workspaces, { id: 12, name: 'Household', role: 'MEMBER' }],
       },
       workspaceId: 11,
     };
@@ -317,7 +323,9 @@ describe('App', () => {
     fireEvent.change(screen.getByLabelText(/workspace/i), { target: { value: '12' } });
 
     expect(mockSelectWorkspace).toHaveBeenCalledWith(secondWorkspaceSession, 12);
-    expect(mockDispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'financials/resetFinancials' }));
+    expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'financials/resetFinancials' })
+    );
   });
 
   it('renders the monthly expenses feature', async () => {
@@ -325,7 +333,7 @@ describe('App', () => {
 
     expect(screen.getByRole('heading', { name: /financials/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /monthly withdrawals/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /projection/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Projection' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /annual withdrawals/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /income summary/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /income calendar/i })).toBeInTheDocument();
@@ -361,6 +369,63 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^reset$/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /add account/i })).toBeInTheDocument();
+  });
+
+  it('shows explicit empty collection states', async () => {
+    await renderAuthenticatedApp();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Investments' }));
+
+    expect(screen.getByRole('cell', { name: 'No accounts in this category yet.' })).toBeVisible();
+  });
+
+  it('keeps the draft visible and offers conflict recovery', async () => {
+    mockFinancialsError.current = {
+      kind: 'conflict',
+      message: 'HTTP 409 Conflict: Snapshot version conflict (Request ID: request-conflict)',
+      operation: 'save',
+      status: 409,
+    };
+
+    await renderAuthenticatedApp();
+
+    const alert = screen.getByRole('alert');
+    expect(within(alert).getByText('A newer snapshot is available')).toBeVisible();
+    expect(screen.getByText('Financial Overview')).toBeVisible();
+
+    fireEvent.click(within(alert).getByRole('button', { name: 'Discard Draft and Reload' }));
+
+    expect(mockDispatch).toHaveBeenCalledWith({ type: 'financials/clearFinancialsError' });
+  });
+
+  it('offers retry and dismissal after a save error', async () => {
+    mockFinancialsError.current = {
+      kind: 'error',
+      message: 'The backend is temporarily unavailable.',
+      operation: 'save',
+    };
+
+    await renderAuthenticatedApp();
+
+    const alert = screen.getByRole('alert');
+    expect(within(alert).getByText('Changes not saved')).toBeVisible();
+    expect(within(alert).getByRole('button', { name: 'Try Save Again' })).toBeVisible();
+
+    fireEvent.click(within(alert).getByRole('button', { name: 'Dismiss' }));
+
+    expect(mockDispatch).toHaveBeenCalledWith({ type: 'financials/clearFinancialsError' });
+  });
+
+  it('opens financial workflows from the overview dashboard', async () => {
+    await renderAuthenticatedApp();
+
+    fireEvent.click(screen.getByRole('button', { name: /open income workflow/i }));
+    expect(screen.getByRole('heading', { name: /income summary/i })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('combobox', { name: /financial section/i }), {
+      target: { value: 'important-dates' },
+    });
+    expect(screen.getByRole('heading', { name: /important dates/i })).toBeInTheDocument();
   });
 
   it('edits an asset account and recalculates its draft total', async () => {
@@ -420,7 +485,7 @@ describe('App', () => {
   it('renders pay period projection tab', async () => {
     await renderAuthenticatedApp();
 
-    fireEvent.click(screen.getByRole('button', { name: /projection/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Projection' }));
 
     expect(screen.getByRole('heading', { name: /next paycheck projection/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /next pay period/i })).toBeInTheDocument();

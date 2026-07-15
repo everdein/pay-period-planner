@@ -68,6 +68,12 @@ public class FinancialsService {
   private static final String RENT_RESERVE_ACCOUNT_NAME = "Rent Reserve";
   private static final String PRIMARY_PAYCHECK_CATEGORY = "Net Income";
   private static final String PRIMARY_PAYCHECK_INTERVAL = "Bi-Weekly";
+  private static final List<AssetCategoryDefinition> STANDARD_ASSET_CATEGORIES =
+      List.of(
+          new AssetCategoryDefinition("retirement", "Retirement"),
+          new AssetCategoryDefinition("investments", "Investments"),
+          new AssetCategoryDefinition("cash-savings", "Cash & Savings"),
+          new AssetCategoryDefinition("insurance-benefits", "Insurance / Benefits"));
   private static final FinancialSnapshotTabularCodec TABULAR_CODEC =
       new FinancialSnapshotTabularCodec();
 
@@ -925,6 +931,12 @@ public class FinancialsService {
     Map<String, List<AssetAccountResponse>> accountsByCategory = new LinkedHashMap<>();
     Map<String, String> labelsByCategory = new LinkedHashMap<>();
 
+    STANDARD_ASSET_CATEGORIES.forEach(
+        (category) -> {
+          labelsByCategory.put(category.key(), category.label());
+          accountsByCategory.put(category.key(), new ArrayList<>());
+        });
+
     normalizeAssetAccounts(financialsRepository.findAllAssetAccounts())
         .forEach(
             (account) -> {
@@ -976,6 +988,8 @@ public class FinancialsService {
   private List<ImportantDateResponse> importantDates() {
     return financialsRepository.findAllImportantDates().stream().map(this::toResponse).toList();
   }
+
+  private record AssetCategoryDefinition(String key, String label) {}
 
   private AssetAccountRecordResponse toRecordResponse(AssetAccount account) {
     return new AssetAccountRecordResponse(

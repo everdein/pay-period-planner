@@ -17,6 +17,7 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -128,6 +129,10 @@ public class PostgresFinancialRecordSnapshotAdapter implements WorkspaceFinancia
         transactionOperations.execute(
             (status) -> {
               lockWorkspace(workspaceId);
+              if (activeSnapshot(workspaceId, false).isPresent()) {
+                throw new DuplicateKeyException(
+                    "The workspace already has an active financial snapshot");
+              }
               return insertSnapshot(workspaceId, snapshot);
             });
     if (snapshotId == null) {

@@ -589,6 +589,19 @@ snapshot only while its ID, version, active state, and record counts still match
 the migration record. It retains relational rows, migration history, the legacy
 source, and the external backup. It refuses rollback after target changes.
 
+### Initialize an empty financial snapshot
+
+```http
+POST /api/v1/financials
+```
+
+Accepts `startDate` and `endDate`, creates a version-1 relational snapshot with
+no user records for the authenticated workspace, and returns `201 Created` with
+the calculated response. The response supplies zero-value protected projection
+anchors; it does not import financial values. Duplicate or concurrent
+initialization returns `409 Conflict`. It never imports example, personal JSON,
+or legacy JSONB data.
+
 ### Get financial snapshot
 
 ```http

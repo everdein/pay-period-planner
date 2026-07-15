@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
+import { EmptyTableRow } from './EmptyTableRow';
 import { isRentReserveAccount, RENT_RESERVE_ACCOUNT_NAME } from './financialsAnchors';
 import { currency } from './financialsFormatters';
 import type { AssetFormState, DraftAssetAccount, DraftAssetCategory } from './financialsTypes';
@@ -47,6 +48,9 @@ export function AssetTable({
             </tr>
           </thead>
           <tbody>
+            {category.accounts.length === 0 && (
+              <EmptyTableRow columns={4} message="No accounts in this category yet." />
+            )}
             {category.accounts.map((account) => (
               <tr key={account.id}>
                 <td>{account.account}</td>

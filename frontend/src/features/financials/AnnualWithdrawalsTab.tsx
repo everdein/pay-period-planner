@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
+import { EmptyTableRow } from './EmptyTableRow';
 import { currency, formatDate } from './financialsFormatters';
 import type { AnnualWithdrawalFormState, DraftAnnualWithdrawal } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
@@ -81,6 +82,9 @@ export function AnnualWithdrawalsTab({
               </tr>
             </thead>
             <tbody>
+              {annualWithdrawals.length === 0 && (
+                <EmptyTableRow columns={6} message="No annual withdrawals yet." />
+              )}
               {annualWithdrawals.map((withdrawal) => (
                 <tr
                   className={withdrawal.inPayPeriod ? 'in-period' : undefined}

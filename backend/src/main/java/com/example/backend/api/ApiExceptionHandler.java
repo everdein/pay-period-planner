@@ -5,6 +5,7 @@ import com.example.backend.service.AccountAuthenticationException;
 import com.example.backend.service.AccountConflictException;
 import com.example.backend.service.AccountRequestException;
 import com.example.backend.service.WorkspaceAccessDeniedException;
+import com.example.backend.service.WorkspaceFinancialSnapshotConflictException;
 import com.example.backend.service.WorkspaceFinancialSnapshotNotFoundException;
 import com.example.backend.service.WorkspaceMigrationConflictException;
 import com.example.backend.service.WorkspaceMigrationNotFoundException;
@@ -58,6 +59,15 @@ public class ApiExceptionHandler {
     ProblemDetail problemDetail =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
     problemDetail.setTitle("Financial snapshot not found");
+    return withRequestId(problemDetail);
+  }
+
+  @ExceptionHandler(WorkspaceFinancialSnapshotConflictException.class)
+  public ProblemDetail handleWorkspaceFinancialSnapshotConflict(
+      WorkspaceFinancialSnapshotConflictException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    problemDetail.setTitle("Financial snapshot already exists");
     return withRequestId(problemDetail);
   }
 

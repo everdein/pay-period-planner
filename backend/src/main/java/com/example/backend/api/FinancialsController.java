@@ -21,6 +21,7 @@ import com.example.backend.dto.financials.IncomeSummaryItemRequest;
 import com.example.backend.dto.financials.IncomeSummaryItemResponse;
 import com.example.backend.dto.financials.PayPeriodRequest;
 import com.example.backend.service.FinancialsService;
+import com.example.backend.service.WorkspaceFinancialSnapshotInitializer;
 import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import org.springframework.http.CacheControl;
@@ -65,9 +66,21 @@ public class FinancialsController {
   private static final MediaType XLSX_MEDIA_TYPE = MediaType.parseMediaType(XLSX_MEDIA_TYPE_VALUE);
 
   private final FinancialsService financialsService;
+  private final WorkspaceFinancialSnapshotInitializer snapshotInitializer;
 
-  public FinancialsController(FinancialsService financialsService) {
+  public FinancialsController(
+      FinancialsService financialsService,
+      WorkspaceFinancialSnapshotInitializer snapshotInitializer) {
     this.financialsService = financialsService;
+    this.snapshotInitializer = snapshotInitializer;
+  }
+
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public ExpenseSnapshotResponse initializeSnapshot(
+      @Valid @RequestBody PayPeriodRequest payPeriod) {
+    snapshotInitializer.initialize(payPeriod);
+    return financialsService.getSnapshot();
   }
 
   @GetMapping

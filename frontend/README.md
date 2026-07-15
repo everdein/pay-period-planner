@@ -118,8 +118,11 @@ non-sensitive workspace preference in browser session storage.
 
 New accounts begin with an empty `Personal` workspace. Existing data must be
 explicitly migrated into that workspace; no personal or synthetic snapshot is
-seeded during signup. If the backend is unavailable, the account screen remains
-visible and reports the correlated request reference.
+seeded during signup. A new user can select the current pay-period dates and
+create an empty relational snapshot in the browser, then add the first income
+or withdrawal and commit it through the versioned save workflow. If the backend
+is unavailable, the account screen remains visible and reports the correlated
+request reference.
 
 Each frontend API request includes a generated `X-Request-ID`. Failed requests
 surface the backend-confirmed ID so an error can be matched to backend logs.
@@ -147,6 +150,12 @@ sidebar navigation for:
 - Insurance / Benefits
 - Debt
 - Important Dates
+
+The same typed section model drives both the desktop sidebar and the grouped
+`Financial section` menu shown on smaller screens. The Overview dashboard
+also provides direct entry points into projection, income, withdrawal, asset,
+debt, payday, and important-date workflows without duplicating persistence or
+draft state.
 
 The Monthly Withdrawals tab supports:
 
@@ -202,8 +211,15 @@ The frontend uses a draft/save pattern:
 5. The backend response becomes the new committed Redux snapshot.
 
 If the backend returns `409 Conflict`, another save committed first. The local
-draft remains in place and the Redux error state surfaces the conflict so the
-user can reload/reconcile before saving again.
+draft remains in place and a dedicated conflict notice explains that reloading
+will discard it. `Discard Draft and Reload` deliberately replaces the stale
+draft with the latest saved snapshot. Other save failures keep the draft and
+offer retry and dismissal actions; successful saves announce the committed
+snapshot version.
+
+Editable collection tables render an explicit empty row when they have no
+income events, withdrawals, accounts, debts, or important dates. Their add
+forms remain available in the same workflow.
 
 The header also includes an authenticated export button that downloads
 `GET /api/v1/financials/export` as a JSON backup. Unsaved draft edits are not

@@ -1,6 +1,7 @@
 package com.example.backend.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.backend.domain.financials.AnnualWithdrawal;
 import com.example.backend.domain.financials.AssetAccount;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -103,6 +105,15 @@ class PostgresFinancialRecordSnapshotAdapterIT {
     assertThat(loaded.importantDates())
         .containsExactly(
             new ImportantDate(701, LocalDate.of(2026, 12, 25), "Christmas", "Holiday"));
+  }
+
+  @Test
+  void refusesToCreateASecondInitialSnapshotForOneWorkspace() {
+    adapter.createInitialSnapshot(workspaceId, emptySnapshot());
+
+    assertThatThrownBy(() -> adapter.createInitialSnapshot(workspaceId, emptySnapshot()))
+        .isInstanceOf(DuplicateKeyException.class)
+        .hasMessageContaining("active financial snapshot");
   }
 
   @Test

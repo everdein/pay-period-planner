@@ -114,8 +114,12 @@ JSON/CSV/XLSX backup formats after JSON runtime persistence is retired.
 
 ## Phase F - Make the Application Product-Quality
 
-- [ ] Improve onboarding, navigation, dashboards, and financial workflows.
-- [ ] Complete clear empty, loading, success, conflict, and error states.
+- [x] Add first-run onboarding from signup or sign-in through empty workspace
+      initialization and the first versioned save, without synthetic seeding.
+- [x] Improve navigation and dashboard entry points across the existing
+      financial workflows, including a grouped compact-viewport section menu.
+- [x] Complete clear empty, loading, success, conflict, and error states,
+      including explicit collection empties and deliberate stale-draft reload.
 - [ ] Expand accessibility automation and manual assistive-technology checks.
 - [ ] Complete responsive and mobile behavior across financial workflows.
 

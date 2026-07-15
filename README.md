@@ -431,7 +431,9 @@ Each signup creates a `Personal` workspace and owner membership. These sessions
 authorize `/api/v1/financials/**`; the sole
 membership is automatic, while accounts with multiple memberships send
 `X-Workspace-ID`. Financial writes require the CSRF token. A workspace without
-an explicitly migrated or created relational snapshot returns `404`.
+an explicitly migrated or created relational snapshot returns `404`. The
+browser can create an empty version-1 snapshot from selected pay-period dates;
+existing data continues to use the explicit, backed-up migration workflow.
 
 With the PostgreSQL backend running, an operator can explicitly back up and
 migrate one legacy JSON file or active JSONB document into an empty owned

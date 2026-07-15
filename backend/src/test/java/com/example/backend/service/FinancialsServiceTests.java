@@ -53,7 +53,9 @@ class FinancialsServiceTests {
     assertThat(snapshot.bills()).isNotEmpty();
     assertThat(snapshot.annualWithdrawals()).hasSize(1);
     assertThat(snapshot.debtAccounts()).hasSize(1);
-    assertThat(snapshot.assetCategories()).hasSize(2);
+    assertThat(snapshot.assetCategories())
+        .extracting((category) -> category.key())
+        .containsExactly("retirement", "investments", "cash-savings", "insurance-benefits");
     assertThat(snapshot.incomeSummaryItems()).hasSize(2);
     assertThat(snapshot.incomeEvents()).hasSize(2);
     assertThat(snapshot.importantDates()).hasSize(1);

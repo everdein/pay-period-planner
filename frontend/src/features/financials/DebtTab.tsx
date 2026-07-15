@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
+import { EmptyTableRow } from './EmptyTableRow';
 import { currency } from './financialsFormatters';
 import type { AssetFormState, DraftDebtAccount } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
@@ -63,6 +64,9 @@ export function DebtTab({
               </tr>
             </thead>
             <tbody>
+              {debtAccounts.length === 0 && (
+                <EmptyTableRow columns={4} message="No debt accounts yet." />
+              )}
               {debtAccounts.map((account) => (
                 <tr key={account.id}>
                   <td>{account.account}</td>

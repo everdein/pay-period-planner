@@ -305,6 +305,8 @@ export type FinancialAuditHistory = {
 
 export const financialsService = {
   getMonthlyExpenses: () => httpGet<ExpenseSnapshot>('/api/v1/financials'),
+  initializeSnapshot: (payload: PayPeriodRequest) =>
+    httpPost<ExpenseSnapshot, PayPeriodRequest>('/api/v1/financials', payload),
   getAuditHistory: (limit = 50) =>
     httpGet<FinancialAuditHistory>(`/api/v1/financials/history?limit=${limit}`),
   downloadSnapshotJson: () => httpGetBlob(FINANCIALS_EXPORT_PATH),

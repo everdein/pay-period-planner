@@ -2,7 +2,27 @@ import type { ReactNode } from 'react';
 
 import type { AssetCategory } from '../../api/endpoints/financials';
 import { currency, formatDate } from './financialsFormatters';
-import type { DraftImportantDate, DraftIncomeEvent, ProjectionSummary } from './financialsTypes';
+import type {
+  DraftImportantDate,
+  DraftIncomeEvent,
+  FinancialTab,
+  ProjectionSummary,
+} from './financialsTypes';
+
+const dashboardWorkflows: Array<{
+  detail: string;
+  label: string;
+  tab: FinancialTab;
+}> = [
+  { detail: 'Next paycheck', label: 'Projection', tab: 'projection' },
+  { detail: 'Paychecks and sources', label: 'Income', tab: 'income-summary' },
+  { detail: 'Recurring bills', label: 'Monthly', tab: 'monthly-withdrawals' },
+  { detail: 'Yearly charges', label: 'Annual', tab: 'annual-withdrawals' },
+  { detail: 'Cash and accounts', label: 'Assets', tab: 'cash-savings' },
+  { detail: 'Balances and payoff', label: 'Debt', tab: 'debt' },
+  { detail: 'Paydays and deposits', label: 'Calendar', tab: 'income-calendar' },
+  { detail: 'Holidays and reminders', label: 'Dates', tab: 'important-dates' },
+];
 
 export function Overview({
   annualTotal,
@@ -10,6 +30,7 @@ export function Overview({
   currentPaycheck,
   netWorth,
   nextImportantDate,
+  onNavigate,
   primaryPaycheckIncome,
   projection,
   totalDebt,
@@ -21,6 +42,7 @@ export function Overview({
   currentPaycheck?: DraftIncomeEvent;
   netWorth: number;
   nextImportantDate?: DraftImportantDate;
+  onNavigate: (tab: FinancialTab) => void;
   primaryPaycheckIncome?: number;
   projection: ProjectionSummary;
   totalDebt: number;
@@ -29,6 +51,26 @@ export function Overview({
 }) {
   return (
     <>
+      <section className="overview-header">
+        <div>
+          <p className="eyebrow">Dashboard</p>
+          <h2>Financial Overview</h2>
+        </div>
+        <nav aria-label="Financial workflows" className="dashboard-workflows">
+          {dashboardWorkflows.map((workflow) => (
+            <button
+              aria-label={`Open ${workflow.label.toLowerCase()} workflow`}
+              className="dashboard-workflow"
+              key={workflow.tab}
+              onClick={() => onNavigate(workflow.tab)}
+              type="button"
+            >
+              <strong>{workflow.label}</strong>
+              <span>{workflow.detail}</span>
+            </button>
+          ))}
+        </nav>
+      </section>
       <section aria-label="Financial overview" className="overview-sections">
         <OverviewGroup title="Projection">
           <MetricCard

@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
+import { EmptyTableRow } from './EmptyTableRow';
 import { formatDate } from './financialsFormatters';
 import type {
   DraftIncomeEvent,
@@ -77,6 +78,9 @@ export function IncomeCalendarTab({
               </tr>
             </thead>
             <tbody>
+              {incomeEvents.length === 0 && (
+                <EmptyTableRow columns={7} message="No income calendar entries yet." />
+              )}
               {incomeEvents.map((event) => (
                 <tr
                   className={event.status === 'current' ? 'current-income' : undefined}

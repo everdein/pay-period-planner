@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
+import { EmptyTableRow } from './EmptyTableRow';
 import { isPrimaryPaycheck } from './financialsAnchors';
 import { currency } from './financialsFormatters';
 import type { DraftIncomeSummaryItem, IncomeSummaryFormState } from './financialsTypes';
@@ -69,6 +70,9 @@ export function IncomeSummaryTab({
                 </tr>
               </thead>
               <tbody>
+                {sourceIncomeSummaryItems.length === 0 && (
+                  <EmptyTableRow columns={4} message="No income sources yet." />
+                )}
                 {sourceIncomeSummaryItems.map((item) => (
                   <tr key={item.id}>
                     <td>{item.category}</td>

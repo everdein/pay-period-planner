@@ -3,11 +3,42 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { expect, type Page,test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const exampleSnapshotPath = path.join(repoRoot, 'backend', 'data', 'financials.example.json');
 const accountPassword = 'browser test password';
+
+test('creates and saves a first financial snapshot from an empty workspace', async ({ page }) => {
+  const email = `onboarding-${randomUUID()}@example.test`;
+
+  await page.goto('/');
+  await signUp(page, 'New Browser User', email);
+  await page.getByLabel('Pay period starts').fill('2026-07-10');
+  await page.getByLabel('Pay period ends').fill('2026-07-23');
+  await page.getByRole('button', { name: 'Create Financial Snapshot' }).click();
+
+  await expect(page.getByText('Workspace ready')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Income Summary' }).first()).toBeVisible();
+  await page.getByLabel('Amount').fill('3200');
+  await page.getByRole('button', { name: 'Add to Draft' }).click();
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+
+  await expect(page.getByRole('status')).toContainText('Changes saved. Snapshot version 2.');
+  await page.reload();
+  await page.getByRole('button', { name: 'Income Summary' }).click();
+  await expect(page.getByRole('cell', { name: '$3,200.00' }).first()).toBeVisible();
+
+  await page.getByRole('button', { name: 'Overview' }).click();
+  await expect(page.getByRole('heading', { name: 'Financial Overview' })).toBeVisible();
+  await page.getByRole('button', { name: 'Open monthly workflow' }).click();
+  await expect(page.getByRole('heading', { name: 'Monthly Withdrawals' })).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('combobox', { name: 'Financial section' }).selectOption('debt');
+  await expect(page.getByRole('heading', { exact: true, name: 'Debt' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'No debt accounts yet.' })).toBeVisible();
+});
 
 test('keeps browser sessions isolated while editing the live PostgreSQL workspace', async ({
   page,
@@ -82,6 +113,43 @@ test('keeps browser sessions isolated while editing the live PostgreSQL workspac
   ).toBeVisible();
 });
 
+test('keeps a stale draft visible and reloads after a concurrent save conflict', async ({
+  context,
+  page,
+}) => {
+  const email = `conflict-${randomUUID()}@example.test`;
+
+  await page.goto('/');
+  await signUp(page, 'Conflict Browser User', email);
+  await page.getByRole('button', { name: 'Create Financial Snapshot' }).click();
+  await expect(page.getByRole('heading', { name: 'Income Summary' }).first()).toBeVisible();
+
+  const otherPage = await context.newPage();
+  await otherPage.goto('/');
+  await otherPage.getByRole('button', { name: 'Monthly Withdrawals' }).click();
+  await otherPage.getByRole('button', { name: 'Edit Rent' }).click();
+  await otherPage.getByLabel('Amount').fill('2700');
+  await otherPage.getByRole('button', { name: 'Update Draft' }).click();
+  await otherPage.getByRole('button', { name: 'Save Changes' }).click();
+  await expect(otherPage.getByRole('status')).toContainText('Snapshot version 2');
+
+  await page.getByLabel('Amount').fill('1000');
+  await page.getByRole('button', { name: 'Add to Draft' }).click();
+  await expect(page.getByRole('cell', { name: '$1,000.00' }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+
+  const conflict = page.getByRole('alert');
+  await expect(conflict).toContainText('A newer snapshot is available');
+  await expect(page.getByRole('cell', { name: '$1,000.00' }).first()).toBeVisible();
+  await conflict.getByRole('button', { name: 'Discard Draft and Reload' }).click();
+
+  await expect(conflict).toBeHidden();
+  await expect(page.getByRole('cell', { name: '$1,000.00' }).first()).toBeHidden();
+  await page.getByRole('button', { name: 'Monthly Withdrawals' }).click();
+  await expect(page.getByRole('cell', { name: '$2,700.00' })).toBeVisible();
+  await otherPage.close();
+});
+
 async function signUp(page: Page, displayName: string, email: string) {
   await page.getByRole('tab', { name: 'Create Account' }).click();
   await page.getByLabel('Display name').fill(displayName);
@@ -89,7 +157,7 @@ async function signUp(page: Page, displayName: string, email: string) {
   await page.getByLabel('Password', { exact: true }).fill(accountPassword);
   await page.getByLabel('Confirm password').fill(accountPassword);
   await page.getByRole('button', { name: 'Create Account' }).click();
-  await expect(page.getByRole('heading', { name: 'No financial snapshot yet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start your financial workspace' })).toBeVisible();
 }
 
 async function signIn(page: Page, email: string) {

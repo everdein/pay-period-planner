@@ -112,6 +112,48 @@ class AccountSessionApiIT {
 
     mockMvc
         .perform(
+            post("/api/v1/financials")
+                .cookie(sessionCookie, csrfProof.cookie())
+                .header(csrfProof.headerName(), csrfProof.token())
+                .contentType("application/json")
+                .content(
+                    """
+                    {
+                      "startDate": "2026-07-10",
+                      "endDate": "2026-07-23"
+                    }
+                    """))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.version").value(1))
+        .andExpect(jsonPath("$.payPeriodStart").value("2026-07-10"))
+        .andExpect(jsonPath("$.payPeriodEnd").value("2026-07-23"))
+        .andExpect(jsonPath("$.bills[0].bill").value("Rent"))
+        .andExpect(jsonPath("$.bills[0].amount").value(0))
+        .andExpect(jsonPath("$.assetCategories.length()").value(4));
+
+    mockMvc
+        .perform(
+            post("/api/v1/financials")
+                .cookie(sessionCookie, csrfProof.cookie())
+                .header(csrfProof.headerName(), csrfProof.token())
+                .contentType("application/json")
+                .content(
+                    """
+                    {
+                      "startDate": "2026-07-24",
+                      "endDate": "2026-08-06"
+                    }
+                    """))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.title").value("Financial snapshot already exists"));
+
+    mockMvc
+        .perform(get("/api/v1/financials").cookie(sessionCookie))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.version").value(1));
+
+    mockMvc
+        .perform(
             get("/api/v1/financials").with(httpBasic("legacy-test-user", "legacy-test-password")))
         .andExpect(status().isForbidden());
 

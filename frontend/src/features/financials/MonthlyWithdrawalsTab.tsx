@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
+import { EmptyTableRow } from './EmptyTableRow';
 import { isRentWithdrawal, RENT_WITHDRAWAL_NAME } from './financialsAnchors';
 import { currency, formatDate } from './financialsFormatters';
 import type { BillFormState, DraftAnnualWithdrawal, DraftBill } from './financialsTypes';
@@ -123,6 +124,9 @@ export function MonthlyWithdrawalsTab({
                 </tr>
               </thead>
               <tbody>
+                {sortedBills.length === 0 && (
+                  <EmptyTableRow columns={6} message="No monthly withdrawals yet." />
+                )}
                 {sortedBills.map((bill) => (
                   <tr className={bill.inPayPeriod ? 'in-period' : undefined} key={bill.id}>
                     <td>{bill.bill}</td>
@@ -186,9 +190,7 @@ export function MonthlyWithdrawalsTab({
                     </tr>
                   ))
                 ) : (
-                  <tr>
-                    <td colSpan={5}>No annual withdrawals in this pay period.</td>
-                  </tr>
+                  <EmptyTableRow columns={5} message="No annual withdrawals in this pay period." />
                 )}
               </tbody>
             </table>

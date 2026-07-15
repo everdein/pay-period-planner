@@ -209,6 +209,7 @@ changes in a new ADR.
 - **Status:** Resolved 2026-07-14 by ADR 0014
 - **Resolution:** Startup never reads `financials.local.json` or
   `financials.example.json`. Account creation starts with an empty workspace;
+  users may initialize an empty relational snapshot from pay-period dates, and
   source data enters relational storage only through the explicit, backed-up
   migration workflow.
 

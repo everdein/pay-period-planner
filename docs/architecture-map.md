@@ -37,30 +37,31 @@ replacing its active snapshot.
 
 ## Frontend
 
-| Area                                                  | Ownership                                                               |
-| ----------------------------------------------------- | ----------------------------------------------------------------------- |
-| `frontend/src/App.tsx`                                | Application shell                                                       |
-| `frontend/src/app/`                                   | Redux store and typed hooks                                             |
-| `frontend/src/api/auth.ts`                            | Account session activation and workspace preference                     |
-| `frontend/src/api/client.ts`                          | Cookie/CSRF/workspace fetch wrapper and HTTP error handling              |
-| `frontend/src/api/endpoints/financials.ts`            | API contract types and endpoint calls                                   |
-| `frontend/src/observability/`                         | Error containment, safe local reporting, recovery UI                    |
-| `frontend/src/features/financials/FinancialsPage.tsx` | Authenticated load, save, export, and status shell                      |
-| `useFinancialsDraftWorkspace.ts`                      | Cross-domain draft lifecycle, projection, removal, and save composition |
-| `FinancialsNavigation.tsx`                            | Financial workspace navigation                                          |
-| `FinancialsTabContent.tsx`                            | Active-tab presentation routing                                         |
-| `frontend/src/features/financials/*Tab.tsx`           | Tab-level presentation and interactions                                 |
-| `useMonthlyWithdrawalsDraft.ts`                       | Monthly bill form state, draft actions, sorting, and totals             |
-| `useAnnualWithdrawalsDraft.ts`                        | Annual withdrawal form state, draft actions, sorting, and totals        |
-| `useAssetAccountsDraft.ts`                            | Asset account forms, draft actions, category totals, and anchors        |
-| `useDebtAccountsDraft.ts`                             | Debt account form state, draft actions, sorting, and totals             |
-| `useIncomeSummaryDraft.ts`                            | Income source forms, anchors, and derived income summaries              |
-| `useIncomeCalendarDraft.ts`                           | Income-event editing, recurring payday generation, counts, and statuses |
-| `useImportantDatesDraft.ts`                           | Important-date forms, draft actions, sorting, and statuses              |
-| `financialsDraft.ts`                                  | Draft conversion, normalization, and request building                   |
-| `financialsProjection.ts`                             | Projection calculations                                                 |
-| `financialsDatePolicy.ts`                             | Client-side date policy                                                 |
-| `financialsSlice.ts`                                  | Server snapshot, identity-boundary reset, loading, saving, and errors    |
+| Area                                                  | Ownership                                                                  |
+| ----------------------------------------------------- | -------------------------------------------------------------------------- |
+| `frontend/src/App.tsx`                                | Application shell                                                          |
+| `frontend/src/app/`                                   | Redux store and typed hooks                                                |
+| `frontend/src/api/auth.ts`                            | Account session activation and workspace preference                        |
+| `frontend/src/api/client.ts`                          | Cookie/CSRF/workspace fetch wrapper and HTTP error handling                |
+| `frontend/src/api/endpoints/financials.ts`            | API contract types and endpoint calls                                      |
+| `frontend/src/observability/`                         | Error containment, safe local reporting, recovery UI                       |
+| `frontend/src/features/financials/FinancialsPage.tsx` | Authenticated load, save, export, and status shell                         |
+| `WorkspaceOnboarding.tsx`                             | Empty-workspace pay-period setup and snapshot initialization               |
+| `useFinancialsDraftWorkspace.ts`                      | Cross-domain draft lifecycle, projection, removal, and save composition    |
+| `FinancialsNavigation.tsx`                            | Financial workspace navigation                                             |
+| `FinancialsTabContent.tsx`                            | Active-tab presentation routing                                            |
+| `frontend/src/features/financials/*Tab.tsx`           | Tab-level presentation and interactions                                    |
+| `useMonthlyWithdrawalsDraft.ts`                       | Monthly bill form state, draft actions, sorting, and totals                |
+| `useAnnualWithdrawalsDraft.ts`                        | Annual withdrawal form state, draft actions, sorting, and totals           |
+| `useAssetAccountsDraft.ts`                            | Asset account forms, draft actions, category totals, and anchors           |
+| `useDebtAccountsDraft.ts`                             | Debt account form state, draft actions, sorting, and totals                |
+| `useIncomeSummaryDraft.ts`                            | Income source forms, anchors, and derived income summaries                 |
+| `useIncomeCalendarDraft.ts`                           | Income-event editing, recurring payday generation, counts, and statuses    |
+| `useImportantDatesDraft.ts`                           | Important-date forms, draft actions, sorting, and statuses                 |
+| `financialsDraft.ts`                                  | Draft conversion, normalization, and request building                      |
+| `financialsProjection.ts`                             | Projection calculations                                                    |
+| `financialsDatePolicy.ts`                             | Client-side date policy                                                    |
+| `financialsSlice.ts`                                  | Server snapshot, missing-state initialization, loading, saving, and errors |
 
 The Redux slice owns the last server snapshot and request status. Its fetch
 thunk suppresses concurrent loads so React Strict Mode effect replays cannot
@@ -85,6 +86,9 @@ port `8080`.
 ```mermaid
 flowchart TD
     Controller["api/FinancialsController"] --> DTO["dto/financials request and response records"]
+    Controller --> Initializer["WorkspaceFinancialSnapshotInitializationService"]
+    Initializer --> WorkspaceResolver
+    Initializer --> RecordAdapter
     Controller --> Service["service/FinancialsService"]
     Service --> DatePolicy["service/PayPeriodDatePolicy"]
     Service --> Domain["domain/financials aggregate + records"]
@@ -97,21 +101,21 @@ flowchart TD
     RecordAdapter --> RecordTables["financial_record_* tables<br/>active PostgreSQL runtime"]
 ```
 
-| Layer                                    | Responsibilities                                                                  | Must not own                          |
-| ---------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------- |
-| `api/`                                   | Routes, validation entry points, HTTP status mapping                              | Persistence or financial calculations |
-| `dto/financials/`                        | External request/response contract                                                | Storage implementation                |
-| `domain/financials/`                     | Backend financial record types, saved snapshot aggregate, audit/projection types  | HTTP or storage implementation        |
-| `service/`                               | Validation, date policy, totals, normalization, orchestration                     | File or SQL access                    |
-| `repository/FinancialsRepository`        | In-memory aggregate, IDs, audit event capture, synchronized mutation, persistence | HTTP behavior                         |
-| `repository/*SnapshotStore`              | Workspace-scoped relational snapshot load/save                                     | API response derivation               |
-| `PostgresFinancialRecordSnapshotAdapter` | Workspace-scoped relational load, optimistic replacement, audit persistence, and granular CRUD | HTTP authorization |
-| `AuthenticatedWorkspaceResolver`         | Resolve sole or `X-Workspace-ID` membership from the authenticated session         | SQL or financial calculations         |
-| `PostgresAccountSessionRepository`       | PostgreSQL users, memberships, hashed sessions, revocation, and recovery           | Financial snapshot access             |
-| `AccountSessionService`                  | Credential hashing, opaque-token issuance, account/workspace transaction           | Financial persistence                 |
-| `WorkspaceSnapshotMigrationService`      | Backed-up source validation, ownership checks, metadata verification, rollback      | Runtime-store selection               |
-| `PostgresWorkspaceSnapshotMigrationRepository` | Legacy JSONB reads, relational audit/history metadata, migration records       | HTTP or frontend behavior             |
-| `config/`                                | Security, CORS, request limits, and observability configuration                    | Domain behavior                       |
+| Layer                                          | Responsibilities                                                                               | Must not own                          |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `api/`                                         | Routes, validation entry points, HTTP status mapping                                           | Persistence or financial calculations |
+| `dto/financials/`                              | External request/response contract                                                             | Storage implementation                |
+| `domain/financials/`                           | Backend financial record types, saved snapshot aggregate, audit/projection types               | HTTP or storage implementation        |
+| `service/`                                     | Validation, date policy, totals, normalization, orchestration                                  | File or SQL access                    |
+| `repository/FinancialsRepository`              | In-memory aggregate, IDs, audit event capture, synchronized mutation, persistence              | HTTP behavior                         |
+| `repository/*SnapshotStore`                    | Workspace-scoped relational snapshot load/save                                                 | API response derivation               |
+| `PostgresFinancialRecordSnapshotAdapter`       | Workspace-scoped relational load, optimistic replacement, audit persistence, and granular CRUD | HTTP authorization                    |
+| `AuthenticatedWorkspaceResolver`               | Resolve sole or `X-Workspace-ID` membership from the authenticated session                     | SQL or financial calculations         |
+| `PostgresAccountSessionRepository`             | PostgreSQL users, memberships, hashed sessions, revocation, and recovery                       | Financial snapshot access             |
+| `AccountSessionService`                        | Credential hashing, opaque-token issuance, account/workspace transaction                       | Financial persistence                 |
+| `WorkspaceSnapshotMigrationService`            | Backed-up source validation, ownership checks, metadata verification, rollback                 | Runtime-store selection               |
+| `PostgresWorkspaceSnapshotMigrationRepository` | Legacy JSONB reads, relational audit/history metadata, migration records                       | HTTP or frontend behavior             |
+| `config/`                                      | Security, CORS, request limits, and observability configuration                                | Domain behavior                       |
 
 `config/RequestObservabilityFilter` validates or creates request IDs, records
 safe request completion metadata, and increments low-cardinality snapshot
@@ -126,14 +130,14 @@ save boundary.
 
 ## Persistence
 
-| Concern            | Runtime behavior                                                         |
-| ------------------ | ------------------------------------------------------------------------ |
-| Adapter            | `PostgresFinancialsSnapshotStore`                                        |
-| Active data        | Workspace-scoped `financial_record_*` rows and relational audit events   |
-| Initial data       | Explicit migration or application-created snapshot; no implicit seed     |
-| Authorization      | Account session `WORKSPACE` authority plus membership selection          |
-| Schema             | Flyway migrations under `db/migration/`                                  |
-| Local verification | Required isolated-schema integration gate                                |
+| Concern            | Runtime behavior                                                       |
+| ------------------ | ---------------------------------------------------------------------- |
+| Adapter            | `PostgresFinancialsSnapshotStore`                                      |
+| Active data        | Workspace-scoped `financial_record_*` rows and relational audit events |
+| Initial data       | Explicit migration or application-created snapshot; no implicit seed   |
+| Authorization      | Account session `WORKSPACE` authority plus membership selection        |
+| Schema             | Flyway migrations under `db/migration/`                                |
+| Local verification | Required isolated-schema integration gate                              |
 
 Flyway is the only PostgreSQL migration executor. Local setup delegates to
 `scripts/migrate-postgres.ps1`, application startup uses Spring Flyway
