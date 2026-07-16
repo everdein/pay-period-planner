@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 
 import {
   currentWorkspaceId,
-  migrateSyntheticSnapshot,
+  seedSyntheticSnapshot,
   signIn,
   signUp,
 } from './support/syntheticWorkspace';
@@ -50,7 +50,7 @@ test('keeps browser sessions isolated while editing the live PostgreSQL workspac
   await page.goto('/');
   await signUp(page, 'First Browser User', firstEmail);
   const firstWorkspaceId = await currentWorkspaceId(page);
-  await migrateSyntheticSnapshot(page, firstEmail, firstWorkspaceId, 250);
+  await seedSyntheticSnapshot(page, firstWorkspaceId, 250);
   await page.reload();
 
   await expect(page.getByRole('heading', { name: 'Pay Period Planner' })).toBeVisible();
@@ -76,7 +76,7 @@ test('keeps browser sessions isolated while editing the live PostgreSQL workspac
 
   await signUp(page, 'Second Browser User', secondEmail);
   const secondWorkspaceId = await currentWorkspaceId(page);
-  await migrateSyntheticSnapshot(page, secondEmail, secondWorkspaceId, 875);
+  await seedSyntheticSnapshot(page, secondWorkspaceId, 875);
   await page.reload();
   await page.getByRole('button', { name: 'Monthly Withdrawals' }).click();
 
