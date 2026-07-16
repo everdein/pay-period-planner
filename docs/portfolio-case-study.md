@@ -10,6 +10,11 @@ Every screenshot below is generated from
 `example.test`, and an isolated PostgreSQL schema that is removed immediately
 after capture. No personal financial data is used.
 
+The fixture models an established senior technical household with strong
+income, retirement, brokerage, and cash-reserve balances. Its values are
+illustrative product inputs, not a statement about the developer's finances or
+financial advice.
+
 ## Product Walkthrough
 
 ### 1. Understand the household snapshot

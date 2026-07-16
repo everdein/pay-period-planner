@@ -7,7 +7,7 @@
       "id": 1,
       "bill": "Example Rent",
       "dueDay": 1,
-      "amount": 1200.0,
+      "amount": 3800.0,
       "account": "Checking",
       "paid": false
     },
@@ -15,7 +15,7 @@
       "id": 2,
       "bill": "Example Savings Transfer",
       "dueDay": 15,
-      "amount": 250.0,
+      "amount": 2500.0,
       "account": "Savings",
       "paid": false
     }
@@ -26,7 +26,7 @@
       "bill": "Example Membership",
       "month": 1,
       "day": 15,
-      "amount": 99.0,
+      "amount": 240.0,
       "account": "Checking",
       "paid": false
     },
@@ -35,7 +35,7 @@
       "bill": "Example Insurance Renewal",
       "month": 7,
       "day": 1,
-      "amount": 180.0,
+      "amount": 2400.0,
       "account": "Checking",
       "paid": false
     }
@@ -47,7 +47,7 @@
       "categoryLabel": "Retirement",
       "account": "Example 401k",
       "company": "Example Provider",
-      "amount": 10000.0
+      "amount": 245000.0
     },
     {
       "id": 2,
@@ -55,7 +55,15 @@
       "categoryLabel": "Cash & Savings",
       "account": "Rent Reserve",
       "company": "Example Bank",
-      "amount": 5000.0
+      "amount": 45000.0
+    },
+    {
+      "id": 3,
+      "categoryKey": "investments",
+      "categoryLabel": "Investments",
+      "account": "Example Brokerage",
+      "company": "Example Provider",
+      "amount": 180000.0
     }
   ],
   "debtAccounts": [
@@ -63,7 +71,7 @@
       "id": 1,
       "account": "Example Credit Card",
       "company": "Example Bank",
-      "amount": 500.0
+      "amount": 2400.0
     },
     {
       "id": 2,
@@ -77,7 +85,7 @@
       "id": 1,
       "category": "Net Income",
       "interval": "Bi-Weekly",
-      "amount": 2884.62
+      "amount": 7850.0
     }
   ],
   "incomeEvents": [

@@ -21,7 +21,7 @@ test('captures the synthetic portfolio walkthrough', async ({ page }) => {
   await page.goto('/');
   await signUp(page, 'Portfolio Demo', email);
   const workspaceId = await currentWorkspaceId(page);
-  await seedSyntheticSnapshot(page, workspaceId, 350);
+  await seedSyntheticSnapshot(page, workspaceId, 2500);
   await page.reload();
 
   await expect(page.getByRole('heading', { name: 'Pay Period Planner' })).toBeVisible();
