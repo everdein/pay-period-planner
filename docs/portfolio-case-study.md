@@ -57,9 +57,10 @@ workspace with its expected version. The backend resolves the current account
 and workspace from database membership, validates and normalizes the aggregate,
 performs the replacement under a workspace lock, and appends a coarse audit
 event. PostgreSQL relational tables are the sole runtime store. V10 removes the
-obsolete JSONB transition table and migration administration through V10/V11
-after the owner confirmed that the original data remained independently
-available.
+obsolete JSONB transition table and migration administration after the owner
+confirmed that the original data remained independently available. V11 removes
+unowned compatibility rows and requires every remaining snapshot to belong to
+a workspace.
 
 ## STAR Story
 
@@ -92,8 +93,8 @@ that cross-layer behavior still matched the snapshot contract.
 4. Activated one relational, workspace-scoped snapshot store with optimistic
    versions, batched replacement writes, and separately limited audit queries.
 5. Built a guarded JSON/JSONB migration workflow while data ownership was
-   uncertain, then retired the workflow and transition tables through V10/V11 once
-   the owner chose independent re-entry from the original spreadsheet.
+   uncertain, then retired the workflow and transition tables through V10/V11
+   once the owner chose independent re-entry from the original spreadsheet.
 6. Removed the JSON runtime profile, duplicate startup instructions, granular
    mutation APIs, and extra import/export formats after the replacement paths
    were verified.
