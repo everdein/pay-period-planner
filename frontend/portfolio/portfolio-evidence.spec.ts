@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test';
 
 import {
   currentWorkspaceId,
-  migrateSyntheticSnapshot,
+  seedSyntheticSnapshot,
   signUp,
 } from '../e2e/support/syntheticWorkspace';
 
@@ -21,7 +21,7 @@ test('captures the synthetic portfolio walkthrough', async ({ page }) => {
   await page.goto('/');
   await signUp(page, 'Portfolio Demo', email);
   const workspaceId = await currentWorkspaceId(page);
-  await migrateSyntheticSnapshot(page, email, workspaceId, 350);
+  await seedSyntheticSnapshot(page, workspaceId, 350);
   await page.reload();
 
   await expect(page.getByRole('heading', { name: 'Pay Period Planner' })).toBeVisible();
