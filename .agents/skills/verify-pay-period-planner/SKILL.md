@@ -1,9 +1,9 @@
 ---
-name: verify-end-to-end-app
-description: Run and interpret the complete end-to-end-app local verification suite, including spelling, TypeScript checks, ESLint, frontend tests and coverage, frontend build, Java formatting, backend tests and JaCoCo coverage, and required isolated PostgreSQL integration tests. Use before declaring work complete, preparing a pull request, reproducing CI failures, or assessing repository health.
+name: verify-pay-period-planner
+description: Run and interpret the complete Pay Period Planner local verification suite, including spelling, TypeScript checks, ESLint, frontend tests and coverage, frontend build, Java formatting, backend tests and JaCoCo coverage, and required isolated PostgreSQL integration tests. Use before declaring work complete, preparing a pull request, reproducing CI failures, or assessing repository health.
 ---
 
-# Verify End-to-End App
+# Verify Pay Period Planner
 
 1. Read `AGENTS.md` and inspect `git status` so verification results are tied to
    the current worktree.
@@ -16,7 +16,7 @@ description: Run and interpret the complete end-to-end-app local verification su
 4. For focused PostgreSQL iteration, set
    `RUN_POSTGRES_INTEGRATION_TESTS=true` and run
    `.\mvnw.cmd -B test "--activate-profiles=postgres-integration"
-   "-Djacoco.skip=true"` from
+"-Djacoco.skip=true"` from
    `backend/`. Never point it at a database where the test schema names are
    owned by another application.
 5. Run `.\scripts\run-security-checks.ps1` separately only when authenticated

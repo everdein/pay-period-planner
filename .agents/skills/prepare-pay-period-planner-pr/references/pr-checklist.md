@@ -22,15 +22,15 @@
 
 ## Verification Matrix
 
-| Change surface        | Required evidence                                           |
-| --------------------- | ----------------------------------------------------------- |
-| Documentation only    | Spell check, links/commands checked                         |
-| Frontend              | Typecheck, lint, tests with coverage, build                 |
-| Backend/API           | Formatting, tests, JaCoCo gate, package build               |
+| Change surface        | Required evidence                                             |
+| --------------------- | ------------------------------------------------------------- |
+| Documentation only    | Spell check, links/commands checked                           |
+| Frontend              | Typecheck, lint, tests with coverage, build                   |
+| Backend/API           | Formatting, tests, JaCoCo gate, package build                 |
 | PostgreSQL            | Full local verification, including isolated integration tests |
-| Dependencies/security | Lockfiles, compatibility tests, authenticated scan          |
-| CI workflow           | Local equivalents plus hosted run after push                |
-| UI behavior           | Relevant tests and screenshot or explicit reason omitted    |
+| Dependencies/security | Lockfiles, compatibility tests, authenticated scan            |
+| CI workflow           | Local equivalents plus hosted run after push                  |
+| UI behavior           | Relevant tests and screenshot or explicit reason omitted      |
 
 Use `scripts/verify-local.ps1` as the default aggregate check. Treat hosted,
 credentialed, or database checks as skipped—not passed—until they run.

@@ -11,7 +11,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$sourceMapPath = Join-Path $repoRoot ".agents/skills/audit-end-to-end-docs/references/source-map.md"
+$sourceMapPath = Join-Path $repoRoot ".agents/skills/audit-pay-period-planner-docs/references/source-map.md"
 $summaryLines = New-Object System.Collections.Generic.List[string]
 $allRisks = New-Object System.Collections.Generic.List[object]
 
@@ -199,7 +199,7 @@ try {
             Area = "Agent and AI workflow"
             Severity = "Medium"
             SourcePatterns = @("^\.agents/", "^\.codex/agents/", "^docs/ai-enablement-roadmap\.md$")
-            ExpectedDocs = @("AGENTS.md", "docs/ai-enablement-roadmap.md", "docs/github-ai-workflows.md", ".agents/skills/audit-end-to-end-docs/references/source-map.md")
+            ExpectedDocs = @("AGENTS.md", "docs/ai-enablement-roadmap.md", "docs/github-ai-workflows.md", ".agents/skills/audit-pay-period-planner-docs/references/source-map.md")
         },
         [pscustomobject]@{
             Area = "Frontend behavior"
@@ -232,7 +232,7 @@ try {
             -Severity "High" `
             -Area "Documentation source map" `
             -Message "Documentation source map is missing." `
-            -Files @(".agents/skills/audit-end-to-end-docs/references/source-map.md")
+            -Files @(".agents/skills/audit-pay-period-planner-docs/references/source-map.md")
     }
     else {
         $sourceMapContent = Get-Content -Raw -LiteralPath $sourceMapPath

@@ -4,13 +4,13 @@ sandbox_mode = "read-only"
 nickname_candidates = ["Kepler", "Ledger", "Sable"]
 
 developer_instructions = """
-Review the end-to-end-app backend and API as an owner. Do not edit files, stage
+Review the Pay Period Planner backend and API as an owner. Do not edit files, stage
 changes, mutate databases, or perform external writes.
 
 Read AGENTS.md, docs/architecture-map.md, docs/domain-glossary.md,
 docs/api-contract.md, docs/database-storage-guide.md,
 docs/known-limitations.md, and the backend/API sections of
-.agents/skills/review-end-to-end-app/references/review-checklist.md before
+.agents/skills/review-pay-period-planner/references/review-checklist.md before
 forming findings.
 
 Establish the requested review scope and base. Inspect the relevant diff,

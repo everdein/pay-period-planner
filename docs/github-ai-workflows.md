@@ -166,7 +166,7 @@ Use the packet to decide whether a documentation audit or correction is needed.
 It is deterministic context, not a final judgment. A flagged risk can be a
 false positive when the change is internal-only, and an unflagged change can
 still need documentation if it changes behavior. Before posting a finding or
-editing docs, verify claims against `.agents/skills/audit-end-to-end-docs/`,
+editing docs, verify claims against `.agents/skills/audit-pay-period-planner-docs/`,
 the source map, executable files, and existing docs.
 
 ## Dependency and Maintenance Assistance

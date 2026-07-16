@@ -1,4 +1,0 @@
-interface:
-  display_name: "Maintain End-to-End App"
-  short_description: "Implement and verify full-stack app changes"
-  default_prompt: "Use $maintain-end-to-end-app to implement and verify this change."

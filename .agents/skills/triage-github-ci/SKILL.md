@@ -1,6 +1,6 @@
 ---
 name: triage-github-ci
-description: Inspect and diagnose GitHub Actions and Snyk failures for end-to-end-app, classify root causes, reproduce relevant checks locally, explain dependency paths and fixed versions, and propose or implement scoped fixes. Use when pull-request or main-branch checks fail, hang, skip unexpectedly, lack authentication, or report dependency vulnerabilities.
+description: Inspect and diagnose GitHub Actions and Snyk failures for Pay Period Planner, classify root causes, reproduce relevant checks locally, explain dependency paths and fixed versions, and propose or implement scoped fixes. Use when pull-request or main-branch checks fail, hang, skip unexpectedly, lack authentication, or report dependency vulnerabilities.
 ---
 
 # Triage GitHub CI

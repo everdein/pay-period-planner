@@ -1,9 +1,9 @@
 ---
-name: maintain-end-to-end-app
-description: Implement, refactor, debug, or verify changes in the end-to-end-app React, Spring Boot, JSON, and PostgreSQL codebase. Use for feature work, bug fixes, dependency changes, API changes, persistence changes, and full-stack maintenance in this repository.
+name: maintain-pay-period-planner
+description: Implement, refactor, debug, or verify changes in the Pay Period Planner React, Spring Boot, JSON, and PostgreSQL codebase. Use for feature work, bug fixes, dependency changes, API changes, persistence changes, and full-stack maintenance in this repository.
 ---
 
-# Maintain End-to-End App
+# Maintain Pay Period Planner
 
 1. Read `AGENTS.md` and the README for every affected subproject.
 2. Inspect the current implementation and tests before choosing a design.

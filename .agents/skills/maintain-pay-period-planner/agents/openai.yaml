@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Maintain Pay Period Planner'
+  short_description: 'Implement and verify full-stack app changes'
+  default_prompt: 'Use $maintain-pay-period-planner to implement and verify this change.'

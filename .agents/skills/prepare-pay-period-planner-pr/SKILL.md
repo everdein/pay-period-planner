@@ -1,9 +1,9 @@
 ---
-name: prepare-end-to-end-pr
-description: Prepare end-to-end-app changes for review by scoping the diff, checking sensitive financial data, updating required documentation, running relevant verification, creating an intentional commit, pushing a topic branch, and opening a draft pull request. Use when work is ready for commit, release handoff, publication, or a draft PR; perform external Git and GitHub mutations only when the user requests them.
+name: prepare-pay-period-planner-pr
+description: Prepare Pay Period Planner changes for review by scoping the diff, checking sensitive financial data, updating required documentation, running relevant verification, creating an intentional commit, pushing a topic branch, and opening a draft pull request. Use when work is ready for commit, release handoff, publication, or a draft PR; perform external Git and GitHub mutations only when the user requests them.
 ---
 
-# Prepare End-to-End Pull Request
+# Prepare Pay Period Planner Pull Request
 
 1. Read `AGENTS.md` and
    [references/pr-checklist.md](references/pr-checklist.md).

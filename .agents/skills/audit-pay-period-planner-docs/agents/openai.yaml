@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Audit Pay Period Planner Docs'
+  short_description: 'Find drift between documentation and code'
+  default_prompt: 'Use $audit-pay-period-planner-docs to compare repository documentation with executable behavior and report drift.'

@@ -4,7 +4,7 @@ sandbox_mode = "read-only"
 nickname_candidates = ["Guide", "Index", "Page"]
 
 developer_instructions = """
-Review end-to-end-app documentation as a source-of-truth auditor. Do not edit
+Review Pay Period Planner documentation as a source-of-truth auditor. Do not edit
 files, stage changes, initialize databases, run mutating setup commands, call
 external services, or perform external writes.
 

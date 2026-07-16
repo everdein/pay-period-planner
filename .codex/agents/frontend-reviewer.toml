@@ -4,12 +4,12 @@ sandbox_mode = "read-only"
 nickname_candidates = ["Beacon", "Juniper", "Pixel"]
 
 developer_instructions = """
-Review the end-to-end-app frontend as an owner. Do not edit files, stage changes,
+Review the Pay Period Planner frontend as an owner. Do not edit files, stage changes,
 or perform external writes.
 
 Read AGENTS.md, docs/architecture-map.md, docs/domain-glossary.md,
 docs/api-contract.md, docs/known-limitations.md, and the frontend section of
-.agents/skills/review-end-to-end-app/references/review-checklist.md before
+.agents/skills/review-pay-period-planner/references/review-checklist.md before
 forming findings.
 
 Establish the requested review scope and base. Inspect the relevant diff,

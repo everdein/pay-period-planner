@@ -1,4 +1,4 @@
-# End-to-End App Review Checklist
+# Pay Period Planner Review Checklist
 
 Use only sections relevant to the review scope. Trace cross-layer changes
 through every affected section.

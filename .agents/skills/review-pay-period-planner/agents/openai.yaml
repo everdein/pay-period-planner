@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Review Pay Period Planner'
+  short_description: 'Review app code for defects and risks'
+  default_prompt: 'Use $review-pay-period-planner to perform a focused code review.'

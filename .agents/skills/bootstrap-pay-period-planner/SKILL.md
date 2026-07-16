@@ -1,9 +1,9 @@
 ---
-name: bootstrap-end-to-end-app
-description: Prepare the end-to-end-app repository for local development by checking Java, Node.js, npm, PostgreSQL, Git, and environment variables; installing locked dependencies; and optionally initializing the local PostgreSQL database. Use after cloning, when onboarding a workstation, when prerequisites may be broken, or when local startup fails before application code runs.
+name: bootstrap-pay-period-planner
+description: Prepare the Pay Period Planner repository for local development by checking Java, Node.js, npm, PostgreSQL, Git, and environment variables; installing locked dependencies; and optionally initializing the local PostgreSQL database. Use after cloning, when onboarding a workstation, when prerequisites may be broken, or when local startup fails before application code runs.
 ---
 
-# Bootstrap End-to-End App
+# Bootstrap Pay Period Planner
 
 1. Read `AGENTS.md`, the root `README.md`, and `backend/README.md`.
 2. Treat PostgreSQL as the only runtime persistence target. Ask whether local

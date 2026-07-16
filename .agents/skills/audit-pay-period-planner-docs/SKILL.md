@@ -1,9 +1,9 @@
 ---
-name: audit-end-to-end-docs
-description: Audit end-to-end-app documentation against executable repository behavior, including package scripts, PowerShell workflows, frontend configuration, Java controllers and DTOs, Spring profiles, PostgreSQL migrations and storage, tests, and GitHub Actions. Use to find documentation drift, validate onboarding or troubleshooting instructions, review docs after code changes, or prepare documentation corrections.
+name: audit-pay-period-planner-docs
+description: Audit Pay Period Planner documentation against executable repository behavior, including package scripts, PowerShell workflows, frontend configuration, Java controllers and DTOs, Spring profiles, PostgreSQL migrations and storage, tests, and GitHub Actions. Use to find documentation drift, validate onboarding or troubleshooting instructions, review docs after code changes, or prepare documentation corrections.
 ---
 
-# Audit End-to-End Documentation
+# Audit Pay Period Planner Documentation
 
 1. Read `AGENTS.md` and
    [references/source-map.md](references/source-map.md).

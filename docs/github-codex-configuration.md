@@ -48,7 +48,7 @@ or user permission problem.
 
 In Codex connector/plugin settings and GitHub's installed-app settings:
 
-1. Confirm `everdein/end-to-end-app` is included in the app's repository access.
+1. Confirm `everdein/pay-period-planner` is included in the app's repository access.
 2. Review or reauthorize the connector if it offers **Pull requests: Read and
    write**.
 3. Keep **Contents** read-only for the connector when local Git plus
@@ -135,10 +135,10 @@ These commands read settings without exposing tokens or secrets:
 
 ```powershell
 gh auth status
-gh api repos/everdein/end-to-end-app `
+gh api repos/everdein/pay-period-planner `
   --jq '{allow_auto_merge,delete_branch_on_merge,allow_squash_merge,allow_update_branch,security_and_analysis}'
-gh api repos/everdein/end-to-end-app/rulesets
-gh pr checks <number> --repo everdein/end-to-end-app
+gh api repos/everdein/pay-period-planner/rulesets
+gh pr checks <number> --repo everdein/pay-period-planner
 ```
 
 Do not print secret values, authorization headers, repository secrets, or
