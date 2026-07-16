@@ -1,9 +1,9 @@
 ---
-name: review-end-to-end-app
-description: Review the end-to-end-app repository, pull requests, or change sets using a consistent frontend, backend/API, PostgreSQL, CI/security, accessibility, and test-coverage checklist. Use for findings-first code reviews, regression and data-loss analysis, security review, architecture review, or validation of changes before merge.
+name: review-pay-period-planner
+description: Review the Pay Period Planner repository, pull requests, or change sets using a consistent frontend, backend/API, PostgreSQL, CI/security, accessibility, and test-coverage checklist. Use for findings-first code reviews, regression and data-loss analysis, security review, architecture review, or validation of changes before merge.
 ---
 
-# Review End-to-End App
+# Review Pay Period Planner
 
 1. Read `AGENTS.md` and
    [references/review-checklist.md](references/review-checklist.md).

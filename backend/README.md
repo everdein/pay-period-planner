@@ -165,7 +165,7 @@ DATABASE_PASSWORD=financial_app_password
 From the repository root, prepare PostgreSQL with:
 
 ```powershell
-cd C:\Users\<you>\dev\end-to-end-app
+cd C:\Users\<you>\dev\pay-period-planner
 .\scripts\setup-local-postgres.ps1
 ```
 

@@ -1,7 +1,7 @@
 # Pay Period Planner
 
-[![CI](https://github.com/everdein/end-to-end-app/actions/workflows/ci.yml/badge.svg)](https://github.com/everdein/end-to-end-app/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/everdein/end-to-end-app/actions/workflows/codeql.yml/badge.svg)](https://github.com/everdein/end-to-end-app/actions/workflows/codeql.yml)
+[![CI](https://github.com/everdein/pay-period-planner/actions/workflows/ci.yml/badge.svg)](https://github.com/everdein/pay-period-planner/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/everdein/pay-period-planner/actions/workflows/codeql.yml/badge.svg)](https://github.com/everdein/pay-period-planner/actions/workflows/codeql.yml)
 
 Pay Period Planner is an authenticated household cash-flow workspace for
 turning income, recurring bills, savings, debt, and important dates into a
@@ -129,8 +129,8 @@ Git, a Java JDK with `JAVA_HOME`, Node.js/npm, and PostgreSQL first; the
 environment checker reports the versions it finds.
 
 ```powershell
-git clone https://github.com/everdein/end-to-end-app.git
-cd end-to-end-app
+git clone https://github.com/everdein/pay-period-planner.git
+cd pay-period-planner
 .\scripts\bootstrap-local.ps1 -IncludePostgres
 ```
 
@@ -177,7 +177,7 @@ the pinned Snyk CLI, and `SNYK_TOKEN`; missing authentication is not a pass.
 ## Repository Map
 
 ```text
-end-to-end-app/
+pay-period-planner/
 |-- backend/                 Spring Boot API, domain, persistence, migrations
 |-- frontend/                React application, state, tests, browser workflows
 |-- docs/                    Architecture, evidence, decisions, and runbooks

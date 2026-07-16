@@ -231,16 +231,16 @@ or security policy from a packet alone.
 
 ## Repository Skills
 
-- `$bootstrap-end-to-end-app`: check prerequisites, install dependencies, and
+- `$bootstrap-pay-period-planner`: check prerequisites, install dependencies, and
   optionally initialize PostgreSQL.
-- `$verify-end-to-end-app`: run the complete local verification suite,
+- `$verify-pay-period-planner`: run the complete local verification suite,
   including required isolated PostgreSQL integration tests.
-- `$audit-end-to-end-docs`: compare documentation claims with executable
+- `$audit-pay-period-planner-docs`: compare documentation claims with executable
   repository behavior and report drift.
-- `$prepare-end-to-end-pr`: verify, document, commit, push, and prepare a draft
+- `$prepare-pay-period-planner-pr`: verify, document, commit, push, and prepare a draft
   pull request when those publishing actions are requested.
-- `$maintain-end-to-end-app`: implement and verify application changes.
-- `$review-end-to-end-app`: conduct a findings-first code review.
+- `$maintain-pay-period-planner`: implement and verify application changes.
+- `$review-pay-period-planner`: conduct a findings-first code review.
 - `$inspect-financial-postgres`: inspect local PostgreSQL state read-only.
 - `$triage-github-ci`: diagnose GitHub Actions and Snyk failures.
 

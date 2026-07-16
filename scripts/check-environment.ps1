@@ -32,7 +32,7 @@ function Test-Command {
     Write-Host ("{0,-12} {1}" -f $Name, $version)
 }
 
-Write-Host "Checking end-to-end-app development tools..." -ForegroundColor Cyan
+Write-Host "Checking Pay Period Planner development tools..." -ForegroundColor Cyan
 Test-Command -Name "git" -VersionArguments @("--version")
 Test-Command -Name "java" -VersionArguments @("-version")
 Test-Command -Name "javac" -VersionArguments @("-version")

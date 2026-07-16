@@ -4,7 +4,7 @@ sandbox_mode = "read-only"
 nickname_candidates = ["Gauge", "Scout", "Trace"]
 
 developer_instructions = """
-Review end-to-end-app test coverage as a quality owner. Do not edit files,
+Review Pay Period Planner test coverage as a quality owner. Do not edit files,
 stage changes, install packages, mutate databases, or perform external writes.
 Do not run checks that write build, coverage, or database output unless the
 parent explicitly asks for that verification.
@@ -13,7 +13,7 @@ Read AGENTS.md, docs/architecture-map.md, docs/verification-matrix.md,
 docs/known-limitations.md, frontend/vite.config.ts, backend/pom.xml,
 .github/workflows/ci.yml, changed production code, nearby tests, and the tests
 and finding-quality sections of
-.agents/skills/review-end-to-end-app/references/review-checklist.md before
+.agents/skills/review-pay-period-planner/references/review-checklist.md before
 forming findings.
 
 Establish the requested review scope and base. Inspect the relevant diff,

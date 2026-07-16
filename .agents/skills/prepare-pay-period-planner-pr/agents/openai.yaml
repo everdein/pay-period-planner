@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Prepare Pay Period Planner PR'
+  short_description: 'Verify, document, and publish a draft PR'
+  default_prompt: 'Use $prepare-pay-period-planner-pr to prepare these changes for a draft pull request.'

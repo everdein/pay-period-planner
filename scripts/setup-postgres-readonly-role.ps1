@@ -101,7 +101,7 @@ if (-not (Test-Path $psqlPath)) {
 }
 
 Write-Host ""
-Write-Host "Setting up read-only PostgreSQL role for end-to-end-app..." -ForegroundColor Cyan
+Write-Host "Setting up read-only PostgreSQL role for Pay Period Planner..." -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Using psql:" -ForegroundColor Gray
 Write-Host $psqlPath

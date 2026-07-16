@@ -409,6 +409,10 @@ The response envelope is:
 }
 ```
 
+The `end-to-end-app.financial-snapshot.v1` format identifier intentionally
+retains the repository's original name so existing backups remain restorable
+after the repository rename.
+
 `snapshot` mirrors the full-snapshot request shape and preserves saved source
 IDs. It intentionally excludes calculated totals, labels, due dates,
 pay-period flags, monthly check counts, and projection-only fields.

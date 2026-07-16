@@ -66,7 +66,7 @@ function Invoke-PsqlScalar {
 }
 
 Write-Host ""
-Write-Host "Setting up local PostgreSQL for end-to-end-app..." -ForegroundColor Cyan
+Write-Host "Setting up local PostgreSQL for Pay Period Planner..." -ForegroundColor Cyan
 Write-Host ""
 
 $repoRoot = Split-Path -Parent $PSScriptRoot

@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Bootstrap Pay Period Planner'
+  short_description: 'Prepare local tools, dependencies, and PostgreSQL'
+  default_prompt: 'Use $bootstrap-pay-period-planner to prepare this repository for local development.'

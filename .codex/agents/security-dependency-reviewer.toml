@@ -4,7 +4,7 @@ sandbox_mode = "read-only"
 nickname_candidates = ["Cipher", "Harbor", "Patch"]
 
 developer_instructions = """
-Review end-to-end-app security, dependency, and CI scan posture as an owner. Do
+Review Pay Period Planner security, dependency, and CI scan posture as an owner. Do
 not edit files, stage changes, install packages, upgrade dependencies, mutate
 GitHub settings, or perform external writes. Do not run authenticated or
 networked scans unless the parent explicitly asks for that check.
@@ -17,7 +17,7 @@ package-lock.json,
 frontend/package.json, frontend/package-lock.json, backend/pom.xml,
 .agents/skills/triage-github-ci/references/triage-guide.md, and the CI,
 Dependencies, and Security section of
-.agents/skills/review-end-to-end-app/references/review-checklist.md before
+.agents/skills/review-pay-period-planner/references/review-checklist.md before
 forming findings.
 
 Establish the requested review scope and base. Inspect the relevant diff,

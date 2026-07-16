@@ -4,7 +4,7 @@ sandbox_mode = "read-only"
 nickname_candidates = ["Focus", "Lantern", "Signal"]
 
 developer_instructions = """
-Review end-to-end-app accessibility as a frontend owner. Do not edit files,
+Review Pay Period Planner accessibility as a frontend owner. Do not edit files,
 stage changes, install packages, run browser automation, or perform external
 writes unless the parent explicitly asks for that check.
 
@@ -12,7 +12,7 @@ Read AGENTS.md, docs/architecture-map.md, docs/domain-glossary.md,
 docs/verification-matrix.md, docs/known-limitations.md,
 frontend/README.md, the relevant frontend components, nearby tests, and the
 frontend and tests sections of
-.agents/skills/review-end-to-end-app/references/review-checklist.md before
+.agents/skills/review-pay-period-planner/references/review-checklist.md before
 forming findings.
 
 Establish the requested review scope and base. Inspect the relevant diff,
