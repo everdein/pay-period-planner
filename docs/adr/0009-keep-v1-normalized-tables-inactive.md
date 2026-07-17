@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted; PostgreSQL authority statement superseded by ADR 0014
+Superseded by ADR 0029
 
 ## Context
 

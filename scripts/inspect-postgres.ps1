@@ -30,14 +30,6 @@ SELECT
 
 WITH expected(table_name) AS (
     VALUES
-        ('financial_snapshot'),
-        ('monthly_withdrawal'),
-        ('annual_withdrawal'),
-        ('asset_account'),
-        ('debt_account'),
-        ('income_summary_item'),
-        ('income_event'),
-        ('important_date'),
         ('financial_record_snapshot'),
         ('financial_record_monthly_bill'),
         ('financial_record_annual_withdrawal'),
@@ -46,6 +38,7 @@ WITH expected(table_name) AS (
         ('financial_record_income_summary_item'),
         ('financial_record_income_event'),
         ('financial_record_important_date'),
+        ('financial_record_projection_role'),
         ('financial_record_audit_event'),
         ('application_user'),
         ('workspace'),
@@ -58,6 +51,23 @@ SELECT
     to_regclass('public.' || expected.table_name) IS NOT NULL AS present
 FROM expected
 ORDER BY expected.table_name;
+
+WITH retired(table_name) AS (
+    VALUES
+        ('financial_snapshot'),
+        ('monthly_withdrawal'),
+        ('annual_withdrawal'),
+        ('asset_account'),
+        ('debt_account'),
+        ('income_summary_item'),
+        ('income_event'),
+        ('important_date')
+)
+SELECT
+    retired.table_name,
+    to_regclass('public.' || retired.table_name) IS NULL AS absent
+FROM retired
+ORDER BY retired.table_name;
 
 WITH expected(index_name) AS (
     VALUES
@@ -139,14 +149,6 @@ try {
     }
 
     $expectedTables = @(
-        "financial_snapshot",
-        "monthly_withdrawal",
-        "annual_withdrawal",
-        "asset_account",
-        "debt_account",
-        "income_summary_item",
-        "income_event",
-        "important_date",
         "financial_record_snapshot",
         "financial_record_monthly_bill",
         "financial_record_annual_withdrawal",
@@ -155,6 +157,7 @@ try {
         "financial_record_income_summary_item",
         "financial_record_income_event",
         "financial_record_important_date",
+        "financial_record_projection_role",
         "financial_record_audit_event",
         "application_user",
         "workspace",

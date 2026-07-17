@@ -200,8 +200,9 @@ Never commit or send those artifacts to external services.
 
 ## Current Boundaries
 
-- PostgreSQL relational workspaces are the only persistence path; V10/V11
-  retire the old JSONB store, transition administration, and unowned rows.
+- PostgreSQL relational workspaces are the only persistence path; V10-V12
+  retire the old JSONB store, transition administration, unowned rows, and
+  inactive V1 tables.
 - Browser account sessions and relational workspace ownership are implemented;
   membership-management and collaboration UX are not.
 - Full-snapshot saves use optimistic concurrency; the product does not provide

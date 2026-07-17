@@ -21,11 +21,10 @@ subproject README before changing frontend, backend, database, or CI behavior.
 - `scripts/`: repeatable local setup, verification, and inspection commands.
 
 The application edits and saves one financial snapshot aggregate in the
-V3/V4/V6-V11 PostgreSQL `financial_record_*` relational tables, scoped to the
-workspace selected from a V5 account session. The V1 normalized tables are
-inactive historical groundwork and are not the runtime persistence path. V10
-removes the retired V2 JSONB store, V7 migration ledger, and source linkage;
-V11 removes unowned compatibility rows and requires workspace ownership. The
+PostgreSQL `financial_record_*` relational tables, scoped to the workspace
+selected from a V5 account session. V10 removes the retired V2 JSONB store, V7
+migration ledger, and source linkage; V11 removes unowned compatibility rows
+and requires workspace ownership; V12 removes the inactive V1 table family. The
 runtime loads current snapshots separately from SQL-limited audit history and
 appends one audit event while batch-writing each aggregate replacement. The
 snapshot stores typed projection roles for its rent bill, rent-reserve asset
@@ -221,10 +220,10 @@ or security policy from a packet alone.
   deployment infrastructure and external API integrations remain incomplete.
 - Full-snapshot saves use optimistic version checks and are the sole supported
   financial mutation boundary.
-- PostgreSQL persists active runtime data in the V3/V4/V6-V11
+- PostgreSQL persists active runtime data in workspace-owned
   `financial_record_*` tables with relational audit history and optimistic
-  workspace writes. V1 normalized tables remain inactive; V2 JSONB and its
-  transition administration are retired by V10/V11.
+  writes. V2 JSONB and its transition administration are retired by V10/V11;
+  the inactive V1 table family is retired by V12.
 - PostgreSQL setup is explicit, while local and hosted completion gates require
   isolated PostgreSQL integration tests.
 - The deploy workflow is a manual placeholder, not a production release path.

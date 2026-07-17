@@ -112,6 +112,44 @@ class PostgresWorkspaceOwnershipSchemaIT {
     assertThatThrownBy(() -> insertSnapshot(null)).isInstanceOf(DataAccessException.class);
   }
 
+  @Test
+  void retiresPopulatedV1TablesWithoutChangingWorkspaceRecords() {
+    migrate(MigrationVersion.fromVersion("11"));
+    long workspaceId = createWorkspace("v12@example.com", "V12 Workspace");
+    insertSnapshot(workspaceId);
+    insertLegacyV1Snapshot();
+
+    migrate(null);
+
+    Integer runtimeSnapshotCount =
+        jdbcTemplate.queryForObject(
+            "select count(*) from financial_record_snapshot where workspace_id = ?",
+            Integer.class,
+            workspaceId);
+    Integer retiredObjectCount =
+        jdbcTemplate.queryForObject(
+            """
+            select count(*)
+            from pg_catalog.pg_class object
+            join pg_catalog.pg_namespace namespace on namespace.oid = object.relnamespace
+            where namespace.nspname = current_schema()
+              and object.relname in (
+                  'financial_snapshot',
+                  'monthly_withdrawal',
+                  'annual_withdrawal',
+                  'asset_account',
+                  'debt_account',
+                  'income_summary_item',
+                  'income_event',
+                  'important_date'
+              )
+            """,
+            Integer.class);
+
+    assertThat(runtimeSnapshotCount).isOne();
+    assertThat(retiredObjectCount).isZero();
+  }
+
   private void migrate(MigrationVersion target) {
     FluentConfiguration configuration =
         Flyway.configure()
@@ -166,6 +204,25 @@ class PostgresWorkspaceOwnershipSchemaIT {
             (active, version, pay_period_start, pay_period_end)
         values (true, 1, date '2026-07-01', date '2026-07-14')
         """);
+  }
+
+  private void insertLegacyV1Snapshot() {
+    Long snapshotId =
+        jdbcTemplate.queryForObject(
+            """
+            insert into financial_snapshot
+                (active, version, pay_period_start, pay_period_end)
+            values (true, 1, date '2026-07-01', date '2026-07-14')
+            returning id
+            """,
+            Long.class);
+    jdbcTemplate.update(
+        """
+        insert into monthly_withdrawal
+            (snapshot_id, bill, due_day, amount, account, paid)
+        values (?, 'Retired V1 Bill', 1, 10.00, 'Retired V1 Account', false)
+        """,
+        snapshotId);
   }
 
   private String databaseUrl() {

@@ -80,7 +80,7 @@
   width: 100%;
 }
 
-.auth-card > p:not(.eyebrow) {
+.auth-card>p:not(.eyebrow) {
   color: #536179;
 }
 
@@ -214,8 +214,8 @@ h2 {
   max-width: 560px;
 }
 
-.onboarding-copy > p:not(.eyebrow),
-.workspace-error-state > p:not(.eyebrow) {
+.onboarding-copy>p:not(.eyebrow),
+.workspace-error-state>p:not(.eyebrow) {
   color: #536179;
 }
 
@@ -264,7 +264,7 @@ h2 {
   padding: 12px 14px;
 }
 
-.workspace-ready > div:first-child {
+.workspace-ready>div:first-child {
   display: grid;
   gap: 2px;
 }
@@ -602,6 +602,11 @@ button.danger {
   border-color: #efc5bd;
 }
 
+.debt-progress-card.neutral {
+  background: #f8fbff;
+  border-color: #d7e0eb;
+}
+
 .debt-progress-card div:first-child {
   align-items: center;
   display: flex;
@@ -632,6 +637,10 @@ button.danger {
 
 .debt-progress-card.bad .debt-progress-fill {
   background: #b42318;
+}
+
+.debt-progress-card.neutral .debt-progress-fill {
+  background: #5f7fa3;
 }
 
 .projection-periods,
@@ -701,6 +710,11 @@ button.danger {
   border-left-color: #b42318;
 }
 
+.projection-metrics div.neutral {
+  background: #f8fbff;
+  border-left-color: #5f7fa3;
+}
+
 .projection-metrics dt {
   color: #536179;
   font-size: 0.78rem;
@@ -767,6 +781,186 @@ button.danger {
   gap: 20px;
 }
 
+
+.withdrawal-list-section {
+  display: grid;
+  gap: 12px;
+}
+
+.withdrawal-list-section + .withdrawal-list-section {
+  margin-top: 24px;
+}
+
+.withdrawal-list-header {
+  align-items: end;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.withdrawal-list-heading {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.withdrawal-list-heading h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.withdrawal-list-heading p {
+  color: #536179;
+  margin: 0;
+}
+
+.withdrawal-list-summary {
+  align-items: baseline;
+  color: #536179;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.withdrawal-list-summary strong {
+  color: #172033;
+  white-space: nowrap;
+}
+
+.withdrawal-list {
+  border-bottom: 1px solid #d7e0eb;
+  border-top: 1px solid #d7e0eb;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.withdrawal-list-item {
+  align-items: center;
+  display: grid;
+  gap: 6px 20px;
+  grid-template-areas:
+    'primary amount'
+    'meta controls';
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 16px 8px;
+}
+
+.withdrawal-list-item + .withdrawal-list-item {
+  border-top: 1px solid #e5eaf0;
+}
+
+.withdrawal-list-item.in-period {
+  background: #f8fbff;
+}
+
+.withdrawal-list-primary {
+  display: grid;
+  gap: 2px;
+  grid-area: primary;
+  min-width: 0;
+}
+
+.withdrawal-list-name {
+  color: #172033;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.withdrawal-list-description {
+  color: #536179;
+  font-size: 0.82rem;
+}
+
+.withdrawal-list-amount {
+  color: #172033;
+  font-size: 1.05rem;
+  font-weight: 800;
+  grid-area: amount;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.withdrawal-list-meta {
+  align-items: center;
+  color: #536179;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.86rem;
+  gap: 6px 10px;
+  grid-area: meta;
+  min-width: 0;
+}
+
+.withdrawal-list-meta-item {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+  min-width: 0;
+}
+
+.withdrawal-list-meta-item + .withdrawal-list-meta-item::before {
+  color: #9eacbc;
+  content: '•';
+  margin-right: 4px;
+}
+
+.withdrawal-list-account {
+  overflow-wrap: anywhere;
+}
+
+.withdrawal-list-controls {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  grid-area: controls;
+  justify-content: flex-end;
+  min-width: max-content;
+}
+
+.withdrawal-list-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.withdrawal-list-actions button {
+  margin: 0;
+}
+
+.withdrawal-list-empty {
+  align-items: start;
+  background: #f8fbff;
+  border: 1px dashed #b8c4d3;
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  padding: 20px;
+}
+
+.withdrawal-list-empty strong {
+  color: #172033;
+}
+
+.withdrawal-list-empty p {
+  color: #536179;
+  margin: 0;
+}
+
+.withdrawal-list-total {
+  color: #344054;
+  font-weight: 700;
+  margin: 0;
+  text-align: right;
+}
+
+.withdrawal-list-total strong {
+  color: #172033;
+}
+
+
 table {
   border-collapse: collapse;
   font-size: 0.92rem;
@@ -774,10 +968,13 @@ table {
   width: 100%;
 }
 
-.withdrawals-table,
 .calendar-table,
 .dates-table {
   min-width: 720px;
+}
+
+.withdrawals-table {
+  min-width: 640px;
 }
 
 .account-table,
@@ -854,6 +1051,48 @@ th[aria-label='Actions'] {
 
 .compact-date-table .date-column {
   width: 82px;
+}
+
+.withdrawals-table .name-column {
+  width: auto;
+}
+
+.withdrawals-table .date-column {
+  width: 90px;
+}
+
+.withdrawals-table.compact-date-table .date-column {
+  width: 76px;
+}
+
+.withdrawals-table .amount-column {
+  width: 96px;
+}
+
+.withdrawals-table .account-column {
+  width: 16%;
+}
+
+.withdrawals-table .status-column {
+  width: 76px;
+}
+
+.withdrawals-table .actions-column,
+.withdrawals-table th[aria-label='Actions'],
+.withdrawals-table .actions {
+  width: 136px;
+}
+
+.withdrawals-table td,
+.withdrawals-table th {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.withdrawals-table .actions button {
+  margin-left: 4px;
+  padding-left: 7px;
+  padding-right: 7px;
 }
 
 td,
@@ -1123,7 +1362,7 @@ tr.projection-row.neutral td {
   color: #8a1f11;
 }
 
-.error > small {
+.error>small {
   display: block;
   font-size: 0.75rem;
   margin-top: 4px;
@@ -1139,7 +1378,7 @@ tr.projection-row.neutral td {
   padding: 12px 14px;
 }
 
-.workflow-notice > div:first-child {
+.workflow-notice>div:first-child {
   display: grid;
   gap: 3px;
 }
@@ -1177,23 +1416,54 @@ tr.projection-row.neutral td {
   gap: 8px;
 }
 
+@media (max-width: 1200px) {
+  .expenses-layout {
+    display: block;
+  }
+
+  .bill-form {
+    margin-top: 20px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 900px) {
+  .withdrawals-table .actions-column,
+  .withdrawals-table th[aria-label='Actions'],
+  .withdrawals-table .actions {
+    width: 124px;
+  }
+}
+
 @media (max-width: 900px) {
+  .expenses-shell {
+    padding: 16px;
+  }
+
+  .calendar-table,
+  .dates-table {
+    min-width: 700px;
+  }
+
+  .account-table,
+  .income-source-table,
+  .income-summary-table,
+  .overview-table,
+  .projection-detail-table {
+    min-width: 500px;
+  }
+
+  .workspace-onboarding {
+    gap: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .app-header,
   .withdrawals-header,
   .section-header,
-  .expenses-layout,
   .financials-layout,
   .projection-periods,
   .projection-focus,
   .projection-role-grid {
-    display: block;
-  }
-
-  .projection-role-grid label + label {
-    margin-top: 12px;
-  }
-
-  .workspace-onboarding {
     display: block;
   }
 
@@ -1281,13 +1551,73 @@ tr.projection-row.neutral td {
     margin-top: 16px;
   }
 
-  .bill-form {
-    margin-top: 20px;
-  }
-
   .projection-period-card,
   .current-period-context {
     margin-top: 20px;
+  }
+}
+
+
+@media (max-width: 700px) {
+  .withdrawal-list-header {
+    align-items: stretch;
+    display: grid;
+    gap: 8px;
+  }
+
+  .withdrawal-list-summary {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .withdrawal-list-item {
+    align-items: start;
+    gap: 8px 12px;
+    grid-template-areas:
+      'primary amount'
+      'meta meta'
+      'controls controls';
+    padding: 14px 0;
+  }
+
+  .withdrawal-list-controls {
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 2px;
+    min-width: 0;
+  }
+
+  .withdrawal-list-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .withdrawal-list-meta-item + .withdrawal-list-meta-item::before {
+    display: none;
+  }
+
+  .withdrawal-list-empty {
+    padding: 16px;
+  }
+
+  .withdrawal-list-total {
+    text-align: left;
+  }
+}
+
+@media (max-width: 420px) {
+  .withdrawal-list-controls {
+    align-items: stretch;
+    display: grid;
+    gap: 10px;
+  }
+
+  .withdrawal-list-actions {
+    width: 100%;
+  }
+
+  .withdrawal-list-actions button {
+    flex: 1 1 auto;
   }
 }
 

@@ -166,9 +166,10 @@ Flyway is the only PostgreSQL migration executor. Local setup delegates to
 integration, and PostgreSQL integration tests use the Flyway Java API against
 isolated schemas. Direct execution of versioned SQL files is unsupported.
 
-`V1__create_financials_schema.sql` defines normalized tables that remain
-inactive historical groundwork. ADR 0009 decides they should not become the
-active relational persistence path as-is, and they may remain empty.
+`V1__create_financials_schema.sql` historically defined normalized tables that
+never became the runtime persistence path. ADR 0029 and V12 remove those
+look-alike objects after the owner waived recovery from obsolete stores; V1
+remains immutable migration history.
 `V2__create_financial_snapshot_document.sql` historically introduced the JSONB
 store retired by V10. `V3__create_financial_record_snapshot_schema.sql` defines the
 `financial_record_*` relational table family from ADR 0010, and
@@ -202,6 +203,8 @@ transition ledger, and source-document linkage.
 compatibility rows, makes `financial_record_snapshot.workspace_id` non-null,
 and leaves the workspace-scoped relational aggregate as the sole persistence
 path.
+`V12__retire_inactive_v1_financial_schema.sql` drops the eight unused V1 tables
+without changing workspace-owned runtime records or retained version history.
 At runtime, the query service asks the request-scoped aggregate repository for
 one complete current snapshot. The repository lazily loads it for the selected
 workspace, and calculation/response collaborators derive the API response from

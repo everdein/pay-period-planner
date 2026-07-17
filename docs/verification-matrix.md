@@ -141,14 +141,13 @@ The default verifier runs `PostgresFinancialsSnapshotStoreIT`,
 `PostgresFinancialRecordSnapshotAdapterIT`, `PostgresIdentitySchemaIT`, and
 `PostgresWorkspaceOwnershipSchemaIT`, `AccountSessionServiceIT`,
 `AccountSessionApiIT`, and `WorkspaceFinancialRuntimeApiIT` against isolated
-schemas, recreates their test tables,
-and drops those schemas afterward. The identity
-test checks normalized-email, membership-role, single-owner, and
-session-lifetime constraints. The ownership tests exercise a V5-to-V11 upgrade,
-retirement of unowned and transition storage, required workspace ownership,
-one active snapshot per workspace, and cross-workspace isolation for every
-relational record family. The account tests
-inspect password/token hashing, session recovery/revocation, two-user
+schemas, recreates their test tables, and drops those schemas afterward. The
+identity test checks normalized-email, membership-role, single-owner, and
+session-lifetime constraints. The ownership tests exercise V5-to-V12 and
+populated V11-to-V12 upgrades, retirement of unowned and transition storage,
+required workspace ownership, one active snapshot per workspace, and
+cross-workspace isolation for every relational record family. The account
+tests inspect password/token hashing, session recovery/revocation, two-user
 membership isolation, and Flyway-before-repository startup. They also verify
 that PostgreSQL rejects legacy Basic credentials for financial access. The
 runtime API test verifies session authorization, CSRF enforcement, relational

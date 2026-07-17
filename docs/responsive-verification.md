@@ -34,9 +34,12 @@ At every viewport, the suite requires:
 - compact section navigation at 900 pixels and below, with the full sidebar
   restored above that breakpoint
 
-Wide financial tables keep an explicit readable minimum width. Horizontal
-scrolling is permitted only inside their `.table-wrap` regions; the document
-itself must not scroll sideways.
+Wide financial tables keep an explicit readable minimum width. Monthly and
+annual withdrawal tables must fit their regions without horizontal scrolling
+at the tablet and desktop widths. Phone layouts may scroll those tables only
+inside their keyboard-focusable `.table-wrap` regions; the document itself must
+not scroll sideways. Other tables may use the same contained scrolling when
+their readable minimum exceeds the available width.
 
 The hosted `Responsive` job runs the same suite and blocks the final `Scans`
 job. Treat a new overflow exclusion, smaller supported width, or breakpoint

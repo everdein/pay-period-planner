@@ -226,21 +226,18 @@ historical limitation; ADR 0015 establishes Flyway as the single authority.
 
 1. Do not fabricate history rows.
 2. Run `scripts/inspect-postgres.ps1` and back up any personal data.
-3. Use `setup-local-postgres.ps1 -AdoptLegacySnapshotDocumentSchema` only for
-   a V2 document-only schema with the expected columns and no duplicate active
-   rows. Flyway V2 restores the unique-active index when absent.
-4. Use `setup-local-postgres.ps1 -AdoptLegacyV4Schema` only when the expected
-   V1-V4 table/index signature is present.
-5. If the signature check fails, stop and plan an additive repair migration on
-   a copy or disposable target. Do not run migration files with `psql -f`.
+3. Legacy baseline switches are retired; do not fabricate Flyway history.
+4. Plan an additive repair migration on a copy, or replace the database when it
+   is disposable. Do not run migration files with `psql -f`.
 
-### Normalized V1 tables are empty
+### Normalized V1 tables are present
 
-Expected. They are inactive V1 historical groundwork. Active PostgreSQL data
-uses V3/V4/V6-V11 workspace tables. Do not backfill V1 as a troubleshooting
-step.
+The database has not completed the current Flyway chain. Inspect
+`flyway_schema_history` and apply migrations through
+`scripts/migrate-postgres.ps1`; V12 removes these retired objects. Do not
+backfill or query V1 as a troubleshooting step.
 
-### V3/V4/V6-V11 `financial_record_*` tables are empty
+### Workspace-owned `financial_record_*` tables are empty
 
 Expected only when a workspace has not initialized a snapshot. The runtime
 never seeds one from local/example JSON. Recover the account session, confirm

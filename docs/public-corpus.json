@@ -219,6 +219,16 @@
       "reason": "Cadence and date/time-zone decision."
     },
     {
+      "path": "docs/adr/0028-retire-legacy-snapshot-migration-administration.md",
+      "kind": "document",
+      "reason": "Owner-approved transition-storage retirement decision."
+    },
+    {
+      "path": "docs/adr/0029-retire-inactive-v1-schema-and-legacy-adoption.md",
+      "kind": "document",
+      "reason": "Inactive V1 schema and legacy adoption retirement decision."
+    },
+    {
       "path": "frontend/src/features/financials/financialsProjection.ts",
       "kind": "source",
       "reason": "Pure pay-period projection rules."
@@ -309,6 +319,11 @@
       "reason": "Final database-enforced workspace ownership boundary."
     },
     {
+      "path": "backend/src/main/resources/db/migration/V12__retire_inactive_v1_financial_schema.sql",
+      "kind": "source",
+      "reason": "Owner-approved retirement of the inactive V1 table family."
+    },
+    {
       "path": "frontend/src/features/financials/financialsProjection.test.ts",
       "kind": "test",
       "reason": "Projection and financial/date edge cases."
@@ -362,6 +377,11 @@
       "path": "backend/src/test/java/com/example/backend/migration/PostgresIdentitySchemaIT.java",
       "kind": "test",
       "reason": "Identity and membership schema constraints."
+    },
+    {
+      "path": "backend/src/test/java/com/example/backend/migration/PostgresWorkspaceOwnershipSchemaIT.java",
+      "kind": "test",
+      "reason": "Workspace ownership and destructive schema-retirement boundaries."
     },
     {
       "path": "backend/src/test/java/com/example/backend/repository/PostgresFinancialRecordSnapshotAdapterIT.java",

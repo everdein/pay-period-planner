@@ -102,8 +102,9 @@ transition is verified:
       workspace principals without granting them global financial access.
 - [x] Replace frontend Basic authentication with signup, sign-in, session
       recovery, sign-out, per-mutation CSRF proof, and workspace selection.
-- [x] Activate the V3/V4/V6-V11 relational adapter as the PostgreSQL runtime financial
-      store while preserving optimistic versioning and the snapshot API.
+- [x] Activate the workspace-owned relational adapter as the PostgreSQL runtime
+      financial store while preserving optimistic versioning and the snapshot
+      API.
 - [x] Add live PostgreSQL browser cross-user isolation coverage for distinct
       account sessions, workspace snapshots, saves, sign-out, and recovery.
 - [x] Add an explicit, backed-up JSON/JSONB-to-workspace migration workflow
@@ -116,8 +117,9 @@ transition is verified:
       duplicate startup scripts and instructions.
 
 Do not silently seed personal financial data. Keep `financials.example.json`
-as synthetic test/demo input. V10/V11 record the explicit owner-approved
-retirement of the obsolete JSON/JSONB transition path.
+as synthetic test/demo input. V10-V12 record the explicit owner-approved
+retirement of obsolete JSON/JSONB transition storage and the inactive V1
+schema.
 
 ## Phase F - Make the Application Product-Quality
 

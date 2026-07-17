@@ -1,11 +1,9 @@
 import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
-import { EmptyTableRow } from './EmptyTableRow';
 import { currency, formatDate } from './financialsFormatters';
 import type { BillFormState, DraftAnnualWithdrawal, DraftBill } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
-import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function MonthlyWithdrawalsTab({
   annualPayPeriodTotal,
@@ -101,105 +99,138 @@ export function MonthlyWithdrawalsTab({
 
       <section className="expenses-layout">
         <div className="stacked-tables">
-          <ScrollableTableRegion label="Monthly withdrawals">
-            <table className="withdrawals-table compact-date-table">
-              <colgroup>
-                <col className="name-column" />
-                <col className="date-column" />
-                <col className="amount-column" />
-                <col className="account-column" />
-                <col className="status-column" />
-                <col className="actions-column" />
-              </colgroup>
-              <caption>
-                Monthly withdrawals from {formatDate(payPeriodStart)} to {formatDate(payPeriodEnd)}{' '}
-                are highlighted.
-              </caption>
-              <thead>
-                <tr>
-                  <th>Withdrawal</th>
-                  <th>Due Day</th>
-                  <th>Amount</th>
-                  <th>Account</th>
-                  <th>Paid</th>
-                  <th aria-label="Actions" />
-                </tr>
-              </thead>
-              <tbody>
-                {sortedBills.length === 0 && (
-                  <EmptyTableRow columns={6} message="No monthly withdrawals yet." />
-                )}
+          <section
+            aria-labelledby="monthly-withdrawal-list-heading"
+            className="withdrawal-list-section"
+          >
+            <header className="withdrawal-list-header">
+              <div className="withdrawal-list-heading">
+                <h3 id="monthly-withdrawal-list-heading">Monthly schedule</h3>
+                <p>
+                  Withdrawals from {formatDate(payPeriodStart)} to {formatDate(payPeriodEnd)} are
+                  highlighted.
+                </p>
+              </div>
+              <div aria-label="Monthly withdrawal list summary" className="withdrawal-list-summary">
+                <span>
+                  {sortedBills.length} {sortedBills.length === 1 ? 'item' : 'items'}
+                </span>
+                <strong>{currency.format(totals.totalMonthlyExpenses)} total</strong>
+              </div>
+            </header>
+
+            {sortedBills.length > 0 ? (
+              <ul className="withdrawal-list">
                 {sortedBills.map((bill) => (
-                  <tr className={bill.inPayPeriod ? 'in-period' : undefined} key={bill.id}>
-                    <td>{bill.bill}</td>
-                    <td className="date-cell">{bill.dueLabel}</td>
-                    <td className="amount">{currency.format(bill.amount)}</td>
-                    <td>{bill.account}</td>
-                    <td className="status-cell">
+                  <li
+                    className={`withdrawal-list-item${bill.inPayPeriod ? ' in-period' : ''}`}
+                    key={bill.id}
+                  >
+                    <div className="withdrawal-list-primary">
+                      <span className="withdrawal-list-name">{bill.bill}</span>
+                      {bill.inPayPeriod && (
+                        <span className="withdrawal-list-description">Due this pay period</span>
+                      )}
+                    </div>
+
+                    <strong className="withdrawal-list-amount">
+                      {currency.format(bill.amount)}
+                    </strong>
+
+                    <div className="withdrawal-list-meta">
+                      <span className="withdrawal-list-meta-item">Due {bill.dueLabel}</span>
+                      <span className="withdrawal-list-meta-item withdrawal-list-account">
+                        {bill.account}
+                      </span>
+                    </div>
+
+                    <div className="withdrawal-list-controls">
                       <span className={bill.paid ? 'pill paid' : 'pill unpaid'}>
                         {bill.paid ? 'Paid' : 'Open'}
                       </span>
-                    </td>
-                    <td className="actions">
-                      <EditButton label={`Edit ${bill.bill}`} onClick={() => startEdit(bill)} />
-                      <RemoveButton
-                        disabled={bill.id === rentBillId}
-                        label={`Remove ${bill.bill}`}
-                        onClick={() => requestRemoveBill(bill)}
-                      />
-                    </td>
-                  </tr>
+                      <div className="withdrawal-list-actions">
+                        <EditButton label={`Edit ${bill.bill}`} onClick={() => startEdit(bill)} />
+                        <RemoveButton
+                          disabled={bill.id === rentBillId}
+                          label={`Remove ${bill.bill}`}
+                          onClick={() => requestRemoveBill(bill)}
+                        />
+                      </div>
+                    </div>
+                  </li>
                 ))}
-              </tbody>
-            </table>
-            <p className="table-total">
-              Total: <strong>{currency.format(totals.totalMonthlyExpenses)}</strong>
-            </p>
-          </ScrollableTableRegion>
+              </ul>
+            ) : (
+              <div className="withdrawal-list-empty">
+                <strong>No monthly withdrawals yet.</strong>
+                <p>Add a bill to begin building this household&apos;s monthly schedule.</p>
+              </div>
+            )}
 
-          <ScrollableTableRegion label="Annual withdrawals due in this pay period">
-            <table className="withdrawals-table">
-              <colgroup>
-                <col className="name-column" />
-                <col className="date-column" />
-                <col className="amount-column" />
-                <col className="account-column" />
-                <col className="status-column" />
-              </colgroup>
-              <caption>Annual withdrawals due in this pay period.</caption>
-              <thead>
-                <tr>
-                  <th>Withdrawal</th>
-                  <th>Date</th>
-                  <th>Amount</th>
-                  <th>Account</th>
-                  <th>Paid</th>
-                </tr>
-              </thead>
-              <tbody>
-                {annualWithdrawalsInPayPeriod.length > 0 ? (
-                  annualWithdrawalsInPayPeriod.map((withdrawal) => (
-                    <tr className="in-period" key={withdrawal.id}>
-                      <td>{withdrawal.bill}</td>
-                      <td className="date-cell">{formatDate(withdrawal.dueDate)}</td>
-                      <td className="amount">{currency.format(withdrawal.amount)}</td>
-                      <td>{withdrawal.account}</td>
-                      <td className="status-cell">
-                        <span className={withdrawal.paid ? 'pill paid' : 'pill unpaid'}>
-                          {withdrawal.paid ? 'Paid' : 'Open'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <EmptyTableRow columns={5} message="No annual withdrawals in this pay period." />
-                )}
-              </tbody>
-            </table>
-            <p className="table-total">
+            <p className="withdrawal-list-total">
+              Monthly total: <strong>{currency.format(totals.totalMonthlyExpenses)}</strong>
+            </p>
+          </section>
+
+          <section
+            aria-labelledby="annual-withdrawal-list-heading"
+            className="withdrawal-list-section"
+          >
+            <header className="withdrawal-list-header">
+              <div className="withdrawal-list-heading">
+                <h3 id="annual-withdrawal-list-heading">Annual withdrawals</h3>
+                <p>Annual withdrawals due during this pay period.</p>
+              </div>
+              <div aria-label="Annual withdrawal list summary" className="withdrawal-list-summary">
+                <span>
+                  {annualWithdrawalsInPayPeriod.length}{' '}
+                  {annualWithdrawalsInPayPeriod.length === 1 ? 'item' : 'items'}
+                </span>
+                <strong>{currency.format(annualPayPeriodTotal)} total</strong>
+              </div>
+            </header>
+
+            {annualWithdrawalsInPayPeriod.length > 0 ? (
+              <ul className="withdrawal-list">
+                {annualWithdrawalsInPayPeriod.map((withdrawal) => (
+                  <li className="withdrawal-list-item in-period" key={withdrawal.id}>
+                    <div className="withdrawal-list-primary">
+                      <span className="withdrawal-list-name">{withdrawal.bill}</span>
+                      <span className="withdrawal-list-description">Due this pay period</span>
+                    </div>
+
+                    <strong className="withdrawal-list-amount">
+                      {currency.format(withdrawal.amount)}
+                    </strong>
+
+                    <div className="withdrawal-list-meta">
+                      <span className="withdrawal-list-meta-item">
+                        {formatDate(withdrawal.dueDate)}
+                      </span>
+                      <span className="withdrawal-list-meta-item withdrawal-list-account">
+                        {withdrawal.account}
+                      </span>
+                    </div>
+
+                    <div className="withdrawal-list-controls">
+                      <span className={withdrawal.paid ? 'pill paid' : 'pill unpaid'}>
+                        {withdrawal.paid ? 'Paid' : 'Open'}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="withdrawal-list-empty">
+                <strong>No annual withdrawals are due.</strong>
+                <p>Nothing annual falls within the current pay-period window.</p>
+              </div>
+            )}
+
+            <p className="withdrawal-list-total">
               Pay period annual total: <strong>{currency.format(annualPayPeriodTotal)}</strong>
             </p>
-          </ScrollableTableRegion>
+          </section>
         </div>
 
         <form className="bill-form" onSubmit={submitBill}>

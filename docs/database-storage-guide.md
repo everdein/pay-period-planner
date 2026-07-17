@@ -93,7 +93,7 @@ to `/api/v1/financials`; V8 stores their typed role references and V9 stores
 their planning cadence and time zone with the snapshot. The unique active
 workspace constraint rejects duplicate and concurrent initialization.
 
-### Normalized V1 tables
+### Retired normalized V1 schema
 
 V1 creates:
 
@@ -106,13 +106,12 @@ V1 creates:
 - `income_event`
 - `important_date`
 
-These tables are inactive historical groundwork. ADR 0009 decides they should
-not become the active relational persistence path as-is. The current
-application does not read or write them, so zero rows is expected.
+These tables never became the active relational persistence path. ADR 0029 and
+V12 remove them after explicit owner approval to discard obsolete application
+storage. Their creation remains visible only in immutable Flyway history; do
+not recreate, query, or repair through them.
 
-Do not dual-write, backfill, query, or repair through the V1 tables.
-
-### V3/V4/V6-V11 relational runtime path
+### Workspace-owned relational runtime path
 
 V3 creates the `financial_record_*` table family:
 
@@ -307,18 +306,15 @@ schema setup.
 Flyway is the single migration authority. The `postgres` runtime and
 `scripts/migrate-postgres.ps1` use the same ordered migration directory and
 validate the resulting history. `scripts/setup-local-postgres.ps1` creates the
-role and database, inspects legacy state, and delegates all versioned DDL to the
-migration script. Do not execute versioned files directly with `psql -f`.
+role and database, verifies that Flyway owns any existing application schema,
+and delegates all versioned DDL to the migration script. Do not execute
+versioned files directly with `psql -f`.
 
-A non-empty database without `flyway_schema_history` fails setup by default.
-After a backup and read-only inspection, use
-`-AdoptLegacySnapshotDocumentSchema` only for a V2 document-only schema with
-the expected columns and no duplicate active rows. Flyway V2 restores the
-unique-active index when it is absent. Use `-AdoptLegacyV4Schema` only when the
-expected V1-V4 table/index signature is present. The setup script checks that
-object signature before creating a baseline. It refuses empty, partial,
-mismatched, or mixed schemas. These adoption options recover Flyway history,
-not application data: V10/V11 intentionally discard obsolete transition storage.
+A non-empty database without `flyway_schema_history` fails setup. Legacy
+baseline switches were retired with ADR 0029 after obsolete-store recovery was
+waived. Back up and inspect such a database, then plan an explicit additive
+recovery on a copy or replace it when the database is disposable. Never
+fabricate Flyway history.
 
 ## Safe Operations
 
@@ -388,8 +384,9 @@ temporary server session afterward.
   inspect connectivity, schema, active-row count, version, and privileges.
 - Multiple active relational snapshot rows for one workspace violate the
   intended invariant and require administrator-led recovery after a backup.
-- Empty normalized V1 tables are healthy under the current adapter.
-- Empty V3/V4/V6-V11 `financial_record_*` tables are healthy only for
+- V1 tables are absent after V12; their presence means the database has not
+  completed the current Flyway chain.
+- Empty workspace-owned `financial_record_*` tables are healthy only for
   workspaces that have not initialized a snapshot.
 
 See `docs/api-contract.md` for request replacement semantics and

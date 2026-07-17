@@ -98,8 +98,9 @@ that cross-layer behavior still matched the snapshot contract.
 4. Activated one relational, workspace-scoped snapshot store with optimistic
    versions, batched replacement writes, and separately limited audit queries.
 5. Built a guarded JSON/JSONB migration workflow while data ownership was
-   uncertain, then retired the workflow and transition tables through V10/V11
-   once the owner chose independent re-entry from the original spreadsheet.
+   uncertain, then retired the workflow, transition tables, and inactive V1
+   schema through V10-V12 once the owner chose independent re-entry from the
+   original spreadsheet.
 6. Removed the JSON runtime profile, duplicate startup instructions, granular
    mutation APIs, and extra import/export formats after the replacement paths
    were verified.

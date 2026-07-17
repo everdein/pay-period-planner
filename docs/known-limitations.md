@@ -147,13 +147,12 @@ changes in a new ADR.
 
 ### LIM-013 — Normalized V1 tables are inactive
 
-- **Status:** Intentional historical groundwork; path decided in ADR 0009
-- **Impact:** Their presence can mislead operators into expecting data; they may
-  remain empty while the application is healthy.
-- **Current mitigation:** Storage guide, inspector, and architecture map
-  identify V3/V4/V6-V11 as the PostgreSQL runtime path, record V2/V7 transition
-  objects as retired history, and prohibit dual-write/backfill through V1.
-- **Revisit when:** Planning a production schema cleanup.
+- **Status:** Resolved 2026-07-16 by ADR 0029
+- **Resolution:** V12 drops the eight inactive V1 tables after explicit owner
+  approval to discard obsolete application storage. Their creation remains
+  only in immutable Flyway history.
+- **Resulting invariant:** Operators see only the workspace-owned
+  `financial_record_*` family for financial persistence.
 
 ### LIM-014 — Local setup and runtime have dual migration paths
 
@@ -163,11 +162,10 @@ changes in a new ADR.
   without `flyway_schema_history`, weakening migration-state evidence.
 - **Resolution:** Local setup now delegates versioned DDL to
   `scripts/migrate-postgres.ps1`; runtime and integration tests use the same
-  Flyway chain. Non-empty legacy schemas fail closed unless an explicit,
-  signature-checked adoption mode is selected.
-- **Remaining boundary:** Legacy schema adoption is signature-checked, and V10/V11
-  deliberately removes obsolete transition data. Mismatched schemas require an
-  additive repair plan rather than fabricated Flyway history.
+  Flyway chain. ADR 0029 removes the retired baseline modes, so a non-empty
+  schema without Flyway history always fails closed.
+- **Remaining boundary:** Mismatched schemas require an additive repair plan on
+  a copy or a disposable reset rather than fabricated Flyway history.
 
 ### LIM-015 — Broad local application-role privileges
 

@@ -2,6 +2,13 @@ import type { ReactNode } from 'react';
 
 import type { AssetCategory } from '../../api/endpoints/financials';
 import { currency, formatDate } from './financialsFormatters';
+import {
+  debtOutcomeTone,
+  debtTone,
+  expenseTone,
+  type FinancialMetricTone,
+  valueTone,
+} from './financialsMetricTones';
 import type {
   DraftImportantDate,
   DraftIncomeEvent,
@@ -76,19 +83,19 @@ export function Overview({
         <OverviewGroup title="Projection">
           <MetricCard
             label="Cash after bills"
-            tone={projection.nextPayPeriodCashAfterBills >= 0 ? 'good' : 'bad'}
+            tone={valueTone(projection.nextPayPeriodCashAfterBills)}
             value={currency.format(projection.nextPayPeriodCashAfterBills)}
             detail="Next period after bills and housing"
           />
           <MetricCard
             label="Debt left after plan"
-            tone={projection.nextPayPeriodDebtRemaining > 0 ? 'bad' : 'good'}
+            tone={debtOutcomeTone(projection.currentDebt, projection.nextPayPeriodDebtRemaining)}
             value={currency.format(projection.nextPayPeriodDebtRemaining)}
             detail="After the possible debt payment"
           />
           <MetricCard
             label="Possible savings transfer"
-            tone={projection.nextPayPeriodSavingsTransfer > 0 ? 'good' : 'neutral'}
+            tone={valueTone(projection.nextPayPeriodSavingsTransfer)}
             value={currency.format(projection.nextPayPeriodSavingsTransfer)}
             detail="After the planned debt balance reaches zero"
           />
@@ -97,20 +104,24 @@ export function Overview({
         <OverviewGroup title="Balances">
           <MetricCard
             label="Tracked assets"
-            tone="good"
+            tone={valueTone(totalTrackedAssets)}
             value={currency.format(totalTrackedAssets)}
           />
-          <MetricCard label="Total debt" tone="bad" value={currency.format(totalDebt)} />
+          <MetricCard
+            label="Total debt"
+            tone={debtTone(totalDebt)}
+            value={currency.format(totalDebt)}
+          />
           <MetricCard
             label="Net worth"
-            tone={netWorth >= 0 ? 'good' : 'bad'}
+            tone={valueTone(netWorth)}
             value={currency.format(netWorth)}
           />
           {assetCategories.slice(0, 1).map((category) => (
             <MetricCard
               key={category.key}
               label={category.label}
-              tone="good"
+              tone={valueTone(category.total)}
               value={currency.format(category.total)}
             />
           ))}
@@ -119,24 +130,24 @@ export function Overview({
         <OverviewGroup title="Cash Flow">
           <MetricCard
             label="Monthly withdrawals"
-            tone="caution"
+            tone={expenseTone(withdrawalTotal)}
             value={currency.format(withdrawalTotal)}
           />
           <MetricCard
             label="Annual withdrawals"
-            tone="caution"
+            tone={expenseTone(annualTotal)}
             value={currency.format(annualTotal)}
           />
           <MetricCard
             label="Primary paycheck"
-            tone={(primaryPaycheckIncome ?? 0) >= 0 ? 'good' : 'bad'}
+            tone={valueTone(primaryPaycheckIncome ?? 0)}
             value={currency.format(primaryPaycheckIncome ?? 0)}
           />
           {assetCategories.slice(1, 2).map((category) => (
             <MetricCard
               key={category.key}
               label={category.label}
-              tone="good"
+              tone={valueTone(category.total)}
               value={currency.format(category.total)}
             />
           ))}
@@ -207,7 +218,7 @@ function MetricCard({
 }: {
   detail?: string;
   label: string;
-  tone: 'bad' | 'caution' | 'good' | 'neutral';
+  tone: FinancialMetricTone;
   value: string;
 }) {
   return (

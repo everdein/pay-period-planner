@@ -250,6 +250,7 @@ backend/src/main/resources/db/migration/V8__add_financial_projection_roles.sql
 backend/src/main/resources/db/migration/V9__add_financial_planning_settings.sql
 backend/src/main/resources/db/migration/V10__retire_legacy_snapshot_migration.sql
 backend/src/main/resources/db/migration/V11__require_workspace_owned_financial_snapshots.sql
+backend/src/main/resources/db/migration/V12__retire_inactive_v1_financial_schema.sql
 ```
 
 The script is idempotent on a Flyway-managed database. If the database already
@@ -383,6 +384,7 @@ src/main/resources/db/migration/V8__add_financial_projection_roles.sql
 src/main/resources/db/migration/V9__add_financial_planning_settings.sql
 src/main/resources/db/migration/V10__retire_legacy_snapshot_migration.sql
 src/main/resources/db/migration/V11__require_workspace_owned_financial_snapshots.sql
+src/main/resources/db/migration/V12__retire_inactive_v1_financial_schema.sql
 ```
 
 The full setup path creates the role/database and invokes Flyway:
@@ -404,21 +406,10 @@ directly with `psql -f`. Explicit `-DatabaseUrl`, `-DatabaseUsername`, and
 `-DatabasePassword` parameters take precedence over matching `DATABASE_*`
 variables and the documented local defaults.
 
-A non-empty schema without `flyway_schema_history` fails closed. After a backup
-and read-only inspection, the setup script supports two explicit adoption
-modes:
-
-```powershell
-.\scripts\setup-local-postgres.ps1 -AdoptLegacySnapshotDocumentSchema
-.\scripts\setup-local-postgres.ps1 -AdoptLegacyV4Schema
-```
-
-The first accepts a V2 document-only schema with the expected columns and no
-duplicate active rows, then baselines at version 0 so Flyway still executes
-V1-V4 and restores the unique-active index when absent. The second requires the
-expected V1-V4 table/index signature and baselines at version 4. Signature
-mismatches are refused. These options recover Flyway history only; V10/V11
-intentionally remove obsolete transition storage and do not preserve its data.
+A non-empty schema without `flyway_schema_history` fails closed. Legacy
+baseline switches are retired; back up and inspect such a database, then plan
+an explicit additive recovery on a copy or replace it when the database is
+disposable. Never fabricate Flyway history.
 
 Verify the schema:
 
@@ -433,13 +424,12 @@ root:
 .\scripts\inspect-postgres.ps1
 ```
 
-Expected for the relational PostgreSQL runtime: inactive V1 tables may remain
-empty, V3/V4/V6-V11 `financial_record_*` rows exist only after workspace
-initialization, and V5 identity/session tables remain empty until the account
-API is used. V10 removes the V2 JSONB document table, V7 migration ledger, and
-source linkage; V11 removes unowned compatibility rows and requires relational
-workspace ownership. Creating an account does not silently assign or seed
-financial data.
+Expected for the relational PostgreSQL runtime: `financial_record_*` rows exist
+only after workspace initialization, and V5 identity/session tables remain
+empty until the account API is used. V10 removes the V2 JSONB document table,
+V7 migration ledger, and source linkage; V11 removes unowned compatibility
+rows and requires relational workspace ownership; V12 removes the inactive V1
+tables. Creating an account does not silently assign or seed financial data.
 
 ---
 
@@ -463,13 +453,10 @@ backend/data/financials.example.json
 This intentionally keeps the frontend API contract unchanged. The browser still
 loads one snapshot, edits a local draft, and saves one snapshot back to the API.
 
-The active PostgreSQL repository reads and writes only V3/V4/V6-V11
-`financial_record_*` tables. The normalized V1 tables
-(`financial_snapshot`, `monthly_withdrawal`, `annual_withdrawal`,
-`asset_account`, `debt_account`, `income_summary_item`, `income_event`, and
-`important_date`) are inactive historical groundwork. They are not the planned
-runtime relational adapter path as-is and may remain empty in a healthy local
-database.
+The active PostgreSQL repository reads and writes only workspace-owned
+`financial_record_*` tables. V12 removes the normalized V1 tables after they
+never became a runtime path; their definitions remain in immutable migration
+history.
 
 V3 adds a clean relational path through the `financial_record_*` table family
 and `PostgresFinancialRecordSnapshotAdapter`. V4 adds per-snapshot
@@ -672,7 +659,8 @@ backend/
 |       |-- V8__add_financial_projection_roles.sql
 |       |-- V9__add_financial_planning_settings.sql
 |       |-- V10__retire_legacy_snapshot_migration.sql
-|       `-- V11__require_workspace_owned_financial_snapshots.sql
+|       |-- V11__require_workspace_owned_financial_snapshots.sql
+|       `-- V12__retire_inactive_v1_financial_schema.sql
 |-- src/test/java/
 |-- pom.xml
 `-- README.md
@@ -720,8 +708,8 @@ Persistence-facing data models and storage adapters.
 Responsibilities:
 
 - loading and writing PostgreSQL-backed snapshot data
-- workspace-scoped aggregate saving/loading in the V3/V4/V6-V11 relational
-  record adapter path
+- workspace-scoped aggregate saving/loading in the relational record adapter
+  path
 - assigning IDs for new relational rows
 - keeping persistence concerns out of controllers
 - translating the storage envelope to and from the backend domain aggregate
@@ -778,8 +766,8 @@ asset accounts, debt accounts, income summary source items, income calendar
 events, and important dates. Derived income summary rows are calculated by the
 frontend.
 
-The runtime stores this aggregate in V3/V4/V6-V11 relational workspace tables
-and authorizes access from account-session memberships.
+The runtime stores this aggregate in workspace-owned relational tables and
+authorizes access from account-session memberships.
 
 ---
 
@@ -860,8 +848,8 @@ $env:DATABASE_PASSWORD="financial_app_password"
 
 ## PostgreSQL integration test
 
-The PostgreSQL snapshot store, V3/V4/V6-V11 workspace-scoped relational record
-adapter, V5 identity schema, V10/V11 retirement boundary, and account/session flows
+The PostgreSQL snapshot store, workspace-scoped relational record adapter, V5
+identity schema, V10-V12 retirement boundary, and account/session flows
 have a required repository integration gate. Focused Maven unit builds remain
 database-independent, while
 `.\scripts\verify-local.ps1` and hosted CI run the integration profile. The tests
@@ -978,8 +966,9 @@ The backend participates in repository CI pipelines for:
 
 Intentional simplifications:
 
-- PostgreSQL relational tables are the only runtime persistence path; V10/V11
-  retire V2 JSONB, the V7 transition ledger, and unowned compatibility rows
+- PostgreSQL relational tables are the only runtime persistence path; V10-V12
+  retire V2 JSONB, the V7 transition ledger, unowned compatibility rows, and
+  the inactive V1 table family
 - financial routes require account sessions and workspace membership; operator
   Basic auth is limited to protected metrics
 - no external APIs

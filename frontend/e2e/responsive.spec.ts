@@ -69,6 +69,12 @@ test('keeps every financial workflow contained and operable across supported wid
 
       await expect(page.locator('.mobile-section-picker select')).toHaveValue(value);
       await expectResponsiveLayout(page, `${viewport.label} ${label}`);
+      if (
+        viewport.width >= 768 &&
+        (value === 'monthly-withdrawals' || value === 'annual-withdrawals')
+      ) {
+        await expectVisibleTablesToFit(page, `${viewport.label} ${label}`);
+      }
     }
   }
 });
@@ -145,4 +151,23 @@ async function expectResponsiveLayout(page: Page, state: string) {
   ).toEqual([]);
   expect(result.tableRegionOverflow, `${state} table regions outside the viewport`).toEqual([]);
   expect(result.undersizedControls, `${state} controls smaller than 24px`).toEqual([]);
+}
+
+async function expectVisibleTablesToFit(page: Page, state: string) {
+  const overflow = await page.evaluate(() =>
+    Array.from(document.querySelectorAll<HTMLElement>('.table-wrap'))
+      .filter((element) => {
+        const style = window.getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0;
+      })
+      .filter((element) => element.scrollWidth > element.clientWidth + 1)
+      .map((element) => {
+        const label =
+          element.getAttribute('aria-label') ?? element.textContent?.trim().slice(0, 80) ?? 'table';
+        return `${label} (${element.scrollWidth}px content / ${element.clientWidth}px region)`;
+      })
+  );
+
+  expect(overflow, `${state} tables with unnecessary horizontal scrolling`).toEqual([]);
 }

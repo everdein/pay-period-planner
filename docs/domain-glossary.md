@@ -240,7 +240,7 @@ the cookie value.
 
 The only application persistence path. `PostgresFinancialsSnapshotStore` binds
 the request-scoped aggregate to an authenticated workspace and reads/writes
-V3/V4/V6-V11 relational rows. Flyway applies schema migrations.
+workspace-owned `financial_record_*` rows. Flyway applies schema migrations.
 
 ### Retired transition storage
 
@@ -248,12 +248,11 @@ The V2 JSONB document table, V7 migration ledger, optional source linkage, and
 unowned relational compatibility rows removed by V10/V11. They remain visible in
 immutable Flyway history but are not supported storage or recovery paths.
 
-### Normalized V1 tables
+### Retired normalized V1 schema
 
-The relational tables introduced by
-`V1__create_financials_schema.sql`. They are inactive historical groundwork,
-not the active or planned runtime relational persistence path as-is. Zero rows
-in these tables is expected.
+The eight relational tables introduced by `V1__create_financials_schema.sql`.
+They never became the runtime persistence path and are dropped by V12. Their
+definitions remain only as immutable migration history.
 
 ### Snapshot store
 

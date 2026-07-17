@@ -1,21 +1,24 @@
 # Engineering Evidence
 
 This page records the latest qualified local evidence for Pay Period Planner.
-The baseline was collected on July 15, 2026, against the complete working tree
-using synthetic data and isolated PostgreSQL schemas. It describes what each
-result demonstrates and, equally importantly, what it does not demonstrate.
+The completion-gate and responsive-browser baselines were refreshed on July
+16, 2026, against the complete working tree using synthetic data and isolated
+PostgreSQL schemas. The broader live-browser, accessibility, and authenticated
+security results remain the July 15 point-in-time evidence. This page describes
+what each result demonstrates and, equally importantly, what it does not
+demonstrate.
 
 ## Evidence Summary
 
 | Area                          | Result                                    | Executed scope                                                                                                                                                                      | Qualification                                                                        |
 | ----------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | Local completion gate         | Pass                                      | Environment, spelling, public-corpus validation, dependency compatibility, TypeScript, ESLint, frontend tests and build, backend formatting/build/tests, and PostgreSQL integration | Local Windows environment; hosted Linux behavior is separate                         |
-| Frontend tests                | 119 of 119 passed in 20 files             | Components, Redux/API behavior, draft editing, calculations, dates, workflow states, and error handling                                                                             | jsdom/unit and integration-style tests; not browser coverage                         |
+| Frontend tests                | 123 of 123 passed in 21 files             | Components, Redux/API behavior, draft editing, calculations, dates, semantic metric tones, workflow states, and error handling                                                      | jsdom/unit and integration-style tests; not browser coverage                         |
 | Backend tests                 | 63 of 63 passed in 12 classes             | Controllers, security/configuration, repositories, services, validation, and calculations                                                                                           | Default suite uses mocks or local collaborators where appropriate                    |
-| PostgreSQL integration        | 28 of 28 passed in 8 classes              | Flyway V1-V11, relational persistence, identity/session behavior, workspace isolation, transition retirement, CSRF, and runtime APIs                                                | Local PostgreSQL 18.4; schemas were isolated and removed after the run               |
+| PostgreSQL integration        | 29 of 29 passed in 8 classes              | Flyway V1-V12, relational persistence, identity/session behavior, workspace isolation, destructive retirement, CSRF, and runtime APIs                                               | Local PostgreSQL 18.4; schemas were isolated and removed after the run               |
 | Live browser workflow         | 6 of 6 passed in 3 specifications         | React, Vite proxy, Spring Boot, PostgreSQL, authentication, isolation, save/reload, conflicts, accessibility, and responsive behavior                                               | Chromium only; synthetic data; not cross-browser certification                       |
 | Automated accessibility       | 2 of 2 axe scenarios passed               | Account forms, onboarding, twelve financial sections, dialog semantics, and modal focus behavior under WCAG 2.0/2.1/2.2 A/AA rules                                                  | Automated rules cannot validate screen-reader usefulness or certify WCAG conformance |
-| Automated responsive behavior | 1 end-to-end scenario passed at 4 widths  | `320x800`, `390x844`, `768x1024`, and `1024x768`; overflow, control containment, table scrolling, and navigation breakpoint                                                         | Geometry checks do not replace manual readability, orientation, or 200% zoom review  |
+| Automated responsive behavior | 1 end-to-end scenario passed at 4 widths  | `320x800`, `390x844`, `768x1024`, and `1024x768`; overflow, control containment, withdrawal-table fit, accessible narrow scrolling, and navigation breakpoint                       | Geometry checks do not replace manual readability, orientation, or 200% zoom review  |
 | npm audits                    | Pass, 0 reported vulnerabilities          | Root and frontend lockfiles                                                                                                                                                         | Point-in-time advisory database result                                               |
 | Authenticated Snyk            | Pass, no vulnerable paths in 3 projects   | Root npm, Maven backend with 76 dependencies, and frontend npm with 13 dependencies using pinned CLI `1.1306.0`                                                                     | Point-in-time dependency result; does not replace CodeQL or future scans             |
 | CodeQL                        | Hosted evidence required                  | Hosted Java and JavaScript/TypeScript analysis                                                                                                                                      | No complete local equivalent; inspect uploaded alerts for each commit/PR run         |
@@ -28,14 +31,14 @@ configured minimum:
 
 | Area     | Statements / Instructions | Branches | Functions / Methods |  Lines | Enforced gate                                          |
 | -------- | ------------------------: | -------: | ------------------: | -----: | ------------------------------------------------------ |
-| Frontend |                    82.63% |   74.33% |              82.19% | 82.37% | Statements 45%, branches 45%, functions 35%, lines 46% |
+| Frontend |                    82.76% |   75.05% |              82.33% | 82.51% | Statements 45%, branches 45%, functions 35%, lines 46% |
 | Backend  |                    85.32% |   69.00% |              81.84% | 82.73% | Lines 80%                                              |
 
 Coverage is a regression signal, not a claim that every behavior or risk is
 tested. Frontend percentages come from Vitest/V8 and do not include Playwright
 execution. Backend percentages come from the default JaCoCo suite. The three
 PostgreSQL repository implementations excluded from default instrumentation are
-exercised behaviorally by the required isolated integration suite, but those 28
+exercised behaviorally by the required isolated integration suite, but those 29
 tests do not increase the JaCoCo percentages above.
 
 ## Browser Evidence

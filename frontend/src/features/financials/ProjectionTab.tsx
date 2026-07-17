@@ -5,6 +5,7 @@ import type {
 } from '../../api/endpoints/financials';
 import { PAY_CADENCE_OPTIONS, supportedPlanningTimeZones } from './financialsDatePolicy';
 import { currency, formatDate } from './financialsFormatters';
+import { debtOutcomeTone, expenseTone, valueTone } from './financialsMetricTones';
 import type {
   DraftAssetAccount,
   DraftBill,
@@ -149,29 +150,22 @@ export function ProjectionTab({
       )}
 
       <section aria-label="Projection summary" className="summary-grid projection-summary">
-        <div
-          className={
-            projection.nextPayPeriodCashAfterBills >= 0 ? 'metric-card good' : 'metric-card bad'
-          }
-        >
+        <div className={`metric-card ${valueTone(projection.nextPayPeriodCashAfterBills)}`}>
           <span>Cash after bills</span>
           <strong>{currency.format(projection.nextPayPeriodCashAfterBills)}</strong>
           <small>Next period after bills and housing</small>
         </div>
         <div
-          className={
-            projection.nextPayPeriodDebtRemaining > 0 ? 'metric-card bad' : 'metric-card good'
-          }
+          className={`metric-card ${debtOutcomeTone(
+            projection.currentDebt,
+            projection.nextPayPeriodDebtRemaining
+          )}`}
         >
           <span>Debt left after plan</span>
           <strong>{currency.format(projection.nextPayPeriodDebtRemaining)}</strong>
           <small>After the possible debt payment</small>
         </div>
-        <div
-          className={
-            projection.nextPayPeriodSavingsTransfer > 0 ? 'metric-card good' : 'metric-card neutral'
-          }
-        >
+        <div className={`metric-card ${valueTone(projection.nextPayPeriodSavingsTransfer)}`}>
           <span>Possible savings transfer</span>
           <strong>{currency.format(projection.nextPayPeriodSavingsTransfer)}</strong>
           <small>After the planned debt balance reaches zero</small>
@@ -179,11 +173,10 @@ export function ProjectionTab({
       </section>
 
       <section
-        className={
-          projection.remainingDebtAfterProjectedCash > 0
-            ? 'debt-progress-card bad'
-            : 'debt-progress-card good'
-        }
+        className={`debt-progress-card ${debtOutcomeTone(
+          projection.currentDebt,
+          projection.remainingDebtAfterProjectedCash
+        )}`}
         aria-label="Projected debt payoff progress"
       >
         <div>
@@ -243,19 +236,19 @@ function ProjectionPeriodCard({ period }: { period: ProjectionPeriod }) {
       </header>
 
       <dl className="projection-metrics">
-        <div className="good">
+        <div className={valueTone(period.paycheckIncome)}>
           <dt>Paycheck income</dt>
           <dd>{currency.format(period.paycheckIncome)}</dd>
         </div>
-        <div className="caution">
+        <div className={expenseTone(period.monthlyWithdrawalsDue)}>
           <dt>Bills due</dt>
           <dd>-{currency.format(period.monthlyWithdrawalsDue)}</dd>
         </div>
-        <div className="caution">
+        <div className={expenseTone(period.annualWithdrawalsDue)}>
           <dt>Annual bills due</dt>
           <dd>-{currency.format(period.annualWithdrawalsDue)}</dd>
         </div>
-        <div className="caution">
+        <div className={expenseTone(period.rentContribution)}>
           <dt>Housing reserve set-aside</dt>
           <dd>-{currency.format(period.rentContribution)}</dd>
         </div>
@@ -287,15 +280,15 @@ function ProjectionPeriodCard({ period }: { period: ProjectionPeriod }) {
                 <td colSpan={2}>No bills due in this period.</td>
               </tr>
             )}
-            <tr className="projection-row caution">
+            <tr className={`projection-row ${expenseTone(period.annualWithdrawalsDue)}`}>
               <td>Annual bills due</td>
               <td className="amount">-{currency.format(period.annualWithdrawalsDue)}</td>
             </tr>
-            <tr className="projection-row good">
+            <tr className={`projection-row ${valueTone(period.rentCoveredBySavings)}`}>
               <td>Housing paid from reserve</td>
               <td className="amount">{currency.format(period.rentCoveredBySavings)}</td>
             </tr>
-            <tr className="projection-row caution">
+            <tr className={`projection-row ${expenseTone(period.rentContribution)}`}>
               <td>Housing reserve set-aside</td>
               <td className="amount">-{currency.format(period.rentContribution)}</td>
             </tr>

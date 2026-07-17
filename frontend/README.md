@@ -309,7 +309,9 @@ Run the focused responsive workflow audit from the repository root:
 The responsive audit traverses signup, onboarding, compact navigation, and all
 twelve financial sections at 320, 390, 768, and 1024 pixels wide. It rejects
 page-level overflow, controls or table regions outside the viewport, undersized
-controls, and incorrect navigation behavior at the 900-pixel breakpoint. Use
+controls, unnecessary withdrawal-table scrolling at tablet/desktop widths,
+inaccessible narrow table scrolling, and incorrect navigation behavior at the
+900-pixel breakpoint. Use
 `../docs/responsive-verification.md` for the complete contract and manual
 viewport, orientation, and zoom checks.
 

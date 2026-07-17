@@ -2,9 +2,7 @@ param(
     [string]$DatabaseUrl,
     [string]$DatabaseUsername,
     [string]$DatabasePassword,
-    [string]$DatabaseSchema = "public",
-    [switch]$BaselineLegacySnapshotDocumentSchema,
-    [switch]$BaselineLegacyV4Schema
+    [string]$DatabaseSchema = "public"
 )
 
 Set-StrictMode -Version Latest
@@ -45,10 +43,6 @@ if (-not (Test-Path $mavenWrapper)) {
     throw "Maven wrapper not found at '$mavenWrapper'."
 }
 
-if ($BaselineLegacySnapshotDocumentSchema -and $BaselineLegacyV4Schema) {
-    throw "Choose only one legacy schema baseline mode."
-}
-
 $previousFlywayUrl = $env:FLYWAY_URL
 $previousFlywayUser = $env:FLYWAY_USER
 $previousFlywayPassword = $env:FLYWAY_PASSWORD
@@ -64,26 +58,6 @@ try {
 
     Push-Location $backendRoot
     try {
-        if ($BaselineLegacySnapshotDocumentSchema -or $BaselineLegacyV4Schema) {
-            $baselineVersion = if ($BaselineLegacySnapshotDocumentSchema) { "0" } else { "4" }
-            $baselineDescription = if ($BaselineLegacySnapshotDocumentSchema) {
-                "Legacy snapshot document schema"
-            }
-            else {
-                "Legacy V1-V4 schema"
-            }
-
-            Write-Host "Baselining the explicitly approved legacy schema at version $baselineVersion..." -ForegroundColor Yellow
-            & $mavenWrapper -B --no-transfer-progress `
-                "-Dflyway.baselineVersion=$baselineVersion" `
-                "-Dflyway.baselineDescription=$baselineDescription" `
-                flyway:baseline
-
-            if ($LASTEXITCODE -ne 0) {
-                throw "Flyway baseline failed with exit code $LASTEXITCODE."
-            }
-        }
-
         Write-Host "Running Flyway migrations and validation..." -ForegroundColor Yellow
         & $mavenWrapper -B --no-transfer-progress flyway:migrate flyway:validate
 
