@@ -59,11 +59,11 @@ test('keeps browser sessions isolated while editing the live PostgreSQL workspac
   ).toBeVisible();
 
   await page.getByRole('button', { name: 'Monthly Withdrawals' }).click();
-  const monthlyWithdrawalsTable = page.locator('table.withdrawals-table').first();
-  const transferRow = monthlyWithdrawalsTable.getByRole('row', {
-    name: /Example Savings Transfer/,
-  });
-  await expect(transferRow.getByRole('cell', { name: '$250.00' })).toBeVisible();
+  const monthlySchedule = page.getByRole('region', { name: 'Monthly schedule' });
+  const transferItem = monthlySchedule
+    .getByRole('listitem')
+    .filter({ hasText: 'Example Savings Transfer' });
+  await expect(transferItem.getByText('$250.00', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Edit Example Savings Transfer' }).click();
   await page.getByLabel('Amount').fill('275.50');
@@ -80,20 +80,20 @@ test('keeps browser sessions isolated while editing the live PostgreSQL workspac
   await page.reload();
   await page.getByRole('button', { name: 'Monthly Withdrawals' }).click();
 
-  const secondUserTransferRow = page
-    .locator('table.withdrawals-table')
-    .first()
-    .getByRole('row', { name: /Example Savings Transfer/ });
-  await expect(secondUserTransferRow.getByRole('cell', { name: '$875.00' })).toBeVisible();
-  await expect(secondUserTransferRow.getByRole('cell', { name: '$275.50' })).toHaveCount(0);
+  const secondUserTransferItem = page
+    .getByRole('region', { name: 'Monthly schedule' })
+    .getByRole('listitem')
+    .filter({ hasText: 'Example Savings Transfer' });
+  await expect(secondUserTransferItem.getByText('$875.00', { exact: true })).toBeVisible();
+  await expect(secondUserTransferItem.getByText('$275.50', { exact: true })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Sign Out' }).click();
   await signIn(page, firstEmail);
   await page.getByRole('button', { name: 'Monthly Withdrawals' }).click();
-  await expect(transferRow.getByRole('cell', { name: '$275.50' })).toBeVisible();
-  await expect(transferRow.getByRole('cell', { name: '$875.00' })).toHaveCount(0);
+  await expect(transferItem.getByText('$275.50', { exact: true })).toBeVisible();
+  await expect(transferItem.getByText('$875.00', { exact: true })).toHaveCount(0);
 
-  const removeButton = transferRow.getByRole('button', {
+  const removeButton = transferItem.getByRole('button', {
     name: 'Remove Example Savings Transfer',
   });
   await removeButton.click();
@@ -107,7 +107,7 @@ test('keeps browser sessions isolated while editing the live PostgreSQL workspac
 
   await page.reload();
   await page.getByRole('button', { name: 'Monthly Withdrawals' }).click();
-  await expect(transferRow).toBeHidden();
+  await expect(transferItem).toBeHidden();
 
   await page.getByRole('button', { name: 'Projection' }).click();
   const selectedRentLabel = (
@@ -118,14 +118,15 @@ test('keeps browser sessions isolated while editing the live PostgreSQL workspac
   }
 
   await page.getByRole('button', { name: 'Monthly Withdrawals' }).click();
-  await expect(
-    monthlyWithdrawalsTable.getByRole('cell', {
+  const selectedRentItem = monthlySchedule.getByRole('listitem').filter({
+    has: page.getByRole('button', {
       exact: true,
-      name: selectedRentLabel,
-    })
-  ).toBeVisible();
+      name: `Edit ${selectedRentLabel}`,
+    }),
+  });
+  await expect(selectedRentItem).toBeVisible();
   await expect(
-    monthlyWithdrawalsTable.getByRole('button', {
+    selectedRentItem.getByRole('button', {
       name: `Remove ${selectedRentLabel}`,
     })
   ).toBeDisabled();
@@ -164,6 +165,16 @@ test('keeps a stale draft visible and reloads after a concurrent save conflict',
   await expect(conflict).toBeHidden();
   await expect(page.getByRole('cell', { name: '$1,000.00' }).first()).toBeHidden();
   await page.getByRole('button', { name: 'Monthly Withdrawals' }).click();
-  await expect(page.getByRole('cell', { name: '$2,700.00' })).toBeVisible();
+
+  const rentItem = page
+    .getByRole('region', { name: 'Monthly schedule' })
+    .getByRole('listitem')
+    .filter({
+      has: page.getByRole('button', {
+        exact: true,
+        name: 'Edit Rent',
+      }),
+    });
+  await expect(rentItem.getByText('$2,700.00', { exact: true })).toBeVisible();
   await otherPage.close();
 });

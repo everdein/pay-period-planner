@@ -781,6 +781,186 @@ button.danger {
   gap: 20px;
 }
 
+
+.withdrawal-list-section {
+  display: grid;
+  gap: 12px;
+}
+
+.withdrawal-list-section + .withdrawal-list-section {
+  margin-top: 24px;
+}
+
+.withdrawal-list-header {
+  align-items: end;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.withdrawal-list-heading {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.withdrawal-list-heading h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.withdrawal-list-heading p {
+  color: #536179;
+  margin: 0;
+}
+
+.withdrawal-list-summary {
+  align-items: baseline;
+  color: #536179;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.withdrawal-list-summary strong {
+  color: #172033;
+  white-space: nowrap;
+}
+
+.withdrawal-list {
+  border-bottom: 1px solid #d7e0eb;
+  border-top: 1px solid #d7e0eb;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.withdrawal-list-item {
+  align-items: center;
+  display: grid;
+  gap: 6px 20px;
+  grid-template-areas:
+    'primary amount'
+    'meta controls';
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 16px 8px;
+}
+
+.withdrawal-list-item + .withdrawal-list-item {
+  border-top: 1px solid #e5eaf0;
+}
+
+.withdrawal-list-item.in-period {
+  background: #f8fbff;
+}
+
+.withdrawal-list-primary {
+  display: grid;
+  gap: 2px;
+  grid-area: primary;
+  min-width: 0;
+}
+
+.withdrawal-list-name {
+  color: #172033;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.withdrawal-list-description {
+  color: #536179;
+  font-size: 0.82rem;
+}
+
+.withdrawal-list-amount {
+  color: #172033;
+  font-size: 1.05rem;
+  font-weight: 800;
+  grid-area: amount;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.withdrawal-list-meta {
+  align-items: center;
+  color: #536179;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.86rem;
+  gap: 6px 10px;
+  grid-area: meta;
+  min-width: 0;
+}
+
+.withdrawal-list-meta-item {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+  min-width: 0;
+}
+
+.withdrawal-list-meta-item + .withdrawal-list-meta-item::before {
+  color: #9eacbc;
+  content: '•';
+  margin-right: 4px;
+}
+
+.withdrawal-list-account {
+  overflow-wrap: anywhere;
+}
+
+.withdrawal-list-controls {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  grid-area: controls;
+  justify-content: flex-end;
+  min-width: max-content;
+}
+
+.withdrawal-list-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.withdrawal-list-actions button {
+  margin: 0;
+}
+
+.withdrawal-list-empty {
+  align-items: start;
+  background: #f8fbff;
+  border: 1px dashed #b8c4d3;
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  padding: 20px;
+}
+
+.withdrawal-list-empty strong {
+  color: #172033;
+}
+
+.withdrawal-list-empty p {
+  color: #536179;
+  margin: 0;
+}
+
+.withdrawal-list-total {
+  color: #344054;
+  font-weight: 700;
+  margin: 0;
+  text-align: right;
+}
+
+.withdrawal-list-total strong {
+  color: #172033;
+}
+
+
 table {
   border-collapse: collapse;
   font-size: 0.92rem;
@@ -1250,12 +1430,7 @@ tr.projection-row.neutral td {
   .withdrawals-table .actions-column,
   .withdrawals-table th[aria-label='Actions'],
   .withdrawals-table .actions {
-    width: 118px;
-  }
-
-  .withdrawals-table .actions button {
-    padding-left: 5px;
-    padding-right: 5px;
+    width: 124px;
   }
 }
 
@@ -1379,6 +1554,70 @@ tr.projection-row.neutral td {
   .projection-period-card,
   .current-period-context {
     margin-top: 20px;
+  }
+}
+
+
+@media (max-width: 700px) {
+  .withdrawal-list-header {
+    align-items: stretch;
+    display: grid;
+    gap: 8px;
+  }
+
+  .withdrawal-list-summary {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .withdrawal-list-item {
+    align-items: start;
+    gap: 8px 12px;
+    grid-template-areas:
+      'primary amount'
+      'meta meta'
+      'controls controls';
+    padding: 14px 0;
+  }
+
+  .withdrawal-list-controls {
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 2px;
+    min-width: 0;
+  }
+
+  .withdrawal-list-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .withdrawal-list-meta-item + .withdrawal-list-meta-item::before {
+    display: none;
+  }
+
+  .withdrawal-list-empty {
+    padding: 16px;
+  }
+
+  .withdrawal-list-total {
+    text-align: left;
+  }
+}
+
+@media (max-width: 420px) {
+  .withdrawal-list-controls {
+    align-items: stretch;
+    display: grid;
+    gap: 10px;
+  }
+
+  .withdrawal-list-actions {
+    width: 100%;
+  }
+
+  .withdrawal-list-actions button {
+    flex: 1 1 auto;
   }
 }
 
