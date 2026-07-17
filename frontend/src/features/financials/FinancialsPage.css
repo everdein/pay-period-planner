@@ -1246,6 +1246,19 @@ tr.projection-row.neutral td {
   }
 }
 
+@media (min-width: 768px) and (max-width: 900px) {
+  .withdrawals-table .actions-column,
+  .withdrawals-table th[aria-label='Actions'],
+  .withdrawals-table .actions {
+    width: 118px;
+  }
+
+  .withdrawals-table .actions button {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+}
+
 @media (max-width: 900px) {
   .expenses-shell {
     padding: 16px;
