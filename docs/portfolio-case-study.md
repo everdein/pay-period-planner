@@ -38,8 +38,8 @@ them as planning estimates.
 ### 3. Keep planning usable on a phone
 
 At compact widths, grouped sidebar navigation becomes one section selector,
-account controls wrap without overlap, and wide financial tables stay inside
-keyboard-accessible scroll regions.
+account controls wrap without overlap, and financial tables reflow into labeled
+rows without page-level or contained horizontal scrolling.
 
 ![Pay Period Planner monthly planning workflow at a 390 pixel mobile viewport](images/portfolio/monthly-mobile.png)
 

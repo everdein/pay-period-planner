@@ -44,6 +44,7 @@ test('captures the synthetic portfolio walkthrough', async ({ page }) => {
     .getByRole('combobox', { name: 'Financial section' })
     .selectOption('monthly-withdrawals');
   await expect(page.getByRole('heading', { name: 'Monthly Withdrawals' })).toBeVisible();
+  await page.getByRole('heading', { name: 'Monthly schedule' }).scrollIntoViewIfNeeded();
   await page.screenshot({
     fullPage: false,
     path: path.join(evidenceDirectory, 'monthly-mobile.png'),
