@@ -1,12 +1,13 @@
 # Engineering Evidence
 
 This page records the latest qualified local evidence for Pay Period Planner.
-The completion-gate and responsive-browser baselines were refreshed on July
-16, 2026, against the complete working tree using synthetic data and isolated
-PostgreSQL schemas. The broader live-browser, accessibility, and authenticated
-security results remain the July 15 point-in-time evidence. This page describes
-what each result demonstrates and, equally importantly, what it does not
-demonstrate.
+The completion-gate baseline was refreshed on July 16, 2026, against the
+complete working tree using synthetic data and isolated PostgreSQL schemas.
+The hosted responsive, accessibility, PostgreSQL, CodeQL, dependency, and
+security checks passed for PR 44 on July 19 after responsive table reflow was
+introduced. Other local security evidence remains the July 15 point-in-time
+result. This page describes what each result demonstrates and, equally
+importantly, what it does not demonstrate.
 
 ## Evidence Summary
 
@@ -18,7 +19,7 @@ demonstrate.
 | PostgreSQL integration        | 29 of 29 passed in 8 classes              | Flyway V1-V12, relational persistence, identity/session behavior, workspace isolation, destructive retirement, CSRF, and runtime APIs                                               | Local PostgreSQL 18.4; schemas were isolated and removed after the run               |
 | Live browser workflow         | 6 of 6 passed in 3 specifications         | React, Vite proxy, Spring Boot, PostgreSQL, authentication, isolation, save/reload, conflicts, accessibility, and responsive behavior                                               | Chromium only; synthetic data; not cross-browser certification                       |
 | Automated accessibility       | 2 of 2 axe scenarios passed               | Account forms, onboarding, twelve financial sections, dialog semantics, and modal focus behavior under WCAG 2.0/2.1/2.2 A/AA rules                                                  | Automated rules cannot validate screen-reader usefulness or certify WCAG conformance |
-| Automated responsive behavior | 1 end-to-end scenario passed at 4 widths  | `320x800`, `390x844`, `768x1024`, and `1024x768`; overflow, control containment, withdrawal-table fit, accessible narrow scrolling, and navigation breakpoint                       | Geometry checks do not replace manual readability, orientation, or 200% zoom review  |
+| Automated responsive behavior | 1 end-to-end scenario passed at 4 widths  | `320x800`, `390x844`, `768x1024`, and `1024x768`; overflow, control containment, responsive table reflow, withdrawal-list fit, and navigation breakpoint                            | Geometry checks do not replace manual readability, orientation, or 200% zoom review  |
 | npm audits                    | Pass, 0 reported vulnerabilities          | Root and frontend lockfiles                                                                                                                                                         | Point-in-time advisory database result                                               |
 | Authenticated Snyk            | Pass, no vulnerable paths in 3 projects   | Root npm, Maven backend with 76 dependencies, and frontend npm with 13 dependencies using pinned CLI `1.1306.0`                                                                     | Point-in-time dependency result; does not replace CodeQL or future scans             |
 | CodeQL                        | Hosted evidence required                  | Hosted Java and JavaScript/TypeScript analysis                                                                                                                                      | No complete local equivalent; inspect uploaded alerts for each commit/PR run         |

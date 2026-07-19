@@ -17,9 +17,9 @@ description: Inspect and diagnose the local financial_app PostgreSQL database wi
 5. Confirm `transaction_read_only` is `on`. Check expected tables, Flyway
    history, exact row counts, active snapshot version/timestamps and collection
    counts, plus database/schema/table privileges.
-6. Treat empty normalized V1 tables as healthy. Treat V3/V4/V6-V11
-   `financial_record_*` tables as active workspace storage; V10/V11 remove the V2
-   JSONB table, V7 transition ledger, and unowned compatibility rows.
+6. Treat the relational `financial_record_*` tables as active workspace
+   storage. Flyway V12 removes the retired V1 table family; V10 and V11 remove
+   legacy JSONB transition storage and unowned compatibility rows.
 7. Inspect aggregate metadata by default. Never print complete
    financial snapshots unless the user explicitly authorizes that scope.
 8. Compare observations with the PostgreSQL relational runtime and Flyway

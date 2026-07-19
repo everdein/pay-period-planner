@@ -347,8 +347,8 @@ infrastructure.
 - Accepted gaps and revisit triggers: `docs/known-limitations.md`
 - Symptom-driven diagnosis: `docs/troubleshooting-decision-tree.md`
 - Logs, metrics, and request correlation: `docs/observability-guide.md`
-- External connector and MCP boundaries: `docs/mcp-integration-guide.md`
-- GitHub and Codex settings: `docs/github-codex-configuration.md`
+- Automation, agent, connector, and GitHub boundaries:
+  `docs/automation-operations.md`
 - API and backend operations: `backend/README.md`
 - Frontend development: `frontend/README.md`
 - Architectural decisions: `docs/adr/`

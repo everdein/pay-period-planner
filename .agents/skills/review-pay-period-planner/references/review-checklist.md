@@ -46,9 +46,9 @@ and user or operator impact.
 
 ## PostgreSQL Persistence and Flyway
 
-- Treat the V3/V4/V6-V11 `financial_record_*` tables as the active runtime path.
-  V10/V11 remove the V2 JSONB table, V7 transition ledger, source linkage, and
-  unowned compatibility rows.
+- Treat the relational `financial_record_*` tables as the active runtime path.
+  Flyway V12 removes the retired V1 table family; V10 and V11 remove legacy
+  JSONB transition storage, source linkage, and unowned compatibility rows.
 - Verify workspace ownership, IDs, versions, optimistic replacement, and
   serialization remain consistent across runtime and backup/restore boundaries.
 - Require additive migrations. Check constraints, indexes, transaction

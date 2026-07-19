@@ -187,25 +187,31 @@ try {
             Area = "Verification and local scripts"
             Severity = "Medium"
             SourcePatterns = @("^scripts/", "^package\.json$", "^frontend/package\.json$", "^backend/pom\.xml$", "^frontend/vite\.config\.ts$")
-            ExpectedDocs = @("docs/verification-matrix.md", "README.md", "AGENTS.md", "frontend/README.md", "backend/README.md")
+            ExpectedDocs = @("docs/verification-matrix.md", "docs/automation-operations.md", "README.md", "frontend/README.md", "backend/README.md")
         },
         [pscustomobject]@{
             Area = "GitHub workflows and hosted automation"
             Severity = "Medium"
             SourcePatterns = @("^\.github/workflows/", "^\.github/ISSUE_TEMPLATE/", "^\.github/PULL_REQUEST_TEMPLATE\.md$", "^\.github/copilot-instructions\.md$")
-            ExpectedDocs = @("docs/github-ai-workflows.md", "docs/verification-matrix.md", "README.md", "AGENTS.md")
+            ExpectedDocs = @("docs/automation-operations.md", "docs/verification-matrix.md", "README.md")
         },
         [pscustomobject]@{
             Area = "Agent and AI workflow"
             Severity = "Medium"
-            SourcePatterns = @("^\.agents/", "^\.codex/agents/", "^docs/ai-enablement-roadmap\.md$")
-            ExpectedDocs = @("AGENTS.md", "docs/ai-enablement-roadmap.md", "docs/github-ai-workflows.md", ".agents/skills/audit-pay-period-planner-docs/references/source-map.md")
+            SourcePatterns = @("^\.agents/", "^\.codex/agents/")
+            ExpectedDocs = @("AGENTS.md", "docs/automation-operations.md", ".agents/skills/audit-pay-period-planner-docs/references/source-map.md")
         },
         [pscustomobject]@{
-            Area = "Frontend behavior"
+            Area = "Responsive behavior"
             Severity = "Medium"
-            SourcePatterns = @("^frontend/src/", "^frontend/e2e/", "^frontend/playwright\.config\.ts$")
-            ExpectedDocs = @("frontend/README.md", "docs/verification-matrix.md", "docs/architecture-map.md")
+            SourcePatterns = @("^frontend/src/.*\.css$", "^frontend/e2e/responsive\.spec\.ts$", "^frontend/playwright\.config\.ts$")
+            ExpectedDocs = @("docs/responsive-verification.md", "docs/engineering-evidence.md", "docs/verification-matrix.md")
+        },
+        [pscustomobject]@{
+            Area = "Accessibility behavior"
+            Severity = "Medium"
+            SourcePatterns = @("^frontend/e2e/accessibility\.spec\.ts$", "^frontend/src/.*(Modal|Dialog|WorkflowFeedback).*\.tsx$")
+            ExpectedDocs = @("docs/accessibility-verification.md", "docs/engineering-evidence.md", "docs/verification-matrix.md")
         }
     )
 

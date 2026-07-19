@@ -81,7 +81,7 @@ portfolio ingestion unless reviewed and added by exact path:
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | `backend/README.md`, `frontend/README.md`                                      | Detailed workstation and subproject operation; the public narrative links to canonical architecture and evidence instead |
 | Troubleshooting and local database runbooks                                    | May describe machine-specific or credentialed operational procedures                                                     |
-| GitHub, Codex, MCP, dependency-triage, issue, and maintenance guides           | Contributor automation rather than application architecture evidence                                                     |
+| Automation operations and dependency-triage guides                             | Contributor automation rather than application architecture evidence                                                     |
 | `.agents/`, `.codex/`, and `AGENTS.md`                                         | Agent policy and repository instructions, not portfolio content                                                          |
 | Dependency locks, generated coverage/build output, reports, and caches         | Large or generated context with poor explanatory value                                                                   |
 | Local JSON, PostgreSQL contents, exports, logs, traces, and ad hoc screenshots | May contain personal financial data                                                                                      |
@@ -96,15 +96,10 @@ in the case study, which is in the corpus.
 - [Accessibility verification](accessibility-verification.md)
 - [Responsive verification](responsive-verification.md)
 - [Troubleshooting decision tree](troubleshooting-decision-tree.md)
-- [MCP integration guide](mcp-integration-guide.md)
-- [GitHub and Codex configuration](github-codex-configuration.md)
-- [GitHub AI workflows](github-ai-workflows.md)
-- [Issue-to-implementation workflow](issue-to-implementation-workflow.md)
+- [Automation and agent operations](automation-operations.md)
 - [Dependency update triage](dependency-update-triage.md)
-- [Maintenance review workflow](maintenance-review-workflow.md)
 - [Snyk MCP/API assessment](snyk-integration-assessment.md)
 - [Deployment provider assessment](deployment-provider-assessment.md)
-- [AI enablement roadmap](ai-enablement-roadmap.md)
 
 These documents are maintained and link-checked, but they are not automatically
 part of the public corpus.
@@ -114,8 +109,9 @@ part of the public corpus.
 ADRs are historical records. Do not rewrite an old decision to match current
 code. Update its status or supersession reference when necessary, add a new ADR
 for a new architectural decision, and use the architecture map for the current
-runtime view. The public corpus includes every ADR so a reviewer can distinguish
-the original context from the surviving decision.
+runtime view. Default public retrieval includes the ADR index plus accepted or
+partially surviving decisions. Fully superseded records remain available
+through the index when historical context is specifically needed.
 
 ## Maintenance
 

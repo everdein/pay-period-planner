@@ -27,19 +27,19 @@ all twelve financial sections at these viewport sizes:
 At every viewport, the suite requires:
 
 - no page-level horizontal overflow
-- all visible non-table controls to remain inside the viewport
-- all visible non-table controls, except native checkboxes, to be at least
+- all visible controls to remain inside the viewport
+- all visible controls, except native checkboxes, to be at least
   24 by 24 CSS pixels
-- every table scroll region to remain inside the viewport
+- every table and list to remain inside its component without horizontal
+  scrolling
 - compact section navigation at 900 pixels and below, with the full sidebar
   restored above that breakpoint
 
-Wide financial tables keep an explicit readable minimum width. Monthly and
-annual withdrawal tables must fit their regions without horizontal scrolling
-at the tablet and desktop widths. Phone layouts may scroll those tables only
-inside their keyboard-focusable `.table-wrap` regions; the document itself must
-not scroll sideways. Other tables may use the same contained scrolling when
-their readable minimum exceeds the available width.
+Monthly withdrawals use responsive schedule lists. Other financial tables keep
+native table semantics on roomy screens and become labeled detail rows at the
+compact breakpoint. Amounts, status, and actions must remain associated with
+their item, and action buttons may wrap without forcing a minimum table width.
+Neither the component nor the document may scroll sideways.
 
 The hosted `Responsive` job runs the same suite and blocks the final `Scans`
 job. Treat a new overflow exclusion, smaller supported width, or breakpoint
@@ -53,7 +53,7 @@ For responsive-critical changes, inspect each supported viewport and confirm:
 - headings, values, notices, actions, and long synthetic account names remain
   readable without overlap or clipping
 - forms follow a useful reading order and native date controls remain operable
-- table captions and the first column make the scroll region understandable
+- compact row labels preserve every desktop column relationship
 - action rows wrap without separating a command from its context
 - portrait and landscape orientation changes preserve the current section and
   unsaved draft

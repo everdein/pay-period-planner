@@ -105,14 +105,12 @@ async function expectResponsiveLayout(page: Page, state: string) {
       document.querySelectorAll('button, input:not([type="hidden"]), select')
     ).filter(visible);
     const controlOverflow = controls
-      .filter((element) => !element.closest('.table-wrap'))
       .filter((element) => {
         const rect = element.getBoundingClientRect();
         return rect.left < -1 || rect.right > viewportWidth + 1;
       })
       .map(describe);
     const undersizedControls = controls
-      .filter((element) => !element.closest('.table-wrap'))
       .filter((element) => !(element instanceof HTMLInputElement && element.type === 'checkbox'))
       .filter((element) => {
         const rect = element.getBoundingClientRect();
@@ -126,18 +124,9 @@ async function expectResponsiveLayout(page: Page, state: string) {
         return rect.left < -1 || rect.right > viewportWidth + 1;
       })
       .map(describe);
-    const inaccessibleScrollableTableRegions = Array.from(
-      document.querySelectorAll<HTMLElement>('.table-wrap')
-    )
-      .filter(visible)
-      .filter((element) => element.scrollWidth > element.clientWidth + 1)
-      .filter((element) => element.tabIndex < 0)
-      .map(describe);
-
     return {
       controlOverflow,
       horizontalOverflow: Math.max(0, pageWidth - viewportWidth),
-      inaccessibleScrollableTableRegions,
       tableRegionOverflow,
       undersizedControls,
     };
@@ -145,10 +134,6 @@ async function expectResponsiveLayout(page: Page, state: string) {
 
   expect(result.horizontalOverflow, `${state} page overflow`).toBeLessThanOrEqual(1);
   expect(result.controlOverflow, `${state} controls outside the viewport`).toEqual([]);
-  expect(
-    result.inaccessibleScrollableTableRegions,
-    `${state} scrollable table regions without keyboard access`
-  ).toEqual([]);
   expect(result.tableRegionOverflow, `${state} table regions outside the viewport`).toEqual([]);
   expect(result.undersizedControls, `${state} controls smaller than 24px`).toEqual([]);
 }

@@ -53,7 +53,7 @@ try {
         "scripts/triage-dependency-updates.ps1",
         "scripts/generate-engineering-status.ps1"
     )
-    $roadmap = Get-Content -LiteralPath (Join-Path $repoRoot "docs/ai-enablement-roadmap.md")
+    $roadmap = Get-Content -LiteralPath (Join-Path $repoRoot "docs/production-readiness-roadmap.md")
     $openRoadmapItems = @($roadmap | Where-Object { $_ -match "^- \[ \]" })
 
     $summaryLines.Add("# Weekly engineering status packet")
@@ -66,7 +66,7 @@ try {
 
     Add-Section "Roadmap items still open"
     if ($openRoadmapItems.Count -eq 0) {
-        $summaryLines.Add("- None in ``docs/ai-enablement-roadmap.md``.")
+        $summaryLines.Add("- None in ``docs/production-readiness-roadmap.md``.")
     }
     else {
         foreach ($item in $openRoadmapItems) {

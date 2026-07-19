@@ -71,7 +71,7 @@
     {
       "path": "docs/production-readiness-roadmap.md",
       "kind": "document",
-      "reason": "Completed foundations and explicit next work."
+      "reason": "Open deployment, portfolio, and product decisions."
     },
     {
       "path": "docs/deployment-provider-assessment.md",
@@ -89,11 +89,6 @@
       "reason": "Historical framework decision."
     },
     {
-      "path": "docs/adr/0002-use-file-backed-json-for-local-financial-data.md",
-      "kind": "document",
-      "reason": "Superseded prototype persistence decision."
-    },
-    {
       "path": "docs/adr/0003-use-draft-save-workflow-for-financial-edits.md",
       "kind": "document",
       "reason": "Draft/save interaction decision."
@@ -102,11 +97,6 @@
       "path": "docs/adr/0004-model-financials-as-a-single-snapshot-aggregate.md",
       "kind": "document",
       "reason": "Snapshot aggregate origin and later qualification."
-    },
-    {
-      "path": "docs/adr/0005-enforce-domain-invariants-with-ensure-functions.md",
-      "kind": "document",
-      "reason": "Superseded protected-record identity decision."
     },
     {
       "path": "docs/adr/0006-add-backend-production-readiness-guardrails.md",
@@ -124,11 +114,6 @@
       "reason": "Optimistic concurrency decision."
     },
     {
-      "path": "docs/adr/0009-keep-v1-normalized-tables-inactive.md",
-      "kind": "document",
-      "reason": "Inactive V1 schema decision."
-    },
-    {
       "path": "docs/adr/0010-add-v3-relational-financial-record-path.md",
       "kind": "document",
       "reason": "Active relational record path decision."
@@ -137,16 +122,6 @@
       "path": "docs/adr/0011-add-granular-postgresql-record-persistence.md",
       "kind": "document",
       "reason": "Relational persistence history and superseded CRUD scope."
-    },
-    {
-      "path": "docs/adr/0012-add-granular-financial-record-apis.md",
-      "kind": "document",
-      "reason": "Superseded granular API decision."
-    },
-    {
-      "path": "docs/adr/0013-add-tabular-financial-snapshot-import-export.md",
-      "kind": "document",
-      "reason": "Superseded tabular recovery decision."
     },
     {
       "path": "docs/adr/0014-adopt-postgresql-only-workspace-persistence.md",
@@ -162,11 +137,6 @@
       "path": "docs/adr/0016-use-financial-workspace-as-the-sole-mutation-aggregate.md",
       "kind": "document",
       "reason": "Sole mutation aggregate decision."
-    },
-    {
-      "path": "docs/adr/0017-retire-xlsx-snapshot-import.md",
-      "kind": "document",
-      "reason": "Recovery-format subtraction history."
     },
     {
       "path": "docs/adr/0018-use-json-as-the-sole-application-backup-format.md",

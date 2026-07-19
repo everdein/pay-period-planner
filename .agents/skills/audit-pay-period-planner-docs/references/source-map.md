@@ -32,23 +32,23 @@ summarize these sources but must not override them.
 | PostgreSQL active storage         | Store and relational-adapter implementations plus migrations                                       | Integration tests for current snapshot, bounded history, replacement, and isolation                                                                                                  |
 | PostgreSQL V3/V4 relational path  | `backend/src/main/java/com/example/backend/repository/PostgresFinancialRecordSnapshotAdapter.java` | `backend/src/main/resources/db/migration/V3__create_financial_record_snapshot_schema.sql`, `backend/src/main/resources/db/migration/V4__add_financial_record_app_id_constraints.sql` |
 | Schema state                      | Ordered migration files                                                                            | Read-only inspector output                                                                                                                                                           |
-| PostgreSQL MCP/read-only role     | `scripts/setup-postgres-readonly-role.ps1`                                                         | Storage guide, MCP guide                                                                                                                                                             |
+| PostgreSQL MCP/read-only role     | `scripts/setup-postgres-readonly-role.ps1`                                                         | Storage guide, automation operations guide                                                                                                                                           |
 | CI jobs and dependencies          | `.github/workflows/*.yml`                                                                          | Local verification scripts                                                                                                                                                           |
-| Hosted AI review workflow         | `.github/workflows/copilot-review.yml`                                                             | GitHub AI workflow guide                                                                                                                                                             |
-| GitHub/Codex configuration        | Live repository settings, rulesets, installed-app permissions, and Codex approvals                 | `docs/github-codex-configuration.md`, MCP guide, GitHub AI workflow guide                                                                                                            |
-| Copilot review instructions       | `.github/copilot-instructions.md`                                                                  | GitHub AI workflow guide                                                                                                                                                             |
-| PR summary structure              | `.github/PULL_REQUEST_TEMPLATE.md`                                                                 | GitHub AI workflow guide                                                                                                                                                             |
-| PR/failure summary packets        | `.github/workflows/*summary*.yml`                                                                  | GitHub AI workflow guide                                                                                                                                                             |
-| Issue forms and implementation    | `.github/ISSUE_TEMPLATE/*.yml`                                                                     | Issue-to-implementation guide                                                                                                                                                        |
+| Hosted AI review workflow         | `.github/workflows/copilot-review.yml`                                                             | Automation operations guide                                                                                                                                                          |
+| GitHub/Codex configuration        | Live repository settings, rulesets, installed-app permissions, and Codex approvals                 | `docs/automation-operations.md`                                                                                                                                                      |
+| Copilot review instructions       | `.github/copilot-instructions.md`                                                                  | Automation operations guide                                                                                                                                                          |
+| PR summary structure              | `.github/PULL_REQUEST_TEMPLATE.md`                                                                 | Automation operations guide                                                                                                                                                          |
+| PR/failure summary packets        | `.github/workflows/*summary*.yml`                                                                  | Automation operations guide                                                                                                                                                          |
+| Issue forms and implementation    | `.github/ISSUE_TEMPLATE/*.yml`                                                                     | Automation operations guide                                                                                                                                                          |
 | Documentation drift workflow      | `scripts/check-documentation-drift.ps1`                                                            | Workflow and source map                                                                                                                                                              |
 | Dependency update triage          | `.github/dependabot.yml`                                                                           | Dependency triage guide                                                                                                                                                              |
-| Weekly maintenance/status         | `scripts/generate-engineering-status.ps1`                                                          | Maintenance workflow guide                                                                                                                                                           |
+| Weekly maintenance/status         | `scripts/generate-engineering-status.ps1`                                                          | Automation operations guide                                                                                                                                                          |
 | Coverage thresholds               | Vite config and JaCoCo configuration                                                               | CI commands                                                                                                                                                                          |
 | Published engineering evidence    | Coverage reports, Surefire XML, Playwright specs, security script, and hosted workflow definitions | `docs/engineering-evidence.md`, verification matrix                                                                                                                                  |
 | Logs, metrics, and request IDs    | `RequestObservabilityFilter`, `application*.properties`, and `ApiSecurityConfig`                   | `frontend/src/observability/*`, API client, observability guide, focused tests                                                                                                       |
 | Security gates                    | `.snyk-cli-version`, CI scan step, and security script                                             | Snyk output when authenticated                                                                                                                                                       |
-| Snyk MCP/API feasibility          | `docs/snyk-integration-assessment.md`                                                              | MCP guide, official Snyk docs                                                                                                                                                        |
-| MCP and connector boundaries      | `docs/mcp-integration-guide.md`                                                                    | `AGENTS.md`, GitHub state                                                                                                                                                            |
+| Snyk MCP/API feasibility          | `docs/snyk-integration-assessment.md`                                                              | Automation operations guide, official Snyk docs                                                                                                                                      |
+| MCP and connector boundaries      | `docs/automation-operations.md`                                                                    | `AGENTS.md`, live provider state                                                                                                                                                     |
 | Intentional architecture          | Current code plus accepted ADRs                                                                    | Architecture documentation                                                                                                                                                           |
 
 ## Audit Checks
@@ -73,9 +73,10 @@ summarize these sources but must not override them.
 
 - Verify table names, migration order, Flyway behavior, active storage adapter,
   seeding, versioning, and expected empty tables.
-- Describe V1 normalized tables as inactive historical groundwork,
-  V3/V4/V6-V11 financial-record tables as active workspace persistence, and
-  V2/V7 transition storage as retired by V10/V11.
+- Describe the relational financial-record tables as active workspace
+  persistence. Flyway
+  V12 removes the retired V1 table family; V10 and V11 remove legacy JSONB
+  transition and compatibility storage.
 - Distinguish the write-capable application role from a recommended read-only
   inspection or MCP role.
 
@@ -93,8 +94,9 @@ summarize these sources but must not override them.
 
 - Check local file links and command paths exist.
 - Identify conflicting duplicate instructions and nominate one canonical home.
-- Ensure behavioral changes update the owning README, `AGENTS.md`, relevant
-  operational docs, and a new ADR when an architectural decision changes.
+- Update only the canonical owner for a changed claim. Add an ADR when an
+  architectural decision changes; do not require routine source edits to touch
+  broad architecture documentation.
 
 ## Finding Priorities
 

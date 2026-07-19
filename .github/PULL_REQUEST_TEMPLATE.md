@@ -10,26 +10,18 @@ personal financial values, raw database rows, or full local JSON snapshots.
 
 ## Verification
 
-<!-- List exact commands and hosted checks. Mark unavailable/skipped checks with why. -->
+<!-- List only checks relevant to this change. Include exact commands or hosted job names. -->
 
-- [ ] `npm run spell`
-- [ ] `git diff --check`
-- [ ] `.\scripts\verify-local.ps1`
-- [ ] PostgreSQL check, if relevant: `.\scripts\verify-local.ps1 -IncludePostgres`
-- [ ] Browser check, if relevant: `.\scripts\run-browser-checks.ps1`
-- [ ] Accessibility check, if relevant:
-      `.\scripts\run-browser-checks.ps1 -TestPath e2e/accessibility.spec.ts`
-- [ ] Responsive check, if relevant:
-      `.\scripts\run-browser-checks.ps1 -TestPath e2e/responsive.spec.ts`
-- [ ] Security check, if available: `.\scripts\run-security-checks.ps1`
+- Passed:
+- Skipped with reason:
 
 ## Data and security notes
 
 <!-- State whether the change touches mock data, local personal financial data, credentials, Snyk, GitHub permissions, or database roles. -->
 
-- Uses synthetic/mock financial data only:
-- Touches ignored local data or personal financial data:
-- Changes secrets, permissions, security policy, or dependency posture:
+- Personal or local financial data touched: No
+- Database/API/migration impact: None
+- Secrets, permissions, security policy, or dependency impact: None
 
 ## Follow-up
 

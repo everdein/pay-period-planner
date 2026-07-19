@@ -57,7 +57,7 @@ to reproduce and qualify them.
 | Security configuration          | Focused configuration inspection                       | Authenticated Snyk scan                                   | Tool/auth state, severity threshold, fixed versions                      |
 | Observability/correlation       | Filter, security, API-client, and error-boundary tests | Full local verification                                   | No sensitive fields; bounded metric tags; protected Actuator             |
 | Accessibility                   | Focused interaction tests plus live axe browser audit  | Full local verification and hosted Accessibility job      | Manual screen-reader/keyboard protocol when interaction changed          |
-| Responsive UI                   | Focused live responsive browser audit                  | Full local verification and hosted Responsive job         | 320/390/768/1024 widths; contained controls and table scrolling          |
+| Responsive UI                   | Focused live responsive browser audit                  | Full local verification and hosted Responsive job         | 320/390/768/1024 widths; contained controls and table/list reflow        |
 | Browser workflow                | `scripts/run-browser-checks.ps1`                       | Full local verification plus browser smoke when relevant  | Synthetic data, screenshots/traces only when intentionally shared        |
 | Cross-layer feature             | Narrow checks in every affected layer                  | Full local verification                                   | End-to-end contract and persistence parity                               |
 

@@ -27,9 +27,7 @@ description: Review the Pay Period Planner repository, pull requests, or change 
    Then report assumptions, skipped checks, and residual risk. If there are no
    findings, say so explicitly.
 
-Treat the V1 normalized tables as inactive historical groundwork; ADR 0009 keeps
-them out of the runtime relational adapter path. Do not infer that an empty V1
-table means PostgreSQL persistence is broken. Treat the V3/V4/V6-V11
-`financial_record_*` tables as the active PostgreSQL runtime path. V10/V11
-retire the V2 JSONB and V7 migration-administration storage. Do not infer that an
+Treat the relational `financial_record_*` tables as the active PostgreSQL
+runtime path. Flyway V12 removes the retired V1 table family; V10 and V11
+remove legacy JSONB transition and compatibility storage. Do not infer that an
 authenticated Snyk scan passed from `npm audit`.
