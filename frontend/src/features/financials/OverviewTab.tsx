@@ -186,9 +186,13 @@ export function Overview({
           <tbody>
             {assetCategories.map((category) => (
               <tr key={category.key}>
-                <td>{category.label}</td>
-                <td className="count-cell">{category.accounts.length}</td>
-                <td className="amount">{currency.format(category.total)}</td>
+                <td data-label="Category">{category.label}</td>
+                <td className="count-cell" data-label="Accounts">
+                  {category.accounts.length}
+                </td>
+                <td className="amount" data-label="Total">
+                  {currency.format(category.total)}
+                </td>
               </tr>
             ))}
           </tbody>

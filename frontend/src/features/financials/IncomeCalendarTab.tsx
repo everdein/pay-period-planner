@@ -88,19 +88,23 @@ export function IncomeCalendarTab({
                   className={event.status === 'current' ? 'current-income' : undefined}
                   key={event.id}
                 >
-                  <td className="date-cell">{formatDate(event.date)}</td>
-                  <td>{event.label}</td>
-                  <td>{event.type}</td>
-                  <td className="count-cell">{event.checkNumber ?? '-'}</td>
-                  <td className="count-cell">
+                  <td className="date-cell" data-label="Pay Date">
+                    {formatDate(event.date)}
+                  </td>
+                  <td data-label="Event">{event.label}</td>
+                  <td data-label="Type">{event.type}</td>
+                  <td className="count-cell" data-label="Check #">
+                    {event.checkNumber ?? '-'}
+                  </td>
+                  <td className="count-cell" data-label="Checks / Month">
                     {event.checkNumber === null ? '-' : event.checksInMonth}
                   </td>
-                  <td className="status-cell">
+                  <td className="status-cell" data-label="Status">
                     <span className={`pill ${event.status ?? 'upcoming'}`}>
                       {incomeStatusLabel(event.status)}
                     </span>
                   </td>
-                  <td className="actions">
+                  <td className="actions" data-label="Actions">
                     <EditButton
                       label={`Edit ${event.label}`}
                       onClick={() => startIncomeEventEdit(event)}

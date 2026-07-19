@@ -72,10 +72,12 @@ export function IncomeSummaryTab({
                 )}
                 {sourceIncomeSummaryItems.map((item) => (
                   <tr key={item.id}>
-                    <td>{item.category}</td>
-                    <td>{item.interval}</td>
-                    <td className="amount">{currency.format(item.amount)}</td>
-                    <td className="actions">
+                    <td data-label="Category">{item.category}</td>
+                    <td data-label="Interval">{item.interval}</td>
+                    <td className="amount" data-label="Amount">
+                      {currency.format(item.amount)}
+                    </td>
+                    <td className="actions" data-label="Actions">
                       <EditButton
                         label={`Edit ${item.category} ${item.interval}`}
                         onClick={() => startIncomeSummaryItemEdit(item)}
@@ -111,8 +113,10 @@ export function IncomeSummaryTab({
                     .filter((item) => item.category === category)
                     .map((item) => (
                       <tr key={item.id}>
-                        <td>{item.interval}</td>
-                        <td className="amount">{currency.format(item.amount)}</td>
+                        <td data-label="Interval">{item.interval}</td>
+                        <td className="amount" data-label="Amount">
+                          {currency.format(item.amount)}
+                        </td>
                       </tr>
                     ))}
                 </tbody>

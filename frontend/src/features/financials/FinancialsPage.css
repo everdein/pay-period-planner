@@ -767,13 +767,8 @@ button.danger {
 }
 
 .table-wrap {
-  overflow-x: auto;
+  min-width: 0;
   width: 100%;
-}
-
-.table-wrap:focus-visible {
-  outline: 3px solid #17365d;
-  outline-offset: 2px;
 }
 
 .stacked-tables {
@@ -839,13 +834,14 @@ button.danger {
 
 .withdrawal-list-item {
   align-items: center;
+  border-left: 3px solid transparent;
   display: grid;
   gap: 6px 20px;
   grid-template-areas:
     'primary amount'
     'meta controls';
   grid-template-columns: minmax(0, 1fr) auto;
-  padding: 16px 8px;
+  padding: 16px 8px 16px 12px;
 }
 
 .withdrawal-list-item + .withdrawal-list-item {
@@ -853,7 +849,8 @@ button.danger {
 }
 
 .withdrawal-list-item.in-period {
-  background: #f8fbff;
+  background: #f5faf8;
+  border-left-color: #2f855a;
 }
 
 .withdrawal-list-primary {
@@ -870,13 +867,20 @@ button.danger {
 }
 
 .withdrawal-list-description {
-  color: #536179;
-  font-size: 0.82rem;
+  background: #e8f4ec;
+  border: 1px solid #bdd8c5;
+  border-radius: 999px;
+  color: #2f5d46;
+  font-size: 0.76rem;
+  font-weight: 800;
+  justify-self: start;
+  padding: 2px 8px;
 }
 
 .withdrawal-list-amount {
   color: #172033;
   font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
   font-weight: 800;
   grid-area: amount;
   text-align: right;
@@ -903,7 +907,7 @@ button.danger {
 
 .withdrawal-list-meta-item + .withdrawal-list-meta-item::before {
   color: #9eacbc;
-  content: '•';
+  content: '\2022';
   margin-right: 4px;
 }
 
@@ -927,7 +931,9 @@ button.danger {
 }
 
 .withdrawal-list-actions button {
+  font-size: 0.82rem;
   margin: 0;
+  padding: 5px 8px;
 }
 
 .withdrawal-list-empty {
@@ -970,11 +976,11 @@ table {
 
 .calendar-table,
 .dates-table {
-  min-width: 720px;
+  min-width: 0;
 }
 
 .withdrawals-table {
-  min-width: 640px;
+  min-width: 0;
 }
 
 .account-table,
@@ -982,7 +988,7 @@ table {
 .income-summary-table,
 .overview-table,
 .projection-detail-table {
-  min-width: 560px;
+  min-width: 0;
 }
 
 caption {
@@ -1138,6 +1144,7 @@ tr.projection-row.neutral td {
 }
 
 .amount {
+  font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;
 }
@@ -1440,16 +1447,174 @@ tr.projection-row.neutral td {
   }
 
   .calendar-table,
-  .dates-table {
-    min-width: 700px;
-  }
-
+  .dates-table,
+  .withdrawals-table,
   .account-table,
   .income-source-table,
   .income-summary-table,
   .overview-table,
   .projection-detail-table {
-    min-width: 500px;
+    display: block;
+    min-width: 0;
+  }
+
+  .calendar-table caption,
+  .dates-table caption,
+  .withdrawals-table caption,
+  .account-table caption,
+  .income-source-table caption,
+  .income-summary-table caption,
+  .overview-table caption,
+  .projection-detail-table caption {
+    display: block;
+  }
+
+  .calendar-table thead,
+  .dates-table thead,
+  .withdrawals-table thead,
+  .account-table thead,
+  .income-source-table thead,
+  .income-summary-table thead,
+  .overview-table thead,
+  .projection-detail-table thead {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
+  .calendar-table tbody,
+  .dates-table tbody,
+  .withdrawals-table tbody,
+  .account-table tbody,
+  .income-source-table tbody,
+  .income-summary-table tbody,
+  .overview-table tbody,
+  .projection-detail-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .calendar-table tr,
+  .dates-table tr,
+  .withdrawals-table tr,
+  .account-table tr,
+  .income-source-table tr,
+  .income-summary-table tr,
+  .overview-table tr,
+  .projection-detail-table tr {
+    border: 1px solid #d7e0eb;
+    border-left: 3px solid #9eacbc;
+    border-radius: 6px;
+    display: block;
+    overflow: hidden;
+  }
+
+  .calendar-table tr.current-income,
+  .withdrawals-table tr.in-period {
+    border-left-color: #2f855a;
+  }
+
+  .dates-table tr.next-important-date,
+  .projection-detail-table tr.caution {
+    border-left-color: #b7791f;
+  }
+
+  .projection-detail-table tr.good {
+    border-left-color: #3f7f36;
+  }
+
+  .projection-detail-table tr.bad {
+    border-left-color: #b42318;
+  }
+
+  .calendar-table td,
+  .dates-table td,
+  .withdrawals-table td,
+  .account-table td,
+  .income-source-table td,
+  .income-summary-table td,
+  .overview-table td,
+  .projection-detail-table td {
+    align-items: center;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(92px, 0.35fr) minmax(0, 1fr);
+    min-height: 42px;
+    padding: 9px 12px;
+    text-align: left;
+    white-space: normal;
+    width: auto;
+  }
+
+  .calendar-table td::before,
+  .dates-table td::before,
+  .withdrawals-table td::before,
+  .account-table td::before,
+  .income-source-table td::before,
+  .income-summary-table td::before,
+  .overview-table td::before,
+  .projection-detail-table td::before {
+    color: #536179;
+    content: attr(data-label);
+    font-size: 0.75rem;
+    font-weight: 800;
+  }
+
+  .calendar-table td:last-child,
+  .dates-table td:last-child,
+  .withdrawals-table td:last-child,
+  .account-table td:last-child,
+  .income-source-table td:last-child,
+  .income-summary-table td:last-child,
+  .overview-table td:last-child,
+  .projection-detail-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .calendar-table .actions,
+  .dates-table .actions,
+  .withdrawals-table .actions,
+  .account-table .actions,
+  .income-source-table .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    text-align: left;
+  }
+
+  .calendar-table .actions::before,
+  .dates-table .actions::before,
+  .withdrawals-table .actions::before,
+  .account-table .actions::before,
+  .income-source-table .actions::before {
+    flex: 0 0 92px;
+  }
+
+  .calendar-table .actions button,
+  .dates-table .actions button,
+  .withdrawals-table .actions button,
+  .account-table .actions button,
+  .income-source-table .actions button {
+    margin: 0;
+  }
+
+  .calendar-table .empty-table-cell,
+  .dates-table .empty-table-cell,
+  .withdrawals-table .empty-table-cell,
+  .account-table .empty-table-cell,
+  .income-source-table .empty-table-cell {
+    display: block;
+    padding: 20px 12px;
+    text-align: center;
+  }
+
+  .empty-table-cell::before,
+  .projection-detail-table td[colspan]::before {
+    content: none;
   }
 
   .workspace-onboarding {

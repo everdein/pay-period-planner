@@ -68,15 +68,17 @@ export function ImportantDatesTab({
                   className={importantDate.status === 'next' ? 'next-important-date' : undefined}
                   key={importantDate.id}
                 >
-                  <td>{importantDate.event}</td>
-                  <td className="date-cell">{formatDate(importantDate.date)}</td>
-                  <td>{importantDate.type}</td>
-                  <td className="status-cell">
+                  <td data-label="Event">{importantDate.event}</td>
+                  <td className="date-cell" data-label="Date">
+                    {formatDate(importantDate.date)}
+                  </td>
+                  <td data-label="Type">{importantDate.type}</td>
+                  <td className="status-cell" data-label="Status">
                     <span className={`pill ${importantDate.status ?? 'upcoming'}`}>
                       {importantDateStatusLabel(importantDate.status)}
                     </span>
                   </td>
-                  <td className="actions">
+                  <td className="actions" data-label="Actions">
                     <EditButton
                       label={`Edit ${importantDate.event}`}
                       onClick={() => startImportantDateEdit(importantDate)}

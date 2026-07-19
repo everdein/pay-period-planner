@@ -70,10 +70,12 @@ export function DebtTab({
               )}
               {debtAccounts.map((account) => (
                 <tr key={account.id}>
-                  <td>{account.account}</td>
-                  <td>{account.company}</td>
-                  <td className="amount">{currency.format(account.amount)}</td>
-                  <td className="actions">
+                  <td data-label="Account">{account.account}</td>
+                  <td data-label="Company / Lender">{account.company}</td>
+                  <td className="amount" data-label="Balance">
+                    {currency.format(account.amount)}
+                  </td>
+                  <td className="actions" data-label="Actions">
                     <EditButton
                       label={`Edit ${account.account}`}
                       onClick={() => startDebtEdit(account)}

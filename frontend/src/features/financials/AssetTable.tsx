@@ -55,10 +55,12 @@ export function AssetTable({
             )}
             {category.accounts.map((account) => (
               <tr key={account.id}>
-                <td>{account.account}</td>
-                <td>{account.company}</td>
-                <td className="amount">{currency.format(account.amount)}</td>
-                <td className="actions">
+                <td data-label="Account">{account.account}</td>
+                <td data-label="Company">{account.company}</td>
+                <td className="amount" data-label="Amount">
+                  {currency.format(account.amount)}
+                </td>
+                <td className="actions" data-label="Actions">
                   <EditButton
                     label={`Edit ${account.account}`}
                     onClick={() => startAssetEdit(category.key, account)}

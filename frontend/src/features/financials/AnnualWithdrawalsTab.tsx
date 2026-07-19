@@ -91,16 +91,20 @@ export function AnnualWithdrawalsTab({
                   className={withdrawal.inPayPeriod ? 'in-period' : undefined}
                   key={withdrawal.id}
                 >
-                  <td>{withdrawal.bill}</td>
-                  <td className="date-cell">{formatDate(withdrawal.dueDate)}</td>
-                  <td className="amount">{currency.format(withdrawal.amount)}</td>
-                  <td>{withdrawal.account}</td>
-                  <td className="status-cell">
+                  <td data-label="Withdrawal">{withdrawal.bill}</td>
+                  <td className="date-cell" data-label="Date">
+                    {formatDate(withdrawal.dueDate)}
+                  </td>
+                  <td className="amount" data-label="Amount">
+                    {currency.format(withdrawal.amount)}
+                  </td>
+                  <td data-label="Account">{withdrawal.account}</td>
+                  <td className="status-cell" data-label="Paid">
                     <span className={withdrawal.paid ? 'pill paid' : 'pill unpaid'}>
                       {withdrawal.paid ? 'Paid' : 'Open'}
                     </span>
                   </td>
-                  <td className="actions">
+                  <td className="actions" data-label="Actions">
                     <EditButton
                       label={`Edit ${withdrawal.bill}`}
                       onClick={() => startAnnualWithdrawalEdit(withdrawal)}

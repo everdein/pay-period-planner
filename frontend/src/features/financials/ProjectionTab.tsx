@@ -271,8 +271,10 @@ function ProjectionPeriodCard({ period }: { period: ProjectionPeriod }) {
             {period.withdrawalLines.length > 0 ? (
               period.withdrawalLines.map((line) => (
                 <tr className="projection-row caution" key={line.label}>
-                  <td>{line.label}</td>
-                  <td className="amount">-{currency.format(line.amount)}</td>
+                  <td data-label="Item">{line.label}</td>
+                  <td className="amount" data-label="Amount">
+                    -{currency.format(line.amount)}
+                  </td>
                 </tr>
               ))
             ) : (
@@ -281,16 +283,22 @@ function ProjectionPeriodCard({ period }: { period: ProjectionPeriod }) {
               </tr>
             )}
             <tr className={`projection-row ${expenseTone(period.annualWithdrawalsDue)}`}>
-              <td>Annual bills due</td>
-              <td className="amount">-{currency.format(period.annualWithdrawalsDue)}</td>
+              <td data-label="Item">Annual bills due</td>
+              <td className="amount" data-label="Amount">
+                -{currency.format(period.annualWithdrawalsDue)}
+              </td>
             </tr>
             <tr className={`projection-row ${valueTone(period.rentCoveredBySavings)}`}>
-              <td>Housing paid from reserve</td>
-              <td className="amount">{currency.format(period.rentCoveredBySavings)}</td>
+              <td data-label="Item">Housing paid from reserve</td>
+              <td className="amount" data-label="Amount">
+                {currency.format(period.rentCoveredBySavings)}
+              </td>
             </tr>
             <tr className={`projection-row ${expenseTone(period.rentContribution)}`}>
-              <td>Housing reserve set-aside</td>
-              <td className="amount">-{currency.format(period.rentContribution)}</td>
+              <td data-label="Item">Housing reserve set-aside</td>
+              <td className="amount" data-label="Amount">
+                -{currency.format(period.rentContribution)}
+              </td>
             </tr>
           </tbody>
         </table>
