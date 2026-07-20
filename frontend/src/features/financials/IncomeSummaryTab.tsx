@@ -1,11 +1,10 @@
 import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
-import { EmptyTableRow } from './EmptyTableRow';
+import { FinancialRecordList, FinancialRecordListItem } from './FinancialRecordList';
 import { currency } from './financialsFormatters';
 import type { DraftIncomeSummaryItem, IncomeSummaryFormState } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
-import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function IncomeSummaryTab({
   cancelIncomeSummaryItemEdit,
@@ -36,6 +35,10 @@ export function IncomeSummaryTab({
   const derivedCategories = Array.from(
     new Set(derivedIncomeSummaryItems.map((item) => item.category))
   );
+  const derivedCategoryItems = derivedCategories.map((category) => ({
+    category,
+    items: derivedIncomeSummaryItems.filter((item) => item.category === category),
+  }));
   return (
     <>
       <section className="section-header">
@@ -48,80 +51,58 @@ export function IncomeSummaryTab({
       </section>
 
       <section className="expenses-layout">
-        <div className="stacked-tables">
-          <ScrollableTableRegion label="Saved income sources">
-            <table className="income-source-table">
-              <colgroup>
-                <col className="name-column" />
-                <col className="type-column" />
-                <col className="amount-column" />
-                <col className="actions-column" />
-              </colgroup>
-              <caption>Saved income source rows.</caption>
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th>Interval</th>
-                  <th>Amount</th>
-                  <th aria-label="Actions" />
-                </tr>
-              </thead>
-              <tbody>
-                {sourceIncomeSummaryItems.length === 0 && (
-                  <EmptyTableRow columns={4} message="No income sources yet." />
-                )}
-                {sourceIncomeSummaryItems.map((item) => (
-                  <tr key={item.id}>
-                    <td data-label="Category">{item.category}</td>
-                    <td data-label="Interval">{item.interval}</td>
-                    <td className="amount" data-label="Amount">
-                      {currency.format(item.amount)}
-                    </td>
-                    <td className="actions" data-label="Actions">
-                      <EditButton
-                        label={`Edit ${item.category} ${item.interval}`}
-                        onClick={() => startIncomeSummaryItemEdit(item)}
-                      />
-                      <RemoveButton
-                        disabled={item.id === primaryPaycheckIncomeSummaryItemId}
-                        label={`Remove ${item.category} ${item.interval}`}
-                        onClick={() => requestRemoveIncomeSummaryItem(item)}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </ScrollableTableRegion>
+        <div className="record-list-stack">
+          <FinancialRecordList
+            description="Saved income source rows used for planning."
+            emptyDescription="Add an income source to begin the household income plan."
+            emptyTitle="No income sources yet."
+            headingId="saved-income-sources-heading"
+            itemCount={sourceIncomeSummaryItems.length}
+            summaryLabel="Saved income source summary"
+            title="Saved income sources"
+          >
+            {sourceIncomeSummaryItems.map((item) => (
+              <FinancialRecordListItem
+                actions={
+                  <>
+                    <EditButton
+                      label={`Edit ${item.category} ${item.interval}`}
+                      onClick={() => startIncomeSummaryItemEdit(item)}
+                    />
+                    <RemoveButton
+                      disabled={item.id === primaryPaycheckIncomeSummaryItemId}
+                      label={`Remove ${item.category} ${item.interval}`}
+                      onClick={() => requestRemoveIncomeSummaryItem(item)}
+                    />
+                  </>
+                }
+                key={item.id}
+                metadata={[item.interval]}
+                primary={item.category}
+                value={<strong>{currency.format(item.amount)}</strong>}
+              />
+            ))}
+          </FinancialRecordList>
 
-          {derivedCategories.map((category) => (
-            <ScrollableTableRegion key={category} label={`${category} income summary`}>
-              <table className="income-summary-table">
-                <colgroup>
-                  <col className="name-column" />
-                  <col className="amount-column" />
-                </colgroup>
-                <caption>{category}</caption>
-                <thead>
-                  <tr>
-                    <th>Interval</th>
-                    <th>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {derivedIncomeSummaryItems
-                    .filter((item) => item.category === category)
-                    .map((item) => (
-                      <tr key={item.id}>
-                        <td data-label="Interval">{item.interval}</td>
-                        <td className="amount" data-label="Amount">
-                          {currency.format(item.amount)}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </ScrollableTableRegion>
+          {derivedCategoryItems.map(({ category, items }) => (
+            <FinancialRecordList
+              description="Calculated income amounts by planning interval."
+              emptyDescription="Calculated values appear when this category is available."
+              emptyTitle={`No ${category.toLowerCase()} values yet.`}
+              headingId={`income-summary-${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+              itemCount={items.length}
+              key={category}
+              summaryLabel={`${category} income summary`}
+              title={category}
+            >
+              {items.map((item) => (
+                <FinancialRecordListItem
+                  key={item.id}
+                  primary={item.interval}
+                  value={<strong>{currency.format(item.amount)}</strong>}
+                />
+              ))}
+            </FinancialRecordList>
           ))}
         </div>
 

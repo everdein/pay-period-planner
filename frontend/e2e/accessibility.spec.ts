@@ -21,13 +21,19 @@ const financialSections = [
 ] as const;
 
 test('public account forms meet WCAG A and AA automated rules', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expectNoAccessibilityViolations(page, 'sign-in form');
 
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.getByRole('tab', { name: 'Create Account' }).click();
   await expect(page.getByRole('heading', { name: 'Create your account' })).toBeVisible();
-  await expectNoAccessibilityViolations(page, 'account creation form');
+  await expectNoAccessibilityViolations(page, 'dark account creation form');
 });
 
 test('onboarding, financial sections, and removal dialog meet WCAG A and AA rules', async ({
@@ -42,11 +48,18 @@ test('onboarding, financial sections, and removal dialog meet WCAG A and AA rule
   await page.getByRole('button', { name: 'Create Financial Snapshot' }).click();
   await expect(page.getByRole('heading', { name: 'Income Summary' }).first()).toBeVisible();
 
-  for (const section of financialSections) {
-    const navigationButton = page.getByRole('button', { exact: true, name: section });
-    await navigationButton.click();
-    await expect(navigationButton).toHaveAttribute('aria-current', 'page');
-    await expectNoAccessibilityViolations(page, `${section} section`);
+  for (const theme of ['light', 'dark'] as const) {
+    if (theme === 'dark') {
+      await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    }
+
+    for (const section of financialSections) {
+      const navigationButton = page.getByRole('button', { exact: true, name: section });
+      await navigationButton.click();
+      await expect(navigationButton).toHaveAttribute('aria-current', 'page');
+      await expectNoAccessibilityViolations(page, `${theme} ${section} section`);
+    }
   }
 
   await page.getByRole('button', { exact: true, name: 'Annual Withdrawals' }).click();

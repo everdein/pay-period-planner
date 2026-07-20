@@ -1,6 +1,6 @@
 .error-boundary-shell {
-  background: #f8fafc;
-  color: #172033;
+  background: var(--surface-soft);
+  color: var(--text);
   display: grid;
   font-family:
     Inter,
@@ -16,10 +16,10 @@
 }
 
 .error-boundary-card {
-  background: #ffffff;
-  border: 1px solid #d7e0eb;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 24px 60px rgb(23 32 51 / 10%);
+  box-shadow: 0 24px 60px var(--shadow-soft);
   max-width: 540px;
   padding: 28px;
 }
@@ -29,14 +29,14 @@
 }
 
 .error-boundary-card p:not(.error-boundary-eyebrow) {
-  color: #536179;
+  color: var(--text-muted);
 }
 
 .error-boundary-card button {
-  background: #17365d;
-  border: 1px solid #17365d;
+  background: var(--primary);
+  border: 1px solid var(--primary);
   border-radius: 6px;
-  color: #ffffff;
+  color: var(--on-primary);
   cursor: pointer;
   font: inherit;
   font-weight: 700;
@@ -44,7 +44,7 @@
 }
 
 .error-boundary-eyebrow {
-  color: #536179;
+  color: var(--text-muted);
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -53,8 +53,8 @@
 }
 
 .error-boundary-reference {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
   border-radius: 8px;
   overflow-wrap: anywhere;
   padding: 10px 12px;

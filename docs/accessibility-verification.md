@@ -18,9 +18,10 @@ The focused Playwright suite applies axe WCAG 2.0, 2.1, and 2.2 A/AA rules to:
 
 - sign-in and account-creation forms
 - empty-workspace onboarding
-- all twelve financial sections
+- all twelve financial sections in both light and dark themes
 - a draft removal confirmation dialog
 - dialog focus entry, Escape dismissal, and focus return
+- theme selection, persistence after reload, and the toggle's accessible state
 
 The hosted `Accessibility` job runs the same audit and blocks the final `Scans`
 job. Do not disable a failing axe rule or exclude an application region without
@@ -50,8 +51,10 @@ Confirm each item:
 - Focus is always visible and follows a logical order.
 - Sign In and Create Account form one tab stop; Left/Right and Home/End move and
   select the account tabs.
-- Every form control, section button, save/reset/export action, and table row
-  action is reachable and operable.
+- Every form control, section button, save/reset/export action, and record-list
+  or table-row action is reachable and operable.
+- The theme toggle is reachable, announces the theme it will switch to, and
+  retains the selected theme after reload.
 - The financial navigation identifies the current section.
 - Opening a removal dialog moves focus to Cancel, Tab and Shift+Tab remain in
   the dialog, Escape closes it, and focus returns to the invoking control.
@@ -69,8 +72,10 @@ Confirm each item:
   announced once with an appropriate status or alert priority.
 - Financial section navigation and the compact Financial section selector expose
   useful names and the selected/current state.
-- Tables announce captions, headers, empty rows, data cells, and named row
-  actions without relying on visual position alone.
+- Overview and projection tables announce captions, headers, data cells, and
+  labeled detail rows without relying on visual position alone.
+- Financial record lists announce their headings, summaries, items, metadata,
+  states, and named actions as coherent groups.
 - Form helper text is understandable in context, and draft add/edit/remove
   actions announce distinct accessible names.
 - The removal dialog announces its title and description before its actions.

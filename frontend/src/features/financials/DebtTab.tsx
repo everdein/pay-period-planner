@@ -1,11 +1,10 @@
 import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
-import { EmptyTableRow } from './EmptyTableRow';
+import { FinancialRecordList, FinancialRecordListItem } from './FinancialRecordList';
 import { currency } from './financialsFormatters';
 import type { AssetFormState, DraftDebtAccount } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
-import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function DebtTab({
   cancelDebtEdit,
@@ -47,52 +46,42 @@ export function DebtTab({
       </section>
 
       <section className="expenses-layout">
-        <ScrollableTableRegion label="Debt balances">
-          <table className="account-table">
-            <colgroup>
-              <col className="name-column" />
-              <col className="company-column" />
-              <col className="amount-column" />
-              <col className="actions-column" />
-            </colgroup>
-            <caption>Debt balances</caption>
-            <thead>
-              <tr>
-                <th>Account</th>
-                <th>Company / Lender</th>
-                <th>Balance</th>
-                <th aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {debtAccounts.length === 0 && (
-                <EmptyTableRow columns={4} message="No debt accounts yet." />
-              )}
-              {debtAccounts.map((account) => (
-                <tr key={account.id}>
-                  <td data-label="Account">{account.account}</td>
-                  <td data-label="Company / Lender">{account.company}</td>
-                  <td className="amount" data-label="Balance">
-                    {currency.format(account.amount)}
-                  </td>
-                  <td className="actions" data-label="Actions">
-                    <EditButton
-                      label={`Edit ${account.account}`}
-                      onClick={() => startDebtEdit(account)}
-                    />
-                    <RemoveButton
-                      label={`Remove ${account.account}`}
-                      onClick={() => requestRemoveDebt(account)}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="table-total">
-            Total debt: <strong>{currency.format(totalDebt)}</strong>
-          </p>
-        </ScrollableTableRegion>
+        <FinancialRecordList
+          description="Outstanding balances grouped by account and lender."
+          emptyDescription="Add a debt account to begin tracking outstanding balances."
+          emptyTitle="No debt accounts yet."
+          footer={
+            <>
+              Total debt: <strong>{currency.format(totalDebt)}</strong>
+            </>
+          }
+          headingId="debt-balance-list-heading"
+          itemCount={debtAccounts.length}
+          summary={`${currency.format(totalDebt)} total`}
+          summaryLabel="Debt balance summary"
+          title="Debt balances"
+        >
+          {debtAccounts.map((account) => (
+            <FinancialRecordListItem
+              actions={
+                <>
+                  <EditButton
+                    label={`Edit ${account.account}`}
+                    onClick={() => startDebtEdit(account)}
+                  />
+                  <RemoveButton
+                    label={`Remove ${account.account}`}
+                    onClick={() => requestRemoveDebt(account)}
+                  />
+                </>
+              }
+              key={account.id}
+              metadata={[account.company]}
+              primary={account.account}
+              value={<strong>{currency.format(account.amount)}</strong>}
+            />
+          ))}
+        </FinancialRecordList>
 
         <form className="bill-form" onSubmit={submitDebt}>
           <h2>{isEditing ? 'Edit Debt Account' : 'Add Debt Account'}</h2>

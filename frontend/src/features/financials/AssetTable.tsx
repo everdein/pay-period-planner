@@ -1,11 +1,10 @@
 import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
-import { EmptyTableRow } from './EmptyTableRow';
+import { FinancialRecordList, FinancialRecordListItem } from './FinancialRecordList';
 import { currency } from './financialsFormatters';
 import type { AssetFormState, DraftAssetAccount, DraftAssetCategory } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
-import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function AssetTable({
   assetForm,
@@ -32,53 +31,43 @@ export function AssetTable({
 
   return (
     <section className="expenses-layout">
-      <ScrollableTableRegion label={`${category.label} table`}>
-        <table className="account-table">
-          <colgroup>
-            <col className="name-column" />
-            <col className="company-column" />
-            <col className="amount-column" />
-            <col className="actions-column" />
-          </colgroup>
-          <caption>{category.label}</caption>
-          <thead>
-            <tr>
-              <th>Account</th>
-              <th>Company</th>
-              <th>Amount</th>
-              <th aria-label="Actions" />
-            </tr>
-          </thead>
-          <tbody>
-            {category.accounts.length === 0 && (
-              <EmptyTableRow columns={4} message="No accounts in this category yet." />
-            )}
-            {category.accounts.map((account) => (
-              <tr key={account.id}>
-                <td data-label="Account">{account.account}</td>
-                <td data-label="Company">{account.company}</td>
-                <td className="amount" data-label="Amount">
-                  {currency.format(account.amount)}
-                </td>
-                <td className="actions" data-label="Actions">
-                  <EditButton
-                    label={`Edit ${account.account}`}
-                    onClick={() => startAssetEdit(category.key, account)}
-                  />
-                  <RemoveButton
-                    disabled={account.id === rentReserveAssetAccountId}
-                    label={`Remove ${account.account}`}
-                    onClick={() => requestRemoveAsset(category.key, account)}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="table-total">
-          Total: <strong>{currency.format(category.total)}</strong>
-        </p>
-      </ScrollableTableRegion>
+      <FinancialRecordList
+        description={`Accounts tracked in ${category.label.toLowerCase()}.`}
+        emptyDescription="Add an account to begin tracking this balance category."
+        emptyTitle="No accounts in this category yet."
+        footer={
+          <>
+            Total: <strong>{currency.format(category.total)}</strong>
+          </>
+        }
+        headingId={`asset-list-${category.key}`}
+        itemCount={category.accounts.length}
+        summary={`${currency.format(category.total)} total`}
+        summaryLabel={`${category.label} account summary`}
+        title={category.label}
+      >
+        {category.accounts.map((account) => (
+          <FinancialRecordListItem
+            actions={
+              <>
+                <EditButton
+                  label={`Edit ${account.account}`}
+                  onClick={() => startAssetEdit(category.key, account)}
+                />
+                <RemoveButton
+                  disabled={account.id === rentReserveAssetAccountId}
+                  label={`Remove ${account.account}`}
+                  onClick={() => requestRemoveAsset(category.key, account)}
+                />
+              </>
+            }
+            key={account.id}
+            metadata={[account.company]}
+            primary={account.account}
+            value={<strong>{currency.format(account.amount)}</strong>}
+          />
+        ))}
+      </FinancialRecordList>
 
       <form className="bill-form" onSubmit={(event) => submitAsset(category.key, event)}>
         <h2>{isEditingThisCategory ? 'Edit Account' : 'Add Account'}</h2>

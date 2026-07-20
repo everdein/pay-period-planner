@@ -1,0 +1,109 @@
+:root {
+  color-scheme: light;
+  --surface: #ffffff;
+  --surface-soft: #f3f6f4;
+  --surface-raised: #ffffff;
+  --text: #101412;
+  --text-muted: #4d5751;
+  --border: #d5dcd7;
+  --border-strong: #aeb8b1;
+  --primary: #2456d8;
+  --primary-strong: #193ea1;
+  --primary-soft: #e7edff;
+  --on-primary: #ffffff;
+  --positive: #176146;
+  --positive-strong: #104833;
+  --positive-soft: #e2f0e8;
+  --positive-border: #a9d2bd;
+  --warning: #8a5a00;
+  --warning-strong: #67420e;
+  --warning-soft: #fff4cf;
+  --warning-border: #dfc36d;
+  --danger: #b42318;
+  --danger-strong: #8a1f11;
+  --danger-soft: #fff0ed;
+  --danger-border: #e8b8b0;
+  --focus: #d58a00;
+  --rail-surface: #111613;
+  --rail-text: #f7faf7;
+  --rail-muted: #aeb8b1;
+  --rail-rule: #333b36;
+  --rail-accent: #8fd9b7;
+  --rail-selection: #1b2a55;
+  --rail-selection-text: #b3c2ff;
+  --overlay: rgb(16 20 18 / 52%);
+  --shadow-soft: rgb(16 20 18 / 10%);
+  --shadow-strong: rgb(16 20 18 / 24%);
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --surface: #101311;
+  --surface-soft: #171c19;
+  --surface-raised: #171c19;
+  --text: #f3f6f3;
+  --text-muted: #b6c0b9;
+  --border: #333b36;
+  --border-strong: #59645d;
+  --primary: #8ba6ff;
+  --primary-strong: #b3c2ff;
+  --primary-soft: #1b2a55;
+  --on-primary: #101412;
+  --positive: #66c89b;
+  --positive-strong: #92dbb9;
+  --positive-soft: #183a2c;
+  --positive-border: #326b50;
+  --warning: #f2c56b;
+  --warning-strong: #ffd98a;
+  --warning-soft: #443414;
+  --warning-border: #746024;
+  --danger: #ff9c94;
+  --danger-strong: #ffc0ba;
+  --danger-soft: #4a1e1a;
+  --danger-border: #8c433d;
+  --focus: #ffd166;
+  --rail-surface: #f4f7f4;
+  --rail-text: #101412;
+  --rail-muted: #536059;
+  --rail-rule: #d5dcd7;
+  --rail-accent: #176146;
+  --rail-selection: #e7edff;
+  --rail-selection-text: #193ea1;
+  --overlay: rgb(0 0 0 / 68%);
+  --shadow-soft: rgb(0 0 0 / 28%);
+  --shadow-strong: rgb(0 0 0 / 48%);
+}
+
+html,
+body {
+  background: var(--surface);
+  color: var(--text);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+input,
+select {
+  accent-color: var(--primary);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}

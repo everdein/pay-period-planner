@@ -12,6 +12,25 @@
 
     <meta name="theme-color" content="#ffffff" />
 
+    <script>
+      (function () {
+        try {
+          var savedTheme = window.localStorage.getItem('pay-period-planner-theme');
+          var preferredTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+          var theme =
+            savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : preferredTheme;
+          document.documentElement.dataset.theme = theme;
+          document
+            .querySelector('meta[name="theme-color"]')
+            .setAttribute('content', theme === 'dark' ? '#101311' : '#ffffff');
+        } catch (error) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
+
     <title>Pay Period Planner</title>
   </head>
 

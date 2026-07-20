@@ -17,6 +17,18 @@ const financialSections = [
   ['debt', 'Debt'],
   ['important-dates', 'Important Dates'],
 ] as const;
+const recordListSections = new Set([
+  'monthly-withdrawals',
+  'annual-withdrawals',
+  'income-summary',
+  'income-calendar',
+  'retirement',
+  'investments',
+  'cash-savings',
+  'insurance-benefits',
+  'debt',
+  'important-dates',
+]);
 const viewports = [
   { height: 800, label: 'narrow phone', width: 320 },
   { height: 844, label: 'phone', width: 390 },
@@ -33,9 +45,11 @@ test('keeps every financial workflow contained and operable across supported wid
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
   await expectResponsiveLayout(page, 'narrow phone sign-in');
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
   await page.getByRole('tab', { name: 'Create Account' }).click();
-  await expectResponsiveLayout(page, 'narrow phone account creation');
+  await expectResponsiveLayout(page, 'narrow phone dark account creation');
   await page.getByLabel('Display name').fill('Long Synthetic Responsive Browser User');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(accountPassword);
@@ -46,6 +60,14 @@ test('keeps every financial workflow contained and operable across supported wid
   await expectResponsiveLayout(page, 'narrow phone onboarding');
   await page.getByRole('button', { name: 'Create Financial Snapshot' }).click();
   await expect(page.getByRole('heading', { name: 'Income Summary' }).first()).toBeVisible();
+
+  const setupNavigation = page.getByRole('combobox', { name: 'Financial section' });
+  await setupNavigation.selectOption('annual-withdrawals');
+  await page.getByLabel('Withdrawal', { exact: true }).fill('Synthetic Annual Membership Renewal');
+  await page.getByLabel('Date', { exact: true }).fill('2026-12-31');
+  await page.getByLabel('Amount', { exact: true }).fill('149.99');
+  await page.getByLabel('Account', { exact: true }).fill('Synthetic Checking Account');
+  await page.getByRole('button', { name: 'Add to Draft' }).click();
 
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
@@ -58,6 +80,8 @@ test('keeps every financial workflow contained and operable across supported wid
     } else {
       await expect(compactNavigation).toBeHidden();
       await expect(sidebar).toBeVisible();
+      await expectDesktopShellToSpanViewport(page, viewport.label);
+      await expectDesktopRailContrast(page, viewport.label);
     }
 
     for (const [value, label] of financialSections) {
@@ -69,11 +93,9 @@ test('keeps every financial workflow contained and operable across supported wid
 
       await expect(page.locator('.mobile-section-picker select')).toHaveValue(value);
       await expectResponsiveLayout(page, `${viewport.label} ${label}`);
-      if (
-        viewport.width >= 768 &&
-        (value === 'monthly-withdrawals' || value === 'annual-withdrawals')
-      ) {
-        await expectVisibleTablesToFit(page, `${viewport.label} ${label}`);
+      await expectVisibleTablesToFit(page, `${viewport.label} ${label}`);
+      if (recordListSections.has(value)) {
+        await expectVisibleRecordListsToFit(page, `${viewport.label} ${label}`);
       }
     }
   }
@@ -124,15 +146,32 @@ async function expectResponsiveLayout(page: Page, state: string) {
         return rect.left < -1 || rect.right > viewportWidth + 1;
       })
       .map(describe);
+    const elementOverflow = Array.from(document.querySelectorAll('body *'))
+      .filter(visible)
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.left < -1 || rect.right > viewportWidth + 1;
+      })
+      .slice(0, 12)
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return `${element.tagName.toLowerCase()}.${element.className || 'no-class'} "${describe(
+          element
+        )}" (${Math.round(rect.left)}px to ${Math.round(rect.right)}px)`;
+      });
     return {
       controlOverflow,
+      elementOverflow,
       horizontalOverflow: Math.max(0, pageWidth - viewportWidth),
       tableRegionOverflow,
       undersizedControls,
     };
   });
 
-  expect(result.horizontalOverflow, `${state} page overflow`).toBeLessThanOrEqual(1);
+  expect(
+    result.horizontalOverflow,
+    `${state} page overflow: ${result.elementOverflow.join(', ')}`
+  ).toBeLessThanOrEqual(1);
   expect(result.controlOverflow, `${state} controls outside the viewport`).toEqual([]);
   expect(result.tableRegionOverflow, `${state} table regions outside the viewport`).toEqual([]);
   expect(result.undersizedControls, `${state} controls smaller than 24px`).toEqual([]);
@@ -155,4 +194,63 @@ async function expectVisibleTablesToFit(page: Page, state: string) {
   );
 
   expect(overflow, `${state} tables with unnecessary horizontal scrolling`).toEqual([]);
+}
+
+async function expectDesktopRailContrast(page: Page, state: string) {
+  const colors = await page.evaluate(() => {
+    const brand = document.querySelector<HTMLElement>('.app-header > div:first-child');
+    const content = document.querySelector<HTMLElement>('.financials-content');
+    const sidebar = document.querySelector<HTMLElement>('.sidebar');
+
+    return {
+      brand: brand ? window.getComputedStyle(brand).backgroundColor : null,
+      content: content ? window.getComputedStyle(content).backgroundColor : null,
+      sidebar: sidebar ? window.getComputedStyle(sidebar).backgroundColor : null,
+    };
+  });
+
+  expect(colors.sidebar, `${state} sidebar background`).not.toBeNull();
+  expect(colors.brand, `${state} rail continuity`).toBe(colors.sidebar);
+  expect(colors.sidebar, `${state} rail/content contrast`).not.toBe(colors.content);
+}
+
+async function expectDesktopShellToSpanViewport(page: Page, state: string) {
+  const geometry = await page.locator('.workspace-shell').evaluate((shell) => {
+    const rect = shell.getBoundingClientRect();
+    return {
+      left: rect.left,
+      rightGap: document.documentElement.clientWidth - rect.right,
+    };
+  });
+
+  expect(Math.abs(geometry.left), `${state} shell left edge`).toBeLessThanOrEqual(1);
+  expect(Math.abs(geometry.rightGap), `${state} shell right edge`).toBeLessThanOrEqual(1);
+}
+
+async function expectVisibleRecordListsToFit(page: Page, state: string) {
+  const result = await page.evaluate(() => {
+    const lists = Array.from(document.querySelectorAll<HTMLElement>('.record-list-section')).filter(
+      (element) => {
+        const style = window.getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0;
+      }
+    );
+    const viewportWidth = document.documentElement.clientWidth;
+    const overflow = lists
+      .filter((element) => element.scrollWidth > element.clientWidth + 1)
+      .map((element) => element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) ?? 'list');
+    const outsideViewport = lists
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.left < -1 || rect.right > viewportWidth + 1;
+      })
+      .map((element) => element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) ?? 'list');
+
+    return { count: lists.length, outsideViewport, overflow };
+  });
+
+  expect(result.count, `${state} record list count`).toBeGreaterThan(0);
+  expect(result.outsideViewport, `${state} record lists outside the viewport`).toEqual([]);
+  expect(result.overflow, `${state} record lists with horizontal scrolling`).toEqual([]);
 }
