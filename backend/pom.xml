@@ -27,7 +27,7 @@
         <jackson-bom.version>3.1.5</jackson-bom.version>
         <logback.version>1.5.36</logback.version>
         <log4j2.version>2.26.1</log4j2.version>
-        <postgresql.version>42.7.12</postgresql.version>
+        <postgresql.version>42.7.13</postgresql.version>
         <sortpom.version>4.0.0</sortpom.version>
         <spotless.version>3.8.0</spotless.version>
         <tomcat.version>11.0.23</tomcat.version>
