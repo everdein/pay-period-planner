@@ -196,13 +196,13 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Download frontend coverage report
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: frontend-coverage
           path: frontend/coverage
 
       - name: Download backend coverage report
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: backend-coverage
           path: backend/target/site/jacoco
