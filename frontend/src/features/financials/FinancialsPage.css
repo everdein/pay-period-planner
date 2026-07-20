@@ -612,9 +612,11 @@ button.danger {
   text-align: left;
 }
 
-.dashboard-workflow:hover {
-  background: var(--primary-soft);
-  border-color: var(--primary);
+.dashboard-workflow:not(:disabled):hover {
+  background: var(--surface-soft);
+  border-color: var(--border-strong);
+  box-shadow: inset 3px 0 0 var(--primary);
+  color: var(--primary-strong);
 }
 
 .dashboard-workflow strong {

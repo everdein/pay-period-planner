@@ -92,6 +92,9 @@ test('keeps every financial workflow contained and operable across supported wid
       }
 
       await expect(page.locator('.mobile-section-picker select')).toHaveValue(value);
+      if (viewport.width > 900 && value === 'overview') {
+        await expectDashboardHighlightIsRestrained(page, viewport.label);
+      }
       await expectResponsiveLayout(page, `${viewport.label} ${label}`);
       await expectVisibleTablesToFit(page, `${viewport.label} ${label}`);
       if (recordListSections.has(value)) {
@@ -225,6 +228,35 @@ async function expectDesktopShellToSpanViewport(page: Page, state: string) {
 
   expect(Math.abs(geometry.left), `${state} shell left edge`).toBeLessThanOrEqual(1);
   expect(Math.abs(geometry.rightGap), `${state} shell right edge`).toBeLessThanOrEqual(1);
+}
+
+async function expectDashboardHighlightIsRestrained(page: Page, state: string) {
+  const workflow = page.locator('.dashboard-workflow').first();
+  await workflow.hover();
+  const colors = await workflow.evaluate((element) => {
+    const resolveBackground = (variable: string) => {
+      const probe = document.createElement('span');
+      probe.style.backgroundColor = `var(${variable})`;
+      document.body.append(probe);
+      const color = window.getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return color;
+    };
+
+    return {
+      highlight: window.getComputedStyle(element).backgroundColor,
+      primaryStrong: resolveBackground('--primary-strong'),
+      surfaceSoft: resolveBackground('--surface-soft'),
+    };
+  });
+
+  expect(colors.highlight, `${state} dashboard hover uses the neutral surface`).toBe(
+    colors.surfaceSoft
+  );
+  expect(colors.highlight, `${state} dashboard hover avoids a solid cobalt fill`).not.toBe(
+    colors.primaryStrong
+  );
+  await page.mouse.move(0, 0);
 }
 
 async function expectVisibleRecordListsToFit(page: Page, state: string) {
