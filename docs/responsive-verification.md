@@ -34,12 +34,22 @@ At every viewport, the suite requires:
   scrolling
 - compact section navigation at 900 pixels and below, with the full sidebar
   restored above that breakpoint
+- a full-width desktop workspace with the navigation rail anchored to the left
+  browser edge and content spacing kept inside the main canvas
+- the contrasting desktop navigation rail to collapse cleanly into the neutral
+  mobile section picker without changing the active section
 
-Monthly withdrawals use responsive schedule lists. Other financial tables keep
-native table semantics on roomy screens and become labeled detail rows at the
-compact breakpoint. Amounts, status, and actions must remain associated with
-their item, and action buttons may wrap without forcing a minimum table width.
-Neither the component nor the document may scroll sideways.
+Monthly and annual withdrawals, income summary, income calendar, asset
+accounts, debt, and important dates use the same responsive record-list
+pattern. Each item keeps its primary value, supporting metadata, status, and
+actions together at every width. Rows use compact vertical spacing while
+preserving readable type and action targets; status and actions remain inline
+when space allows and wrap naturally on the narrowest content. Overview and
+projection retain native table semantics and become labeled detail rows at the
+compact breakpoint. Neither a record list, table component, nor the document
+may scroll sideways. The browser audit switches to the dark theme before
+traversing account creation and the financial sections so themed controls are
+included in the same geometry checks.
 
 The hosted `Responsive` job runs the same suite and blocks the final `Scans`
 job. Treat a new overflow exclusion, smaller supported width, or breakpoint
@@ -53,8 +63,10 @@ For responsive-critical changes, inspect each supported viewport and confirm:
 - headings, values, notices, actions, and long synthetic account names remain
   readable without overlap or clipping
 - forms follow a useful reading order and native date controls remain operable
-- compact row labels preserve every desktop column relationship
-- action rows wrap without separating a command from its context
+- primary values, supporting metadata, status, and actions remain easy to scan
+- record-list actions wrap without separating a command from its context
+- both light and dark themes preserve readable contrast without changing
+  geometry or exposing a surface without theme styling
 - portrait and landscape orientation changes preserve the current section and
   unsaved draft
 - browser zoom at 200 percent does not create page-level horizontal scrolling

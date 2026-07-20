@@ -5,6 +5,7 @@ import { ApiError, setUnauthorizedHandler } from './api/client';
 import { useAppDispatch } from './app/hooks';
 import FinancialsPage from './features/financials/FinancialsPage';
 import { resetFinancials } from './features/financials/financialsSlice';
+import { ThemeToggle } from './ThemeToggle';
 
 type AuthMode = 'sign-in' | 'sign-up';
 
@@ -152,8 +153,13 @@ export default function App() {
     return (
       <main className="expenses-shell auth-shell">
         <section className="auth-card auth-status" aria-live="polite">
-          <p className="eyebrow">Household planning</p>
-          <h1>Pay Period Planner</h1>
+          <div className="auth-brand">
+            <div>
+              <p className="eyebrow">Household planning</p>
+              <h1>Pay Period Planner</h1>
+            </div>
+            <ThemeToggle />
+          </div>
           <p>Checking your session...</p>
         </section>
       </main>
@@ -166,8 +172,13 @@ export default function App() {
     return (
       <main className="expenses-shell auth-shell">
         <section className="auth-card" aria-labelledby="account-heading">
-          <p className="eyebrow">Household planning</p>
-          <h1>Pay Period Planner</h1>
+          <div className="auth-brand">
+            <div>
+              <p className="eyebrow">Household planning</p>
+              <h1>Pay Period Planner</h1>
+            </div>
+            <ThemeToggle />
+          </div>
           <div className="auth-tabs" role="tablist" aria-label="Account access">
             <button
               aria-controls="account-panel"

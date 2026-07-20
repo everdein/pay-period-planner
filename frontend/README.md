@@ -111,10 +111,12 @@ account signup, sign-in, session recovery, and sign-out; the browser session is
 held in an `HttpOnly`, `SameSite=Strict` cookie. The frontend stores no account
 credentials or Basic token. It obtains fresh CSRF proof before each mutation,
 sends an explicit `X-Workspace-ID` for the selected membership on every
-financial request, and stores only that non-sensitive workspace preference in
-browser session storage. Clearing the account session aborts active requests,
-and Redux associates each request with its originating workspace and request ID
-so a delayed completion cannot repopulate a newer account or workspace context.
+financial request, and stores that non-sensitive workspace preference in
+browser session storage. The only other browser-stored preference is the
+light/dark theme selection in local storage. Clearing the account session
+aborts active requests, and Redux associates each request with its originating
+workspace and request ID so a delayed completion cannot repopulate a newer
+account or workspace context.
 
 New accounts begin with an empty `Personal` workspace. Existing data must be
 explicitly migrated into that workspace; no personal or synthetic snapshot is
@@ -204,6 +206,26 @@ category totals and an overall tracked-assets total. Debt contributes to total
 debt and net worth. Important Dates tracks household reminders and notable dates,
 with derived passed/next/upcoming statuses.
 
+Monthly and annual withdrawals, income summary, income calendar, asset
+accounts, debt, and important dates share one responsive record-list pattern.
+Each record keeps its primary value, supporting metadata, status, and actions
+together without horizontal scrolling. The compact row treatment preserves
+readable type and 32-pixel action targets while allowing controls to wrap only
+when the available width requires it.
+
+The application supports light and dark themes using the portfolio's shared
+paper, ink, cobalt, and forest palette. It defaults to the operating-system
+preference, exposes an accessible header toggle on authenticated and account
+screens, and stores the user's explicit selection in local storage. Cobalt is
+reserved for interactive controls while forest communicates positive and saved
+financial states; warning and danger colors have theme-specific accessible
+variants. On desktop, the brand and financial navigation form a contrasting
+portfolio-inspired rail anchored to the browser edge, and the workspace spans
+the full viewport with its spacing kept inside the content canvas. Default
+cards remain neutral and use narrow accent rules for hierarchy, while tinted
+surfaces are reserved for warnings, debt, conflicts, errors, and other
+exceptional states.
+
 Displayed dates use `MM/DD/YYYY`. Editable date fields use native browser date
 inputs. The workspace's saved IANA planning zone supplies the current planning
 date returned by the backend, and frontend date-only arithmetic uses UTC
@@ -242,7 +264,7 @@ draft with the latest saved snapshot. Other save failures keep the draft and
 offer retry and dismissal actions; successful saves announce the committed
 snapshot version.
 
-Editable collection tables render an explicit empty row when they have no
+Editable record collections render an explicit empty state when they have no
 income events, withdrawals, accounts, debts, or important dates. Their add
 forms remain available in the same workflow.
 

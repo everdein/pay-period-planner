@@ -1,11 +1,10 @@
 import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
-import { EmptyTableRow } from './EmptyTableRow';
+import { FinancialRecordList, FinancialRecordListItem } from './FinancialRecordList';
 import { currency, formatDate } from './financialsFormatters';
 import type { AnnualWithdrawalFormState, DraftAnnualWithdrawal } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
-import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function AnnualWithdrawalsTab({
   annualWithdrawalForm,
@@ -61,67 +60,49 @@ export function AnnualWithdrawalsTab({
       </section>
 
       <section className="expenses-layout">
-        <ScrollableTableRegion label="Annual withdrawals">
-          <table className="withdrawals-table">
-            <colgroup>
-              <col className="name-column" />
-              <col className="date-column" />
-              <col className="amount-column" />
-              <col className="account-column" />
-              <col className="status-column" />
-              <col className="actions-column" />
-            </colgroup>
-            <caption>Annual withdrawals are checked against the active pay period.</caption>
-            <thead>
-              <tr>
-                <th>Withdrawal</th>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Account</th>
-                <th>Paid</th>
-                <th aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {annualWithdrawals.length === 0 && (
-                <EmptyTableRow columns={6} message="No annual withdrawals yet." />
-              )}
-              {annualWithdrawals.map((withdrawal) => (
-                <tr
-                  className={withdrawal.inPayPeriod ? 'in-period' : undefined}
-                  key={withdrawal.id}
-                >
-                  <td data-label="Withdrawal">{withdrawal.bill}</td>
-                  <td className="date-cell" data-label="Date">
-                    {formatDate(withdrawal.dueDate)}
-                  </td>
-                  <td className="amount" data-label="Amount">
-                    {currency.format(withdrawal.amount)}
-                  </td>
-                  <td data-label="Account">{withdrawal.account}</td>
-                  <td className="status-cell" data-label="Paid">
-                    <span className={withdrawal.paid ? 'pill paid' : 'pill unpaid'}>
-                      {withdrawal.paid ? 'Paid' : 'Open'}
-                    </span>
-                  </td>
-                  <td className="actions" data-label="Actions">
-                    <EditButton
-                      label={`Edit ${withdrawal.bill}`}
-                      onClick={() => startAnnualWithdrawalEdit(withdrawal)}
-                    />
-                    <RemoveButton
-                      label={`Remove ${withdrawal.bill}`}
-                      onClick={() => requestRemoveAnnualWithdrawal(withdrawal)}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="table-total">
-            Total: <strong>{currency.format(totals.totalAnnualWithdrawals)}</strong>
-          </p>
-        </ScrollableTableRegion>
+        <FinancialRecordList
+          description="Annual withdrawals are checked against the active pay period."
+          emptyDescription="Add a yearly renewal, membership, or other recurring charge."
+          emptyTitle="No annual withdrawals yet."
+          footer={
+            <>
+              Annual total: <strong>{currency.format(totals.totalAnnualWithdrawals)}</strong>
+            </>
+          }
+          headingId="annual-schedule-heading"
+          itemCount={annualWithdrawals.length}
+          summary={`${currency.format(totals.totalAnnualWithdrawals)} total`}
+          summaryLabel="Annual withdrawal schedule summary"
+          title="Annual schedule"
+        >
+          {annualWithdrawals.map((withdrawal) => (
+            <FinancialRecordListItem
+              actions={
+                <>
+                  <EditButton
+                    label={`Edit ${withdrawal.bill}`}
+                    onClick={() => startAnnualWithdrawalEdit(withdrawal)}
+                  />
+                  <RemoveButton
+                    label={`Remove ${withdrawal.bill}`}
+                    onClick={() => requestRemoveAnnualWithdrawal(withdrawal)}
+                  />
+                </>
+              }
+              badge={withdrawal.inPayPeriod ? 'Due this pay period' : undefined}
+              key={withdrawal.id}
+              metadata={[`Due ${formatDate(withdrawal.dueDate)}`, withdrawal.account]}
+              primary={withdrawal.bill}
+              state={
+                <span className={withdrawal.paid ? 'pill paid' : 'pill unpaid'}>
+                  {withdrawal.paid ? 'Paid' : 'Open'}
+                </span>
+              }
+              tone={withdrawal.inPayPeriod ? 'positive' : undefined}
+              value={<strong>{currency.format(withdrawal.amount)}</strong>}
+            />
+          ))}
+        </FinancialRecordList>
 
         <form className="bill-form" onSubmit={submitAnnualWithdrawal}>
           <h2>{isEditing ? 'Edit Annual Withdrawal' : 'Add Annual Withdrawal'}</h2>

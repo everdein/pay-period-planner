@@ -6,6 +6,7 @@ import type { AccountSession } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import { financialsService, type PayPeriodRequest } from '../../api/endpoints/financials';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
+import { ThemeToggle } from '../../ThemeToggle';
 import { ConfirmRemoveModal } from './ConfirmRemoveModal';
 import { FinancialsNavigation } from './FinancialsNavigation';
 import {
@@ -125,7 +126,7 @@ export default function FinancialsPage({
   }
 
   return (
-    <main className="expenses-shell">
+    <main className={`expenses-shell${snapshot ? ' workspace-shell' : ''}`}>
       <header className="app-header">
         <div>
           <p className="eyebrow">Household planning</p>
@@ -142,6 +143,7 @@ export default function FinancialsPage({
               saving={saving}
             />
           )}
+          <ThemeToggle />
           <div className="account-context">
             <div className="account-identity">
               <strong>{account.displayName}</strong>

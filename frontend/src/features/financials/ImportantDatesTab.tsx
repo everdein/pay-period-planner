@@ -1,11 +1,10 @@
 import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
-import { EmptyTableRow } from './EmptyTableRow';
+import { FinancialRecordList, FinancialRecordListItem } from './FinancialRecordList';
 import { formatDate } from './financialsFormatters';
 import type { DraftImportantDate, ImportantDateFormState } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
-import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function ImportantDatesTab({
   cancelImportantDateEdit,
@@ -40,59 +39,43 @@ export function ImportantDatesTab({
         </div>
       </section>
       <section className="expenses-layout">
-        <ScrollableTableRegion label="Important dates">
-          <table className="dates-table">
-            <colgroup>
-              <col className="name-column" />
-              <col className="date-column" />
-              <col className="type-column" />
-              <col className="status-column" />
-              <col className="actions-column" />
-            </colgroup>
-            <caption>Calendar dates used for yearly planning.</caption>
-            <thead>
-              <tr>
-                <th>Event</th>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {importantDates.length === 0 && (
-                <EmptyTableRow columns={5} message="No important dates yet." />
-              )}
-              {importantDates.map((importantDate) => (
-                <tr
-                  className={importantDate.status === 'next' ? 'next-important-date' : undefined}
-                  key={importantDate.id}
-                >
-                  <td data-label="Event">{importantDate.event}</td>
-                  <td className="date-cell" data-label="Date">
-                    {formatDate(importantDate.date)}
-                  </td>
-                  <td data-label="Type">{importantDate.type}</td>
-                  <td className="status-cell" data-label="Status">
-                    <span className={`pill ${importantDate.status ?? 'upcoming'}`}>
-                      {importantDateStatusLabel(importantDate.status)}
-                    </span>
-                  </td>
-                  <td className="actions" data-label="Actions">
-                    <EditButton
-                      label={`Edit ${importantDate.event}`}
-                      onClick={() => startImportantDateEdit(importantDate)}
-                    />
-                    <RemoveButton
-                      label={`Remove ${importantDate.event}`}
-                      onClick={() => requestRemoveImportantDate(importantDate)}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </ScrollableTableRegion>
+        <FinancialRecordList
+          description="Calendar dates used for yearly planning."
+          emptyDescription="Add a holiday, birthday, anniversary, or company day off."
+          emptyTitle="No important dates yet."
+          headingId="important-date-list-heading"
+          itemCount={importantDates.length}
+          summaryLabel="Important date summary"
+          title="Planning calendar"
+        >
+          {importantDates.map((importantDate) => (
+            <FinancialRecordListItem
+              actions={
+                <>
+                  <EditButton
+                    label={`Edit ${importantDate.event}`}
+                    onClick={() => startImportantDateEdit(importantDate)}
+                  />
+                  <RemoveButton
+                    label={`Remove ${importantDate.event}`}
+                    onClick={() => requestRemoveImportantDate(importantDate)}
+                  />
+                </>
+              }
+              badge={importantDate.status === 'next' ? 'Next important date' : undefined}
+              key={importantDate.id}
+              metadata={[importantDate.type]}
+              primary={importantDate.event}
+              state={
+                <span className={`pill ${importantDate.status ?? 'upcoming'}`}>
+                  {importantDateStatusLabel(importantDate.status)}
+                </span>
+              }
+              tone={importantDate.status === 'next' ? 'caution' : undefined}
+              value={<strong>{formatDate(importantDate.date)}</strong>}
+            />
+          ))}
+        </FinancialRecordList>
 
         <form className="bill-form" onSubmit={submitImportantDate}>
           <h2>{isEditing ? 'Edit Important Date' : 'Add Important Date'}</h2>

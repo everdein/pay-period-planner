@@ -1,7 +1,7 @@
 import type { FormEvent } from 'react';
 
 import { EditButton } from './EditButton';
-import { EmptyTableRow } from './EmptyTableRow';
+import { FinancialRecordList, FinancialRecordListItem } from './FinancialRecordList';
 import { payCadenceLabel } from './financialsDatePolicy';
 import { formatDate } from './financialsFormatters';
 import type {
@@ -10,7 +10,6 @@ import type {
   RecurringPaydayFormState,
 } from './financialsTypes';
 import { RemoveButton } from './RemoveButton';
-import { ScrollableTableRegion } from './ScrollableTableRegion';
 
 export function IncomeCalendarTab({
   cancelIncomeEventEdit,
@@ -56,69 +55,51 @@ export function IncomeCalendarTab({
         </div>
       </section>
       <section className="expenses-layout">
-        <ScrollableTableRegion label="Income calendar">
-          <table className="calendar-table">
-            <colgroup>
-              <col className="date-column" />
-              <col className="name-column" />
-              <col className="type-column" />
-              <col className="count-column" />
-              <col className="count-column" />
-              <col className="status-column" />
-              <col className="actions-column" />
-            </colgroup>
-            <caption>Checks per month are calculated from rows with a check number.</caption>
-            <thead>
-              <tr>
-                <th>Pay Date</th>
-                <th>Event</th>
-                <th>Type</th>
-                <th>Check #</th>
-                <th>Checks/Month</th>
-                <th>Status</th>
-                <th aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {incomeEvents.length === 0 && (
-                <EmptyTableRow columns={7} message="No income calendar entries yet." />
-              )}
-              {incomeEvents.map((event) => (
-                <tr
-                  className={event.status === 'current' ? 'current-income' : undefined}
-                  key={event.id}
-                >
-                  <td className="date-cell" data-label="Pay Date">
-                    {formatDate(event.date)}
-                  </td>
-                  <td data-label="Event">{event.label}</td>
-                  <td data-label="Type">{event.type}</td>
-                  <td className="count-cell" data-label="Check #">
-                    {event.checkNumber ?? '-'}
-                  </td>
-                  <td className="count-cell" data-label="Checks / Month">
-                    {event.checkNumber === null ? '-' : event.checksInMonth}
-                  </td>
-                  <td className="status-cell" data-label="Status">
-                    <span className={`pill ${event.status ?? 'upcoming'}`}>
-                      {incomeStatusLabel(event.status)}
-                    </span>
-                  </td>
-                  <td className="actions" data-label="Actions">
-                    <EditButton
-                      label={`Edit ${event.label}`}
-                      onClick={() => startIncomeEventEdit(event)}
-                    />
-                    <RemoveButton
-                      label={`Remove ${event.label}`}
-                      onClick={() => requestRemoveIncomeEvent(event)}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </ScrollableTableRegion>
+        <FinancialRecordList
+          description="Checks per month are calculated from entries with a check number."
+          emptyDescription="Generate paydays or add a one-time income event to begin."
+          emptyTitle="No income calendar entries yet."
+          headingId="income-schedule-heading"
+          itemCount={incomeEvents.length}
+          summaryLabel="Income schedule summary"
+          title="Income schedule"
+        >
+          {incomeEvents.map((event) => (
+            <FinancialRecordListItem
+              actions={
+                <>
+                  <EditButton
+                    label={`Edit ${event.label}`}
+                    onClick={() => startIncomeEventEdit(event)}
+                  />
+                  <RemoveButton
+                    label={`Remove ${event.label}`}
+                    onClick={() => requestRemoveIncomeEvent(event)}
+                  />
+                </>
+              }
+              badge={event.status === 'current' ? 'Current pay period' : undefined}
+              key={event.id}
+              metadata={
+                event.checkNumber === null
+                  ? [event.type, 'One-time event']
+                  : [
+                      event.type,
+                      `Check #${event.checkNumber}`,
+                      `${event.checksInMonth} ${event.checksInMonth === 1 ? 'check' : 'checks'} this month`,
+                    ]
+              }
+              primary={event.label}
+              state={
+                <span className={`pill ${event.status ?? 'upcoming'}`}>
+                  {incomeStatusLabel(event.status)}
+                </span>
+              }
+              tone={event.status === 'current' ? 'positive' : undefined}
+              value={<strong>{formatDate(event.date)}</strong>}
+            />
+          ))}
+        </FinancialRecordList>
 
         <div className="side-forms">
           <form className="bill-form" onSubmit={submitRecurringPaydays}>

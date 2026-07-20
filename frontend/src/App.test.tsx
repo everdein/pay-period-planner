@@ -413,7 +413,11 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Investments' }));
 
-    expect(screen.getByRole('cell', { name: 'No accounts in this category yet.' })).toBeVisible();
+    expect(
+      within(screen.getByRole('region', { name: 'Investments' })).getByText(
+        'No accounts in this category yet.'
+      )
+    ).toBeVisible();
   });
 
   it('keeps the draft visible and offers conflict recovery', async () => {
@@ -486,15 +490,19 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /income calendar/i }));
 
     expect(screen.getByRole('heading', { name: /income calendar/i })).toBeInTheDocument();
-    expect(screen.getAllByRole('cell', { name: /paycheck/i })).toHaveLength(2);
-    expect(screen.getByRole('cell', { name: '1' })).toBeInTheDocument();
-    expect(screen.getByText(/current/i)).toBeInTheDocument();
+    const incomeSchedule = screen.getByRole('region', { name: /income schedule/i });
+    expect(within(incomeSchedule).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(incomeSchedule).getAllByText(/^paycheck$/i)).toHaveLength(2);
+    expect(within(incomeSchedule).getByText('Check #12')).toBeInTheDocument();
+    expect(within(incomeSchedule).getByText('1 check this month')).toBeInTheDocument();
+    expect(within(incomeSchedule).getByText(/^current$/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /important dates/i }));
 
     expect(screen.getByRole('heading', { name: /important dates/i })).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: /christmas/i })).toBeInTheDocument();
-    expect(screen.getByText(/^Next$/i)).toBeInTheDocument();
+    const planningCalendar = screen.getByRole('region', { name: /planning calendar/i });
+    expect(within(planningCalendar).getByText(/christmas/i)).toBeInTheDocument();
+    expect(within(planningCalendar).getByText(/^Next$/i)).toBeInTheDocument();
   });
 
   it('generates recurring payday rows in the income calendar draft', async () => {
@@ -507,8 +515,9 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /generate paydays/i }));
 
     expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: '26' })).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: '12/25/2026' })).toBeInTheDocument();
+    const incomeSchedule = screen.getByRole('region', { name: /income schedule/i });
+    expect(within(incomeSchedule).getAllByRole('listitem')).toHaveLength(26);
+    expect(within(incomeSchedule).getByText('12/25/2026')).toBeInTheDocument();
   });
 
   it('renders annual withdrawals tab', async () => {
@@ -517,7 +526,11 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /annual withdrawals/i }));
 
     expect(screen.getByRole('heading', { name: /annual withdrawals/i })).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: /annual membership/i })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: /annual schedule/i })).getByText(
+        /annual membership/i
+      )
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/^date$/i)).toHaveAttribute('type', 'date');
     expect(screen.getAllByText('$140.58')).not.toHaveLength(0);
   });
@@ -551,7 +564,9 @@ describe('App', () => {
 
     expect(screen.getAllByRole('heading', { name: /income summary/i })).not.toHaveLength(0);
     expect(screen.getAllByText(/net income/i)).not.toHaveLength(0);
-    expect(screen.getAllByRole('cell', { name: /bi-weekly/i })).not.toHaveLength(0);
+    expect(
+      within(screen.getByRole('region', { name: /^net income$/i })).getByText(/bi-weekly/i)
+    ).toBeInTheDocument();
     expect(screen.getByDisplayValue('3396.25')).toBeInTheDocument();
     expect(screen.getByText('$4,758.54')).toBeInTheDocument();
   });
@@ -561,17 +576,17 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /income summary/i }));
 
-    const sourceTable = screen.getByRole('table', { name: /saved income source rows/i });
+    const sourceList = screen.getByRole('region', { name: /saved income sources/i });
 
-    expect(within(sourceTable).getByRole('cell', { name: /side income/i })).toBeInTheDocument();
-    expect(within(sourceTable).getByRole('cell', { name: /^month$/i })).toBeInTheDocument();
-    expect(within(sourceTable).getByRole('cell', { name: '$125.00' })).toBeInTheDocument();
+    expect(within(sourceList).getByText(/side income/i)).toBeInTheDocument();
+    expect(within(sourceList).getByText(/^month$/i)).toBeInTheDocument();
+    expect(within(sourceList).getByText('$125.00')).toBeInTheDocument();
 
-    fireEvent.click(within(sourceTable).getByRole('button', { name: /edit side income month/i }));
+    fireEvent.click(within(sourceList).getByRole('button', { name: /edit side income month/i }));
     fireEvent.change(screen.getByLabelText(/^amount$/i), { target: { value: '200' } });
     fireEvent.click(screen.getByRole('button', { name: /update draft/i }));
 
-    expect(within(sourceTable).getByRole('cell', { name: '$200.00' })).toBeInTheDocument();
+    expect(within(sourceList).getByText('$200.00')).toBeInTheDocument();
     expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
   });
 
@@ -581,7 +596,9 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /^debt$/i }));
 
     expect(screen.getByRole('heading', { name: /^debt$/i })).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: /^rewards card$/i })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: /debt balances/i })).getByText(/^rewards card$/i)
+    ).toBeInTheDocument();
     expect(screen.getAllByText('$2,130.03')).not.toHaveLength(0);
   });
 
@@ -597,10 +614,8 @@ describe('App', () => {
       within(screen.getByRole('region', { name: /debt summary/i })).getByText('$2,000.00')
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole('table', { name: /debt balances/i })).getByRole('cell', {
-        name: '$2,000.00',
-      })
-    ).toBeInTheDocument();
+      within(screen.getByRole('region', { name: /debt balances/i })).getAllByText('$2,000.00')
+    ).not.toHaveLength(0);
     expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
   });
 
@@ -631,6 +646,10 @@ describe('App', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(removeButton).toHaveFocus();
-    expect(screen.getByRole('cell', { name: /annual membership/i })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: /annual schedule/i })).getByText(
+        /annual membership/i
+      )
+    ).toBeInTheDocument();
   });
 });
