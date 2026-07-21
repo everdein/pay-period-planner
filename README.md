@@ -3,13 +3,31 @@
 [![CI](https://github.com/everdein/pay-period-planner/actions/workflows/ci.yml/badge.svg)](https://github.com/everdein/pay-period-planner/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/everdein/pay-period-planner/actions/workflows/codeql.yml/badge.svg)](https://github.com/everdein/pay-period-planner/actions/workflows/codeql.yml)
 
-Pay Period Planner is an authenticated household cash-flow workspace for
-turning income, recurring bills, savings, debt, and important dates into a
-clear plan for the next pay period. It is a full-stack portfolio application
-built around a real planning problem rather than a generic technology demo.
+Pay Period Planner is an independently designed and built household cash-flow
+product for turning income, recurring bills, savings, debt, and important
+dates into a clear plan for the next pay period. It demonstrates product design
+and end-to-end engineering across an accessible React workflow, a Spring Boot
+API, relational PostgreSQL ownership, and qualified verification evidence.
 
-The application is local-first today. A public demo is intentionally deferred
-until hosting, privacy, backup, and reset policies are selected and verified.
+The application is local-first and is not production hosted. A public demo is
+intentionally deferred until hosting, privacy, backup, observability, and reset
+policies are selected and verified.
+
+## Ownership and Data Boundary
+
+Pay Period Planner is a personal portfolio project, separate from Matthew
+Clark's employer work. The repository and case study contain no employer code,
+data, or confidential implementation details. Professional outcomes described
+on the portfolio or resume are separate evidence and are not presented as
+results from this application.
+
+Every published screenshot and portfolio-evidence workflow uses
+`backend/data/financials.example.json`, a synthetic `example.test` account, and
+an isolated PostgreSQL schema that is removed after the run. Browser tests and
+other shared verification also use synthetic fixtures. A local workspace can
+contain user-entered financial information, so local database rows, exports,
+logs, traces, and ad hoc screenshots remain private and must not be treated as
+portfolio material.
 
 ## The Problem
 
@@ -110,7 +128,9 @@ The current counts, aggregate coverage, security results, and qualifications
 are published in the
 [engineering evidence report](docs/engineering-evidence.md). The
 [verification matrix](docs/verification-matrix.md) owns the commands and rules
-for reproducing that evidence.
+for reproducing that evidence. These results qualify this repository's
+behavior; they are not employer-impact metrics or claims of production
+readiness.
 
 ## Technology
 
@@ -198,19 +218,25 @@ screenshots, and shared demonstrations. Local JSON, PostgreSQL contents,
 exports, logs, traces, and screenshots may contain personal financial data.
 Never commit or send those artifacts to external services.
 
-## Current Boundaries
+## Known Limitations at a Glance
 
-- PostgreSQL relational workspaces are the only persistence path; V10-V12
-  retire the old JSONB store, transition administration, unowned rows, and
-  inactive V1 tables.
-- Browser account sessions and relational workspace ownership are implemented;
-  membership-management and collaboration UX are not.
-- Full-snapshot saves use optimistic concurrency; the product does not provide
-  granular collaborative editing.
-- Deployment is a manual placeholder. Managed hosting, backups, telemetry,
+- **No production deployment:** the hosted workflow is a manual placeholder;
+  managed hosting, backups, restore drills, centralized telemetry, edge limits,
   privacy policy, and demo reset remain future work.
-- External financial data integrations are intentionally out of scope.
+- **Simplified financial model:** records are entered manually. The product does
+  not reconcile transactions, calculate taxes or interest, provide financial
+  advice, or connect to financial institutions.
+- **Aggregate-level concurrency:** full-snapshot saves use optimistic versions.
+  This preserves one coherent planning state but does not support granular or
+  real-time collaborative editing.
+- **Limited collaboration:** account sessions and workspace isolation are
+  implemented; membership-management and collaboration workflows are not.
+- **Qualified verification:** live browser evidence currently uses Chromium,
+  automated accessibility checks do not replace a manual screen-reader review,
+  and point-in-time dependency scans do not prove the absence of security
+  vulnerabilities.
 
 The [production-readiness roadmap](docs/production-readiness-roadmap.md) records
-completed foundations and the remaining deployment and portfolio work without
-describing the current local-first application as production-ready.
+completed foundations and remaining deployment work. The
+[known limitations register](docs/known-limitations.md) owns the complete set
+of accepted gaps, mitigations, and revisit triggers.
