@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.example.backend.config.WorkspaceSessionAuthenticationFilter;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.servlet.http.Cookie;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,10 @@ class AccountSessionApiIT {
 
   @Test
   void signsUpRecoversAndRevokesAnHttpOnlyWorkspaceSession() throws Exception {
+    LocalDate payPeriodStart = LocalDate.now().minusDays(1);
+    LocalDate payPeriodEnd = payPeriodStart.plusDays(13);
+    LocalDate nextPayPeriodStart = payPeriodEnd.plusDays(1);
+    LocalDate nextPayPeriodEnd = nextPayPeriodStart.plusDays(13);
     CsrfProof csrfProof = csrfProof();
 
     mockMvc
@@ -119,14 +124,15 @@ class AccountSessionApiIT {
                 .content(
                     """
                     {
-                      "startDate": "2026-07-10",
-                      "endDate": "2026-07-23"
+                      "startDate": "%s",
+                      "endDate": "%s"
                     }
-                    """))
+                    """
+                        .formatted(payPeriodStart, payPeriodEnd)))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.version").value(1))
-        .andExpect(jsonPath("$.payPeriodStart").value("2026-07-10"))
-        .andExpect(jsonPath("$.payPeriodEnd").value("2026-07-23"))
+        .andExpect(jsonPath("$.payPeriodStart").value(payPeriodStart.toString()))
+        .andExpect(jsonPath("$.payPeriodEnd").value(payPeriodEnd.toString()))
         .andExpect(jsonPath("$.bills[0].bill").value("Rent"))
         .andExpect(jsonPath("$.bills[0].amount").value(0))
         .andExpect(jsonPath("$.assetCategories.length()").value(4));
@@ -140,10 +146,11 @@ class AccountSessionApiIT {
                 .content(
                     """
                     {
-                      "startDate": "2026-07-24",
-                      "endDate": "2026-08-06"
+                      "startDate": "%s",
+                      "endDate": "%s"
                     }
-                    """))
+                    """
+                        .formatted(nextPayPeriodStart, nextPayPeriodEnd)))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.title").value("Financial snapshot already exists"));
 
