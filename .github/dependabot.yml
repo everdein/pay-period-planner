@@ -4,8 +4,7 @@ updates:
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
-      interval: 'weekly'
-      day: 'monday'
+      interval: 'monthly'
       time: '06:00'
       timezone: 'America/Los_Angeles'
     open-pull-requests-limit: 3
@@ -19,8 +18,7 @@ updates:
   - package-ecosystem: 'npm'
     directory: '/frontend'
     schedule:
-      interval: 'weekly'
-      day: 'monday'
+      interval: 'monthly'
       time: '06:30'
       timezone: 'America/Los_Angeles'
     open-pull-requests-limit: 5
@@ -39,8 +37,7 @@ updates:
   - package-ecosystem: 'maven'
     directory: '/backend'
     schedule:
-      interval: 'weekly'
-      day: 'monday'
+      interval: 'monthly'
       time: '07:00'
       timezone: 'America/Los_Angeles'
     open-pull-requests-limit: 3
@@ -53,8 +50,7 @@ updates:
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
-      interval: 'weekly'
-      day: 'monday'
+      interval: 'monthly'
       time: '07:30'
       timezone: 'America/Los_Angeles'
     open-pull-requests-limit: 3
