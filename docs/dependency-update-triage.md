@@ -2,7 +2,9 @@
 
 This repository uses Dependabot for version-update discovery and deterministic
 triage packets for human or AI-assisted review. Dependency automation is
-assistive; it never auto-merges updates or bypasses CI, Snyk, or human review.
+assistive. Patch updates may enter GitHub's auto-merge queue, but they never
+bypass the protected branch's CI, dependency, and security checks. Minor and
+major updates remain human-reviewed.
 
 ## Dependabot Scope
 
@@ -101,7 +103,11 @@ modify installed dependency files.
 
 ## Boundaries
 
-- Do not auto-merge dependency PRs.
+- Auto-merge only Dependabot patch updates through
+  `.github/workflows/dependabot-auto-merge.yml`; do not expand the policy to
+  minor or major updates without an explicit owner decision.
+- Do not bypass required checks, dismiss findings, or manually force a queued
+  patch update through a failing gate.
 - Do not accept major updates solely because Dependabot opened a PR.
 - Do not add `.snyk` ignores, policy exceptions, repository secrets, branch
   protection changes, or GitHub permissions from dependency triage without an

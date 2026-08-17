@@ -333,6 +333,7 @@ complete. Explain why they were required and what target they used.
 | Scans                  | Aggregate completion gate                             | Required status across every CI verification result                       |
 | CodeQL                 | No complete local equivalent                          | Hosted Java and JavaScript/TypeScript analysis                            |
 | Dependency Review      | No complete local equivalent                          | Pull-request dependency graph and advisory data                           |
+| Dependabot Auto-merge  | No local equivalent                                   | Patch-only metadata gate plus protected-branch checks                     |
 | Copilot Review         | No local equivalent                                   | Copilot policy, budget, and reviewer API                                  |
 | PR Advisory            | Documentation drift and dependency triage scripts     | Pull request diff and combined job summary                                |
 | Issue Forms            | No local equivalent                                   | GitHub issue form rendering                                               |
