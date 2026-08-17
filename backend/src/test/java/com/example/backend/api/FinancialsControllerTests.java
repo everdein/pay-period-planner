@@ -2,6 +2,7 @@ package com.example.backend.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -73,6 +74,44 @@ class FinancialsControllerTests {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.title").value("Invalid request"))
         .andExpect(jsonPath("$.errors").isArray());
+  }
+
+  @Test
+  void rejectsMoneyThatCannotBeStoredWithoutRounding() throws Exception {
+    MockMvc mockMvc = mockMvc(new TestFinancialWorkspaceOperations());
+
+    mockMvc
+        .perform(
+            put("/api/v1/financials")
+                .contentType("application/json")
+                .content(
+                    """
+                        {
+                          "version": 1,
+                          "payPeriodStart": "2026-06-12",
+                          "payPeriodEnd": "2026-06-26",
+                          "bills": [{
+                            "id": null,
+                            "bill": "Example bill",
+                            "dueDay": 12,
+                            "amount": 1.005,
+                            "account": "Checking",
+                            "paid": false
+                          }],
+                          "annualWithdrawals": [],
+                          "assetCategories": [],
+                          "debtAccounts": [],
+                          "incomeSummaryItems": [],
+                          "incomeEvents": [],
+                          "importantDates": []
+                        }
+                        """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title").value("Invalid request"))
+        .andExpect(
+            jsonPath(
+                "$.errors[*]",
+                hasItem(containsString("at most 12 integer and 2 fractional digits"))));
   }
 
   @Test

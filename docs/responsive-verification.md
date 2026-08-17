@@ -51,9 +51,10 @@ may scroll sideways. The browser audit switches to the dark theme before
 traversing account creation and the financial sections so themed controls are
 included in the same geometry checks.
 
-The hosted `Responsive` job runs the same suite and blocks the final `Scans`
-job. Treat a new overflow exclusion, smaller supported width, or breakpoint
-change as a product decision that requires updated tests and documentation.
+The hosted `Browser & UX` job runs the complete Playwright suite, including the
+same responsive audit, and blocks the final `Scans` gate. Treat a new overflow
+exclusion, smaller supported width, or breakpoint change as a product decision
+that requires updated tests and documentation.
 
 ## Manual Checks
 

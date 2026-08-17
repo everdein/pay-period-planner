@@ -1,5 +1,6 @@
 package com.example.backend.dto.financials;
 
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -11,4 +12,8 @@ public record DebtAccountSnapshotRequest(
     @NotBlank(message = "Debt company is required") String company,
     @NotNull(message = "Debt amount is required")
         @PositiveOrZero(message = "Debt amount must be positive")
+        @Digits(
+            integer = 12,
+            fraction = 2,
+            message = "Debt amount must have at most 12 integer and 2 fractional digits")
         BigDecimal amount) {}

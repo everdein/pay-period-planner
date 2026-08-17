@@ -1,0 +1,100 @@
+name: PR Advisory
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  advisory:
+    name: Documentation and dependency advisory
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Generate documentation drift packet
+        shell: pwsh
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $summaryPath = Join-Path $env:RUNNER_TEMP "documentation-drift.md"
+          $parameters = @{
+            SummaryPath = $summaryPath
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($env:BASE_SHA) -and
+              -not [string]::IsNullOrWhiteSpace($env:HEAD_SHA)) {
+            $parameters.BaseRef = $env:BASE_SHA
+            $parameters.HeadRef = $env:HEAD_SHA
+          }
+
+          try {
+            & ./scripts/check-documentation-drift.ps1 @parameters
+          }
+          catch {
+            $message = $_.Exception.Message
+            Write-Host "::warning title=Documentation drift packet unavailable::Packet generation failed; see step summary."
+            $failureSummary = @(
+              "## Documentation drift packet",
+              "",
+              "Packet generation failed, so this advisory step is reporting a warning instead of blocking the PR.",
+              "",
+              "Error:",
+              "",
+              '```',
+              $message,
+              '```'
+            ) -join [Environment]::NewLine
+            Set-Content -LiteralPath $summaryPath -Encoding UTF8 -Value $failureSummary
+          }
+
+          Get-Content -Raw -LiteralPath $summaryPath |
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding UTF8
+
+      - name: Generate dependency triage packet
+        shell: pwsh
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $summaryPath = Join-Path $env:RUNNER_TEMP "dependency-triage.md"
+          $parameters = @{
+            SummaryPath = $summaryPath
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($env:BASE_SHA) -and
+              -not [string]::IsNullOrWhiteSpace($env:HEAD_SHA)) {
+            $parameters.BaseRef = $env:BASE_SHA
+            $parameters.HeadRef = $env:HEAD_SHA
+          }
+
+          try {
+            & ./scripts/triage-dependency-updates.ps1 @parameters
+          }
+          catch {
+            $message = $_.Exception.Message
+            Write-Host "::warning title=Dependency update triage packet unavailable::Packet generation failed; see step summary."
+            $failureSummary = @(
+              "## Dependency update triage packet",
+              "",
+              "Packet generation failed, so this advisory step is reporting a warning instead of blocking the PR.",
+              "",
+              "Error:",
+              "",
+              '```',
+              $message,
+              '```'
+            ) -join [Environment]::NewLine
+            Set-Content -LiteralPath $summaryPath -Encoding UTF8 -Value $failureSummary
+          }
+
+          Get-Content -Raw -LiteralPath $summaryPath |
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding UTF8

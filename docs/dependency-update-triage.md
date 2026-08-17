@@ -45,9 +45,9 @@ repeatable triage context.
 
 The frontend has one temporary, development-only npm override:
 
-| Owner selector    | Resolved dependency      | Introduced | Reason and removal condition                                                                                                                                                                                                                                                                                                                                                                   |
-| ----------------- | ------------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `minimatch@3.1.5` | `brace-expansion@1.1.13` | 2026-07-15 | ESLint's legacy minimatch paths require the callable CommonJS 1.x API. Version 1.1.13 fixes [GHSA-v6h2-p8h4-qcjw](https://github.com/advisories/GHSA-v6h2-p8h4-qcjw) and [GHSA-f886-m6hf-6m8v](https://github.com/advisories/GHSA-f886-m6hf-6m8v). Remove the override when all checked owners leave minimatch 3 or their upstream declarations select a secure compatible release without it. |
+| Owner selector    | Resolved dependency      | Introduced | Reason and removal condition                                                                                                                                                                                                                                                             |
+| ----------------- | ------------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `minimatch@3.1.5` | `brace-expansion@1.1.18` | 2026-07-15 | ESLint's legacy minimatch paths require the callable CommonJS 1.x API. Version 1.1.18 includes the applicable fixes on that compatible line. Remove the override when all checked owners leave minimatch 3 or their upstream declarations select a secure compatible release without it. |
 
 Run the owned compatibility assertion after a clean install:
 
@@ -56,9 +56,11 @@ npm --prefix frontend run check:dependency-compat
 ```
 
 The assertion covers `eslint`, `@eslint/config-array`, `@eslint/eslintrc`,
-`eslint-plugin-jsx-a11y`, and `eslint-plugin-react`. It fails when the expected
-legacy path changes or when no minimatch 3 path remains, which makes removal an
-explicit dependency-maintenance task.
+`eslint-plugin-jsx-a11y`, and `eslint-plugin-react`. It also verifies that the
+modern `@typescript-eslint/parser` path retains minimatch 10 with its native
+brace-expansion 5 API. It fails when either compatibility boundary changes or
+when no minimatch 3 path remains, which makes removal an explicit
+dependency-maintenance task.
 
 The previous blanket `brace-expansion@5.0.7` and `js-yaml@4.3.0` overrides were
 introduced on 2026-07-13. The brace override required a `postinstall` rewrite

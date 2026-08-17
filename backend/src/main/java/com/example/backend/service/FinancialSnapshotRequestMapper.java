@@ -33,6 +33,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class FinancialSnapshotRequestMapper {
 
+  private static final int MAX_MONEY_INTEGER_DIGITS = 12;
+  private static final int MAX_MONEY_FRACTION_DIGITS = 2;
+
   private final FinancialSnapshotNormalizer normalizer;
 
   public FinancialSnapshotRequestMapper(FinancialSnapshotNormalizer normalizer) {
@@ -287,6 +290,7 @@ public class FinancialSnapshotRequestMapper {
     if (amount == null || isNegative(amount)) {
       throw new FinancialRequestException("Amount must be positive");
     }
+    validateMoneyPrecision(amount, "Amount");
   }
 
   private void validateAnnualWithdrawal(
@@ -306,6 +310,7 @@ public class FinancialSnapshotRequestMapper {
     if (amount == null || isNegative(amount)) {
       throw new FinancialRequestException("Annual withdrawal amount must be positive");
     }
+    validateMoneyPrecision(amount, "Annual withdrawal amount");
   }
 
   private void validatePayPeriod(LocalDate startDate, LocalDate endDate) {
@@ -324,6 +329,7 @@ public class FinancialSnapshotRequestMapper {
     if (amount == null || isNegative(amount)) {
       throw new FinancialRequestException("Asset amount must be positive");
     }
+    validateMoneyPrecision(amount, "Asset amount");
   }
 
   private void validateDebtAccount(String account, String company, BigDecimal amount) {
@@ -336,6 +342,7 @@ public class FinancialSnapshotRequestMapper {
     if (amount == null || isNegative(amount)) {
       throw new FinancialRequestException("Debt amount must be positive");
     }
+    validateMoneyPrecision(amount, "Debt amount");
   }
 
   private void validateIncomeSummaryItem(String category, String interval, BigDecimal amount) {
@@ -348,6 +355,7 @@ public class FinancialSnapshotRequestMapper {
     if (amount == null || isNegative(amount)) {
       throw new FinancialRequestException("Income amount must be positive");
     }
+    validateMoneyPrecision(amount, "Income amount");
   }
 
   private void validateIncomeEvent(LocalDate date, String label, String type, Integer checkNumber) {
@@ -379,6 +387,15 @@ public class FinancialSnapshotRequestMapper {
 
   private boolean isNegative(BigDecimal amount) {
     return amount != null && amount.signum() < 0;
+  }
+
+  private void validateMoneyPrecision(BigDecimal amount, String fieldName) {
+    int fractionalDigits = Math.max(amount.scale(), 0);
+    int integerDigits = Math.max(amount.precision() - amount.scale(), 0);
+    if (fractionalDigits > MAX_MONEY_FRACTION_DIGITS || integerDigits > MAX_MONEY_INTEGER_DIGITS) {
+      throw new FinancialRequestException(
+          fieldName + " must have at most 12 integer and 2 fractional digits");
+    }
   }
 
   private <T> List<T> nullSafe(List<T> value) {

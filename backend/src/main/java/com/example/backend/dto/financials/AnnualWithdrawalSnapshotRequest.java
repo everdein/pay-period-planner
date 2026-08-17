@@ -1,5 +1,6 @@
 package com.example.backend.dto.financials;
 
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -18,6 +19,11 @@ public record AnnualWithdrawalSnapshotRequest(
         int day,
     @NotNull(message = "Annual withdrawal amount is required")
         @PositiveOrZero(message = "Annual withdrawal amount must be positive")
+        @Digits(
+            integer = 12,
+            fraction = 2,
+            message =
+                "Annual withdrawal amount must have at most 12 integer and 2 fractional digits")
         BigDecimal amount,
     @NotBlank(message = "Annual withdrawal account is required") String account,
     boolean paid) {}

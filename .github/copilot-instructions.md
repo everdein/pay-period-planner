@@ -24,15 +24,15 @@ recommended fix, and the verification command or manual check that would prove
 the fix. Do not count Copilot review as a human approval or as a replacement
 for CI, Snyk, PostgreSQL smoke tests, browser checks, or manual review.
 
-When summarizing a pull request, use the PR template and the PR summary packet
-from GitHub Actions. Include summary, impact, verification, data/security
-posture, skipped checks, and follow-up risk. Do not claim hosted checks passed
-unless GitHub reports them as passed.
+When summarizing a pull request, use the PR template, PR diff, and PR Advisory
+packet. Include summary, impact, verification, data/security posture, skipped
+checks, and follow-up risk. Do not claim hosted checks passed unless GitHub
+reports them as passed.
 
-When summarizing a failed workflow run, use the CI failure summary packet plus
-only the smallest relevant log window. Identify the first actionable failing
-job/step, root-cause category, likely local reproduction command, and remaining
-hosted checks. Do not paste full logs or secret-like values.
+When summarizing a failed workflow run, inspect the failed job and use only the
+smallest relevant log window. Identify the first actionable failing job/step,
+root-cause category, likely local reproduction command, and remaining hosted
+checks. Do not paste full logs or secret-like values.
 
 When helping with an issue, use the issue forms and
 `docs/issue-to-implementation-workflow.md` to confirm scope, acceptance

@@ -32,13 +32,14 @@ The applicable advisories have patched releases on the compatible 1.x line:
 - Remove the frontend `postinstall` lifecycle hook and the script that edits
   dependency source files.
 - Replace the blanket brace-expansion override with one scoped npm override:
-  `minimatch@3.1.5 -> brace-expansion@1.1.13`.
+  `minimatch@3.1.5 -> brace-expansion@1.1.18`.
 - Allow modern `minimatch@10` to resolve its native `brace-expansion@5` line.
 - Remove the redundant `js-yaml` override and keep the secure `4.3.0`
   resolution in the lockfile through its parent's compatible declared range.
 - Add `npm run check:dependency-compat`. It discovers the current ESLint owners
-  of minimatch 3, verifies that each resolves brace-expansion 1.1.13, and
-  exercises brace matching through the actual installed modules.
+  of minimatch 3, verifies that each resolves brace-expansion 1.1.18, and
+  exercises brace matching through the actual installed modules. It also
+  verifies that the modern minimatch 10 path retains brace-expansion 5.
 - Run that assertion in the default local verifier and the hosted Code Quality
   job. A clean `npm ci` must succeed without a lifecycle script mutating
   `node_modules`.
