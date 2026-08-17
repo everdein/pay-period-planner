@@ -26,15 +26,18 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           $summaryPath = Join-Path $env:RUNNER_TEMP "documentation-drift.md"
-          $arguments = @("-SummaryPath", $summaryPath)
+          $parameters = @{
+            SummaryPath = $summaryPath
+          }
 
           if (-not [string]::IsNullOrWhiteSpace($env:BASE_SHA) -and
               -not [string]::IsNullOrWhiteSpace($env:HEAD_SHA)) {
-            $arguments += @("-BaseRef", $env:BASE_SHA, "-HeadRef", $env:HEAD_SHA)
+            $parameters.BaseRef = $env:BASE_SHA
+            $parameters.HeadRef = $env:HEAD_SHA
           }
 
           try {
-            & ./scripts/check-documentation-drift.ps1 @arguments
+            & ./scripts/check-documentation-drift.ps1 @parameters
           }
           catch {
             $message = $_.Exception.Message
@@ -63,15 +66,18 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           $summaryPath = Join-Path $env:RUNNER_TEMP "dependency-triage.md"
-          $arguments = @("-SummaryPath", $summaryPath)
+          $parameters = @{
+            SummaryPath = $summaryPath
+          }
 
           if (-not [string]::IsNullOrWhiteSpace($env:BASE_SHA) -and
               -not [string]::IsNullOrWhiteSpace($env:HEAD_SHA)) {
-            $arguments += @("-BaseRef", $env:BASE_SHA, "-HeadRef", $env:HEAD_SHA)
+            $parameters.BaseRef = $env:BASE_SHA
+            $parameters.HeadRef = $env:HEAD_SHA
           }
 
           try {
-            & ./scripts/triage-dependency-updates.ps1 @arguments
+            & ./scripts/triage-dependency-updates.ps1 @parameters
           }
           catch {
             $message = $_.Exception.Message
