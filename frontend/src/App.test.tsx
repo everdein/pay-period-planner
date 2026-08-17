@@ -211,6 +211,7 @@ describe('App', () => {
     }));
     mockGetMonthlyExpenses.mockResolvedValue(mockFinancialsState.snapshot);
     mockFinancialsError.current = null;
+    mockFinancialsState.saving = false;
   });
 
   afterEach(() => {
@@ -555,6 +556,20 @@ describe('App', () => {
     expect(screen.getByText(/^Possible savings transfer$/i)).toBeInTheDocument();
     expect(screen.getAllByText('$0.00')).not.toHaveLength(0);
     expect(screen.getAllByText('$33.78')).not.toHaveLength(0);
+  });
+
+  it('locks financial draft controls while a snapshot save is in flight', async () => {
+    mockFinancialsState.saving = true;
+    await renderAuthenticatedApp();
+
+    fireEvent.click(screen.getByRole('button', { name: /monthly withdrawals/i }));
+
+    const editor = screen.getByRole('group', { name: /financial draft editor/i });
+    expect(editor).toHaveAttribute('aria-busy', 'true');
+    expect(editor).toBeDisabled();
+    expect(within(editor).getByLabelText(/^amount$/i)).toBeDisabled();
+    expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^reset$/i })).toBeDisabled();
   });
 
   it('renders income summary tab', async () => {

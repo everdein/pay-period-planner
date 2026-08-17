@@ -49,13 +49,13 @@ The repository currently uses:
   PostgreSQL integration, browser, accessibility, responsive, and scans;
 - `codeql.yml` and `dependency-review.yml` for hosted security analysis;
 - `copilot-review.yml` for non-blocking review requests;
-- PR and CI-failure summary workflows for advisory context packets;
-- documentation-drift and dependency-triage workflows for advisory packets;
+- `pr-advisory.yml` for combined documentation-drift and dependency-triage
+  context;
 - `weekly-maintenance.yml` for scheduled repository-health evidence.
 
-Copilot comments and generated summaries must be verified against code, tests,
-ADRs, and data-safety rules. A successful summary workflow does not mean the
-underlying CI job passed.
+Copilot comments and generated advisory packets must be verified against code,
+tests, ADRs, and data-safety rules. A successful advisory workflow does not mean
+the underlying CI job passed.
 
 ## Connector Boundaries
 

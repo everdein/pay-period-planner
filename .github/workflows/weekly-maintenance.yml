@@ -14,6 +14,7 @@ jobs:
   weekly-maintenance:
     name: Weekly maintenance packet
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -52,12 +53,17 @@ jobs:
         run: npm run spell
 
       - name: Root dependency audit
+        id: root-audit
+        continue-on-error: true
         run: npm audit --audit-level=high
 
       - name: Frontend dependency audit
+        id: frontend-audit
+        continue-on-error: true
         run: npm --prefix frontend audit --audit-level=high
 
       - name: Recent CI runs
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
@@ -67,3 +73,19 @@ jobs:
             echo ""
             gh run list --repo "${REPOSITORY}" --workflow "CI" --limit 5
           } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Enforce dependency audit policy
+        if: always() && (steps.root-audit.outcome == 'failure' || steps.frontend-audit.outcome == 'failure')
+        env:
+          ROOT_AUDIT_OUTCOME: ${{ steps.root-audit.outcome }}
+          FRONTEND_AUDIT_OUTCOME: ${{ steps.frontend-audit.outcome }}
+        run: |
+          {
+            echo "## Dependency audit policy"
+            echo ""
+            echo "High-or-critical dependency findings fail this maintenance review."
+            echo ""
+            echo "- Root audit: ${ROOT_AUDIT_OUTCOME}"
+            echo "- Frontend audit: ${FRONTEND_AUDIT_OUTCOME}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          exit 1

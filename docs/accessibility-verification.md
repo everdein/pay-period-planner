@@ -23,9 +23,10 @@ The focused Playwright suite applies axe WCAG 2.0, 2.1, and 2.2 A/AA rules to:
 - dialog focus entry, Escape dismissal, and focus return
 - theme selection, persistence after reload, and the toggle's accessible state
 
-The hosted `Accessibility` job runs the same audit and blocks the final `Scans`
-job. Do not disable a failing axe rule or exclude an application region without
-a documented owner decision and a linked follow-up.
+The hosted `Browser & UX` job runs the complete Playwright suite, including the
+same audit, and blocks the final `Scans` gate. Do not disable a failing axe rule
+or exclude an application region without a documented owner decision and a
+linked follow-up.
 
 Automated results cannot determine whether announcements are understandable,
 reading order is useful, or a workflow is practical with assistive technology.

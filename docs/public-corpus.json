@@ -379,6 +379,11 @@
       "reason": "Pull-request dependency vulnerability gate."
     },
     {
+      "path": ".github/workflows/pr-advisory.yml",
+      "kind": "workflow",
+      "reason": "Combined pull-request documentation and dependency advisory context."
+    },
+    {
       "path": "scripts/verify-local.ps1",
       "kind": "workflow",
       "reason": "Canonical local completion gate."

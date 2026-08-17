@@ -27,7 +27,11 @@ test('creates and saves a first financial snapshot from an empty workspace', asy
   await expect(page.getByRole('status')).toContainText('Changes saved. Snapshot version 2.');
   await page.reload();
   await page.getByRole('button', { name: 'Income Summary' }).click();
-  await expect(page.getByRole('cell', { name: '$3,200.00' }).first()).toBeVisible();
+  await expect(
+    page
+      .getByRole('region', { name: 'Saved income sources' })
+      .getByText('$3,200.00', { exact: true })
+  ).toBeVisible();
 
   await page.getByRole('button', { name: 'Overview' }).click();
   await expect(page.getByRole('heading', { name: 'Household Overview' })).toBeVisible();
@@ -37,7 +41,11 @@ test('creates and saves a first financial snapshot from an empty workspace', asy
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('combobox', { name: 'Financial section' }).selectOption('debt');
   await expect(page.getByRole('heading', { exact: true, name: 'Debt' })).toBeVisible();
-  await expect(page.getByRole('cell', { name: 'No debt accounts yet.' })).toBeVisible();
+  await expect(
+    page
+      .getByRole('region', { name: 'Debt balances' })
+      .getByText('No debt accounts yet.', { exact: true })
+  ).toBeVisible();
 });
 
 test('keeps browser sessions isolated while editing the live PostgreSQL workspace', async ({
@@ -154,16 +162,19 @@ test('keeps a stale draft visible and reloads after a concurrent save conflict',
 
   await page.getByLabel('Amount').fill('1000');
   await page.getByRole('button', { name: 'Add to Draft' }).click();
-  await expect(page.getByRole('cell', { name: '$1,000.00' }).first()).toBeVisible();
+  const staleIncomeAmount = page
+    .getByRole('region', { name: 'Saved income sources' })
+    .getByText('$1,000.00', { exact: true });
+  await expect(staleIncomeAmount).toBeVisible();
   await page.getByRole('button', { name: 'Save Changes' }).click();
 
   const conflict = page.getByRole('alert');
   await expect(conflict).toContainText('A newer snapshot is available');
-  await expect(page.getByRole('cell', { name: '$1,000.00' }).first()).toBeVisible();
+  await expect(staleIncomeAmount).toBeVisible();
   await conflict.getByRole('button', { name: 'Discard Draft and Reload' }).click();
 
   await expect(conflict).toBeHidden();
-  await expect(page.getByRole('cell', { name: '$1,000.00' }).first()).toBeHidden();
+  await expect(staleIncomeAmount).toBeHidden();
   await page.getByRole('button', { name: 'Monthly Withdrawals' }).click();
 
   const rentItem = page

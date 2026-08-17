@@ -220,9 +220,9 @@ Never commit or send those artifacts to external services.
 
 ## Known Limitations at a Glance
 
-- **No production deployment:** the hosted workflow is a manual placeholder;
-  managed hosting, backups, restore drills, centralized telemetry, edge limits,
-  privacy policy, and demo reset remain future work.
+- **No production deployment:** there is no hosted release workflow; managed
+  hosting, backups, restore drills, centralized telemetry, edge limits, privacy
+  policy, and demo reset remain future work.
 - **Simplified financial model:** records are entered manually. The product does
   not reconcile transactions, calculate taxes or interest, provide financial
   advice, or connect to financial institutions.

@@ -26,8 +26,8 @@ The application already has several boundaries that should shape deployment:
 - PostgreSQL and Flyway are required at startup. There is no JSON or JSONB
   runtime fallback.
 - `/actuator/health` is the existing deployment health boundary.
-- The current GitHub Actions deploy job is intentionally a manual placeholder.
-  Provider selection does not make that placeholder a release pipeline.
+- CI intentionally contains no deployment job until a provider is selected.
+  Provider selection alone does not establish a release pipeline.
 
 These constraints favor one containerized web service that serves the compiled
 frontend and Spring Boot API, plus one private managed PostgreSQL database in

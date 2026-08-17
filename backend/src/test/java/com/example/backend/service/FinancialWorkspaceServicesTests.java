@@ -93,6 +93,36 @@ class FinancialWorkspaceServicesTests {
   }
 
   @Test
+  void rejectsMoneyOutsideTheDatabasePrecisionBeforePersistence() {
+    FinancialSnapshotRequestMapper mapper =
+        new FinancialSnapshotRequestMapper(new FinancialSnapshotNormalizer());
+
+    assertThatThrownBy(
+            () -> mapper.toDomainSnapshot(requestWithBillAmount(new BigDecimal("1.005"))))
+        .isInstanceOf(FinancialRequestException.class)
+        .hasMessageContaining("at most 12 integer and 2 fractional digits");
+    assertThatThrownBy(
+            () ->
+                mapper.toDomainSnapshot(requestWithBillAmount(new BigDecimal("1000000000000.00"))))
+        .isInstanceOf(FinancialRequestException.class)
+        .hasMessageContaining("at most 12 integer and 2 fractional digits");
+  }
+
+  private ExpenseSnapshotRequest requestWithBillAmount(BigDecimal amount) {
+    return new ExpenseSnapshotRequest(
+        1L,
+        LocalDate.of(2026, 6, 12),
+        LocalDate.of(2026, 6, 26),
+        List.of(new ExpenseBillSnapshotRequest(null, "Bill", 12, amount, "Checking", false)),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of());
+  }
+
+  @Test
   void savesPlanningSettingsAndUsesTheirTimeZoneForTheCurrentDate() {
     Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:30:00Z"), ZoneOffset.UTC);
     Services services = services(clock);

@@ -9,7 +9,7 @@ const legacyMinimatchOwners = [
   'eslint-plugin-jsx-a11y',
   'eslint-plugin-react',
 ];
-const expectedBraceExpansionVersion = '1.1.13';
+const expectedBraceExpansionVersion = '1.1.18';
 let legacyMinimatchCount = 0;
 
 for (const owner of legacyMinimatchOwners) {
@@ -46,7 +46,39 @@ if (legacyMinimatchCount === 0) {
   );
 }
 
+const modernOwnerRequire = createRequire(require.resolve('@typescript-eslint/parser'));
+const modernMinimatchPackagePath = modernOwnerRequire.resolve('minimatch/package.json');
+const modernMinimatchPackage = JSON.parse(fs.readFileSync(modernMinimatchPackagePath, 'utf8'));
+const modernMinimatchRequire = createRequire(modernMinimatchPackagePath);
+const modernBraceExpansionPackagePath = modernMinimatchRequire.resolve(
+  'brace-expansion/package.json'
+);
+const modernBraceExpansionPackage = JSON.parse(
+  fs.readFileSync(modernBraceExpansionPackagePath, 'utf8')
+);
+const { minimatch: modernMinimatch } = modernMinimatchRequire('minimatch');
+
+if (!modernMinimatchPackage.version.startsWith('10.')) {
+  throw new Error(
+    `@typescript-eslint/parser resolved minimatch ${modernMinimatchPackage.version}; ` +
+      'review the modern compatibility assertion'
+  );
+}
+
+if (!modernBraceExpansionPackage.version.startsWith('5.')) {
+  throw new Error(
+    `minimatch ${modernMinimatchPackage.version} resolved brace-expansion ` +
+      `${modernBraceExpansionPackage.version}; expected the compatible 5.x API`
+  );
+}
+
+if (!modernMinimatch('report-daily.md', 'report-{daily,weekly}.md')) {
+  throw new Error('The modern minimatch brace-expansion check failed');
+}
+
 process.stdout.write(
   `Verified ${legacyMinimatchCount} minimatch 3 dependency paths with ` +
-    `brace-expansion ${expectedBraceExpansionVersion}.\n`
+    `brace-expansion ${expectedBraceExpansionVersion}, plus minimatch ` +
+    `${modernMinimatchPackage.version} with brace-expansion ` +
+    `${modernBraceExpansionPackage.version}.\n`
 );

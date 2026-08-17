@@ -244,7 +244,7 @@ changes in a new ADR.
   production-only timing controls.
 - **Current mitigation:** Live-backend `scripts/run-browser-checks.ps1`,
   deterministic schema cleanup, delayed-response unit tests, Testing Library
-  coverage, API/service tests, hosted Accessibility and Responsive jobs, and
+  coverage, API/service tests, the hosted complete `Browser & UX` suite, and
   the manual protocols in `docs/accessibility-verification.md` and
   `docs/responsive-verification.md`.
 - **Revisit when:** Per-section workflow depth, visual regression, or broader
@@ -255,8 +255,9 @@ changes in a new ADR.
 - **Status:** Resolved for the current application workflow on 2026-07-14
 - **Resolution:** The live PostgreSQL browser suite now runs axe WCAG A/AA
   checks across account access, onboarding, every financial section, and the
-  removal dialog. CI gates the final scan job on this focused audit. Account
-  tabs and modal focus behavior also have keyboard interaction coverage.
+  removal dialog. CI gates the final `Scans` check on the complete browser
+  suite. Account tabs and modal focus behavior also have keyboard interaction
+  coverage.
 - **Manual boundary:** `docs/accessibility-verification.md` defines the required
   screen-reader and keyboard protocol. Automated scans do not prove usable
   announcements, reading order, or workflow comprehension; record a human run
@@ -272,12 +273,13 @@ changes in a new ADR.
   CLI or direct binary, run the authenticated local security checks, and
   verify the hosted pull-request scan.
 
-### LIM-023 — Deployment is a placeholder
+### LIM-023 — No deployment workflow
 
 - **Status:** Intentional
-- **Impact:** `workflow_dispatch` proves job orchestration only; it does not
-  build an environment, deploy, migrate, roll back, or verify health.
-- **Current mitigation:** Do not describe the workflow as a release path.
+- **Impact:** The repository does not build an environment, deploy, migrate,
+  roll back, or verify production health.
+- **Current mitigation:** CI contains no placeholder release job and is not
+  described as a deployment path.
 - **Revisit when:** A concrete hosting target and operational owner exist.
 
 ### LIM-024 — No centralized production telemetry or incident workflow
@@ -310,7 +312,8 @@ changes in a new ADR.
 - **Impact:** Five current ESLint dependency paths still use `minimatch@3.1.5`
   and its callable CommonJS brace-expansion 1.x contract.
 - **Current mitigation:** `frontend/package.json` scopes those paths to
-  advisory-fixed `brace-expansion@1.1.13`. A read-only compatibility assertion
+  advisory-fixed `brace-expansion@1.1.18`. A read-only compatibility assertion
+  exercises both the legacy minimatch 3 paths and the modern minimatch 10 path,
   runs locally and in CI, and clean installs do not mutate `node_modules`.
 - **Revisit when:** Remove the override and assertion after every checked owner
   leaves minimatch 3 or upstream dependency declarations resolve a secure,

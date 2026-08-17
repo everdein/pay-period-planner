@@ -311,8 +311,7 @@ profile against an ephemeral
 service, and an authenticated high-severity Snyk scan. Separate hosted
 workflows run CodeQL for Java and JavaScript/TypeScript and review pull-request
 dependency changes for newly introduced high- or critical-severity
-vulnerabilities. The deploy job is a manual placeholder, not production
-infrastructure.
+vulnerabilities. CI contains no deploy job and is not a production pipeline.
 
 ## Data Boundaries
 

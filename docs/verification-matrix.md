@@ -49,15 +49,15 @@ to reproduce and qualify them.
 | Dependency/lockfile             | Clean install and affected build/tests                 | Full local verification and authenticated security checks | Direct/transitive path, compatibility, both lock files                   |
 | GitHub workflow                 | Run exact local equivalents                            | Hosted PR run required                                    | Events, permissions, job dependencies, cache paths, secrets              |
 | Hosted AI workflow              | Review workflow YAML and docs                          | Hosted PR run required                                    | Copilot policy, billing, permissions, non-blocking behavior              |
-| PR/failure summary workflow     | Review workflow YAML, template, and docs               | Hosted PR/run evidence required                           | Summary packets are context, not pass/fail evidence                      |
+| PR advisory workflow            | Review workflow YAML, scripts, and docs                | Hosted PR evidence required                               | Advisory packets are context, not pass/fail evidence                     |
 | Issue workflow                  | Review issue forms and implementation guide            | Hosted issue form rendering                               | Scope, data-safety, acceptance criteria, write boundaries                |
-| Documentation drift             | `scripts/check-documentation-drift.ps1`                | Hosted documentation-drift workflow                       | Drift packets are hints; verify source claims before acting              |
-| Dependency triage               | `scripts/triage-dependency-updates.ps1`                | Dependabot PR plus hosted triage workflow                 | Release notes, lockfiles, security status, compatibility risk            |
+| Documentation drift             | `scripts/check-documentation-drift.ps1`                | Hosted PR Advisory workflow                               | Drift packets are hints; verify source claims before acting              |
+| Dependency triage               | `scripts/triage-dependency-updates.ps1`                | Dependabot PR plus hosted PR Advisory workflow            | Release notes, lockfiles, security status, compatibility risk            |
 | Scheduled maintenance           | `scripts/generate-engineering-status.ps1`              | Weekly maintenance workflow                               | Packets are advisory; external writes require user intent                |
 | Security configuration          | Focused configuration inspection                       | Authenticated Snyk scan                                   | Tool/auth state, severity threshold, fixed versions                      |
 | Observability/correlation       | Filter, security, API-client, and error-boundary tests | Full local verification                                   | No sensitive fields; bounded metric tags; protected Actuator             |
-| Accessibility                   | Focused interaction tests plus live axe browser audit  | Full local verification and hosted Accessibility job      | Manual screen-reader/keyboard protocol when interaction changed          |
-| Responsive UI                   | Focused live responsive browser audit                  | Full local verification and hosted Responsive job         | 320/390/768/1024 widths; contained controls and table/list reflow        |
+| Accessibility                   | Focused interaction tests plus live axe browser audit  | Full local verification and hosted Browser & UX job       | Manual screen-reader/keyboard protocol when interaction changed          |
+| Responsive UI                   | Focused live responsive browser audit                  | Full local verification and hosted Browser & UX job       | 320/390/768/1024 widths; contained controls and table/list reflow        |
 | Browser workflow                | `scripts/run-browser-checks.ps1`                       | Full local verification plus browser smoke when relevant  | Synthetic data, screenshots/traces only when intentionally shared        |
 | Cross-layer feature             | Narrow checks in every affected layer                  | Full local verification                                   | End-to-end contract and persistence parity                               |
 
@@ -178,8 +178,8 @@ PostgreSQL verification is required for changes to:
 This focused Playwright suite uses an isolated PostgreSQL schema and applies
 axe WCAG A/AA rules to account access, onboarding, every financial section,
 and the removal dialog. It also verifies modal focus entry, Escape dismissal,
-and focus return. CI runs the same suite in the `Accessibility` job and makes
-the final `Scans` job depend on it.
+and focus return. CI runs the complete Playwright suite in the `Browser & UX`
+job, and the final `Scans` gate depends on that job.
 
 Automated checks do not replace a screen reader. Follow
 `docs/accessibility-verification.md` for the synthetic-data-only keyboard and
@@ -197,7 +197,8 @@ signup, onboarding, compact navigation, and all twelve financial sections at
 320, 390, 768, and 1024 pixels wide. It rejects page-level horizontal overflow,
 out-of-viewport controls or table regions, undersized non-table controls, and
 incorrect navigation behavior at the 900-pixel breakpoint. CI runs the same
-suite in the `Responsive` job and makes the final `Scans` job depend on it.
+suite in the `Browser & UX` job, and the final `Scans` gate depends on that
+job.
 
 Follow `docs/responsive-verification.md` for the full automated contract and
 the synthetic-data-only manual viewport, orientation, and zoom checks.
@@ -318,30 +319,29 @@ complete. Explain why they were required and what target they used.
 
 ## CI Mapping
 
-| GitHub job             | Local equivalent                     | Hosted-only concern                                                       |
-| ---------------------- | ------------------------------------ | ------------------------------------------------------------------------- |
-| Code Coverage          | Frontend test with `--coverage`      | Artifact upload                                                           |
-| Code Quality           | Dependency compatibility plus lint   | Clean Linux install and runner behavior                                   |
-| Spell Check            | Root spell plus corpus validation    | Clean checkout/install and exact approved-file resolution                 |
-| Type Check             | Frontend typecheck                   | Clean checkout/install                                                    |
-| Build & Test Backend   | Formatting plus Maven `clean verify` | Linux/JDK action/cache                                                    |
-| PostgreSQL Integration | Maven `postgres-integration` profile | Ephemeral PostgreSQL service container and Linux/JDK action/cache         |
-| Build Frontend         | Frontend build                       | Linux/Node action/cache                                                   |
-| Coverage Summary       | Coverage summary script              | Artifact download and GitHub job summary                                  |
-| Scans                  | Security script                      | Repository secret, Dependabot secret restrictions, and hosted Snyk access |
-| Copilot Review         | No local equivalent                  | Copilot policy, budget, and reviewer API                                  |
-| PR Summary Packet      | No local equivalent                  | Pull request event and job summary                                        |
-| CI Failure Summary     | No local equivalent                  | Workflow-run event and Actions metadata                                   |
-| Issue Forms            | No local equivalent                  | GitHub issue form rendering                                               |
-| Documentation Drift    | Documentation drift script           | Pull request diff and job summary                                         |
-| Dependency Triage      | Dependency triage script             | Dependabot and pull request metadata                                      |
-| Weekly Maintenance     | Engineering status script            | Schedule actor, audits, recent CI runs                                    |
-| Deploy                 | No real local equivalent             | Manual placeholder only                                                   |
+| GitHub job             | Local equivalent                                      | Hosted-only concern                                                       |
+| ---------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------- |
+| Code Quality           | Frontend compatibility, lint, typecheck, tests, build | Clean Linux install, coverage artifact, and runner behavior               |
+| Spell Check            | Root spell plus corpus validation                     | Clean checkout/install and exact approved-file resolution                 |
+| Build & Test Backend   | Formatting plus Maven `clean verify`                  | Linux/JDK action/cache                                                    |
+| PostgreSQL Integration | Maven `postgres-integration` profile                  | Ephemeral PostgreSQL service container and Linux/JDK action/cache         |
+| Browser & UX           | Complete `scripts/run-browser-checks.ps1` suite       | Ephemeral PostgreSQL, Chromium install, and Linux service startup         |
+| Coverage Summary       | Coverage summary script                               | Artifact download and GitHub job summary                                  |
+| Snyk Security          | Security script                                       | Repository secret, Dependabot secret restrictions, and hosted Snyk access |
+| Scans                  | Aggregate completion gate                             | Required status across every CI verification result                       |
+| CodeQL                 | No complete local equivalent                          | Hosted Java and JavaScript/TypeScript analysis                            |
+| Dependency Review      | No complete local equivalent                          | Pull-request dependency graph and advisory data                           |
+| Copilot Review         | No local equivalent                                   | Copilot policy, budget, and reviewer API                                  |
+| PR Advisory            | Documentation drift and dependency triage scripts     | Pull request diff and combined job summary                                |
+| Issue Forms            | No local equivalent                                   | GitHub issue form rendering                                               |
+| Weekly Maintenance     | Engineering status script                             | Schedule actor, audits, recent CI runs                                    |
 
-CI runs the same `postgres-integration` Maven profile as the default local gate.
-The downstream `Scans` job depends on the PostgreSQL job, so hosted checks do
-not advance past a failed integration result. A hosted run is still required to
-validate service-container behavior.
+CI runs the same `postgres-integration` Maven profile and complete six-test
+Playwright suite as the local workflows. Snyk runs concurrently with product
+verification, and the downstream `Scans` job aggregates frontend, spelling,
+backend, PostgreSQL, browser, coverage-summary, and Snyk results into one
+required completion gate. A hosted run is still required to validate service-
+container behavior.
 
 ## Verification Evidence
 

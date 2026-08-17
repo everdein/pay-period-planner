@@ -283,6 +283,18 @@ h1 {
   padding: 20px 24px 48px;
 }
 
+.workspace-editor {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.workspace-editor[aria-busy='true'] {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .workspace-onboarding,
 .workspace-error-state,
 .workspace-load-state {

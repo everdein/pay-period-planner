@@ -213,11 +213,18 @@ export default function FinancialsPage({
               onRetrySave={saveDraft}
               saveNotice={saveNotice}
             />
-            <FinancialsTabContent
-              activeTab={activeTab}
-              onNavigate={setActiveTab}
-              workspace={workspace}
-            />
+            <fieldset
+              aria-busy={saving}
+              aria-label="Financial draft editor"
+              className="workspace-editor"
+              disabled={saving}
+            >
+              <FinancialsTabContent
+                activeTab={activeTab}
+                onNavigate={setActiveTab}
+                workspace={workspace}
+              />
+            </fieldset>
           </section>
         </div>
       </FinancialsWorkspaceState>

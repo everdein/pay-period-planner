@@ -18,7 +18,7 @@ export function SaveControls({
       <button disabled={saving || !isDirty} onClick={onSave} type="button">
         Save Changes
       </button>
-      <button className="ghost" disabled={!isDirty} onClick={onReset} type="button">
+      <button className="ghost" disabled={saving || !isDirty} onClick={onReset} type="button">
         Reset
       </button>
       <button
