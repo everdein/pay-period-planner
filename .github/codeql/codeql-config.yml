@@ -1,0 +1,4 @@
+name: Pay Period Planner CodeQL configuration
+
+paths-ignore:
+  - frontend/coverage/**

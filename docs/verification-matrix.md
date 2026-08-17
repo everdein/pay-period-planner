@@ -268,7 +268,9 @@ without exposing token values.
 GitHub CodeQL analyzes Java and JavaScript/TypeScript on pull requests, pushes
 to `main`, a weekly schedule, and manual dispatches. Review the uploaded code
 scanning alerts as well as the workflow result: successful analysis confirms
-that results were uploaded, not that there are no alerts. GitHub Dependency
+that results were uploaded, not that there are no alerts. Its repository
+configuration excludes `frontend/coverage/` because that directory contains
+generated report assets rather than authored application code. GitHub Dependency
 Review runs only on pull requests and blocks newly introduced high- or
 critical-severity vulnerabilities across runtime, development, and unknown
 dependency scopes. These hosted checks depend on GitHub repository data and do
