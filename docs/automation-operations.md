@@ -49,9 +49,15 @@ The repository currently uses:
   PostgreSQL integration, browser, accessibility, responsive, and scans;
 - `codeql.yml` and `dependency-review.yml` for hosted security analysis;
 - `copilot-review.yml` for non-blocking review requests;
+- `dependabot-auto-merge.yml` for patch-only auto-merge after required checks;
 - `pr-advisory.yml` for combined documentation-drift and dependency-triage
   context;
 - `weekly-maintenance.yml` for scheduled repository-health evidence.
+
+Third-party and GitHub-owned actions are pinned to immutable full commit SHAs,
+with release comments retained for Dependabot maintenance. Pull-request
+workflows use concurrency groups to cancel superseded runs without canceling
+protected `main` verification.
 
 Copilot comments and generated advisory packets must be verified against code,
 tests, ADRs, and data-safety rules. A successful advisory workflow does not mean
