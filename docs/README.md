@@ -33,7 +33,8 @@ canonical owner below instead of copying the same claim into several files.
 | What evidence currently passes, and with what caveats?  | [Engineering evidence](engineering-evidence.md)                     |
 | What is intentionally incomplete?                       | [Known limitations](known-limitations.md)                           |
 | How are logs, metrics, and request IDs handled?         | [Observability guide](observability-guide.md)                       |
-| What provider research and deployment decision remain?  | [Deployment provider assessment](deployment-provider-assessment.md) |
+| What is the proposed Azure deployment and effort?       | [Azure migration plan](azure-migration-plan.md)                     |
+| How did the hosting-provider direction evolve?          | [Deployment provider assessment](deployment-provider-assessment.md) |
 | What remains on the product and deployment path?        | [Production-readiness roadmap](production-readiness-roadmap.md)     |
 
 The root README intentionally does not duplicate detailed API tables, database
@@ -100,6 +101,7 @@ in the case study, which is in the corpus.
 - [Dependency update triage](dependency-update-triage.md)
 - [Snyk MCP/API assessment](snyk-integration-assessment.md)
 - [Deployment provider assessment](deployment-provider-assessment.md)
+- [Azure migration plan](azure-migration-plan.md)
 
 These documents are maintained and link-checked, but they are not automatically
 part of the public corpus.

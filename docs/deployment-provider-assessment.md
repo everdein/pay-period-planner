@@ -1,14 +1,16 @@
 # Deployment Provider Assessment
 
-Status: Provider decision deferred
-Research date: July 15, 2026
+Status: Azure is the planning target; resource creation remains unapproved
+Research updated: August 23, 2026
 
 ## Decision Status
 
-Cloud provider selection is paused while the remaining application roadmap is
-reviewed. Render is retained below as the initial low-complexity candidate, but
-it is not approved. AWS must be evaluated as a portfolio-oriented alternative
-before the owner selects a provider, architecture, or budget.
+Azure replaces the earlier deferred Render-versus-AWS comparison as the current
+planning target. The actionable architecture, work areas, estimates, and
+completion gate live in the
+[Azure Migration Plan](azure-migration-plan.md). This direction permits design
+and repository planning; it does not by itself approve an Azure subscription,
+billing, resource creation, deployment, or hosting real financial data.
 
 The first hosted environment remains a synthetic, access-controlled portfolio
 demo. It must not contain the owner's personal financial snapshot or invite
@@ -41,6 +43,7 @@ the same region.
 | Railway Hobby application and PostgreSQL                  | Low `$5/month` minimum with the first `$5` of usage included, Docker deployment, health checks, and a documented PostgreSQL recovery pattern                                                | The final bill varies with CPU, memory, storage, and egress; PostgreSQL point-in-time recovery requires more operator-owned setup than the Render paid-database path | Viable budget alternative |
 | Separate static frontend, API host, and database provider | Each component can be optimized or placed on a free tier independently                                                                                                                      | Adds cross-origin configuration, cookie and CSRF risk, multiple provider accounts, and more backup and shutdown boundaries                                           | Defer                     |
 | General-purpose cloud or self-managed PostgreSQL          | Maximum infrastructure control and a stronger platform-engineering exercise                                                                                                                 | Substantially more networking, IAM, patching, observability, cost-control, and database operations than this portfolio story needs                                   | Defer                     |
+| Azure Container Apps and Azure PostgreSQL Flexible Server | Preserves a single containerized origin, provides managed PostgreSQL, private networking, workload identity, managed secrets, telemetry, and a broader cloud-platform portfolio story       | More infrastructure, identity, networking, recovery, observability, and cost governance than Render; requires explicit infrastructure as code and operating runbooks | Planning target           |
 
 Render's current Hobby workspace costs `$0/month` plus compute. A Starter web
 service is `$7/month`, and a Basic-256mb Postgres instance is `$6/month`, for a
@@ -140,14 +143,16 @@ separate privacy and compliance decision covering notices, account deletion,
 data export and erasure, backup retention, incident response, and applicable
 financial-data obligations. That is outside this portfolio deployment.
 
-## Deferred Owner Decision
+## Current Direction
 
-The later decision must compare at least these two goals:
+The earlier comparison remains useful history:
 
 - Render for the smallest operational surface and predictable entry cost.
 - AWS for a broader cloud architecture and infrastructure story, with explicit
   cost controls and only the services justified by this application.
 
-Until that comparison is complete and the owner approves a boundary, do not
-create provider resources, add billing, implement provider-specific
-configuration, or replace the placeholder deploy job.
+Azure is now the planned route for the broader cloud architecture and
+infrastructure story. Follow the [Azure Migration Plan](azure-migration-plan.md)
+instead of adapting the candidate Render boundary. Until the owner approves the
+subscription, region, budget, and synthetic access policy, do not create cloud
+resources, add billing, or activate a deployment job.
