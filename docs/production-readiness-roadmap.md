@@ -25,24 +25,38 @@ See [Architecture Decisions](adr/README.md),
 [Architecture Map](architecture-map.md), and
 [Engineering Evidence](engineering-evidence.md) for the maintained detail.
 
-## Pre-Deployment Decision
+## Azure Migration Planning
 
-- [ ] Decide whether to run a final architecture and scalability review before
-      selecting providers. Record material deployment architecture decisions
-      in a new ADR.
+- [ ] Approve the synthetic-only Azure portfolio boundary, subscription,
+      region, availability objectives, monthly budget, and operational owner.
+- [ ] Run a final architecture, security, and scalability review. Record the
+      implemented deployment architecture in a new ADR.
+- [ ] Build the single-origin React and Spring Boot container described in the
+      [Azure Migration Plan](azure-migration-plan.md).
+- [ ] Provision Azure Container Apps, Azure Database for PostgreSQL Flexible
+      Server, Container Registry, Key Vault, private networking, and monitoring
+      through infrastructure as code.
+- [ ] Separate the Flyway migration identity from the least-privilege runtime
+      database identity and prove forward migration and application rollback.
+- [ ] Add GitHub OIDC delivery with immutable images, environment approval,
+      health verification, and an authenticated synthetic smoke gate.
 
-## Portfolio Demo Deployment
+## Azure Portfolio Demo Release
 
-- [ ] Select hosting and managed PostgreSQL providers with approved privacy,
-      retention, cost, and shutdown policies. Use synthetic demonstration data.
-- [ ] Configure HTTPS, secrets, least-privilege database roles, migrations,
-      health verification, rollback, automated backups, and a proved restore.
-- [ ] Export safe logs, metrics, and browser errors with basic alerting while
-      excluding financial contents.
-- [ ] Provide a repeatable demo-account reset so reviewers do not encounter
-      another visitor's state.
+- [ ] Configure HTTPS, secure cookies, managed secrets, private database access,
+      edge request limits, cost alerts, and shutdown procedures.
+- [ ] Export sanitized logs, metrics, traces, and browser errors to Application
+      Insights and Log Analytics with explicit retention and basic alerting.
+- [ ] Prove both application JSON restore and PostgreSQL point-in-time restore
+      into separate targets.
+- [ ] Disable unrestricted signup or provide isolated, expiring synthetic demo
+      accounts so reviewers never encounter another visitor's state.
+- [ ] Run and record hosted authorization, CSRF, save, concurrency, recovery,
+      browser, accessibility, responsive, and failure-path checks.
 
-Provider comparison remains in
+The detailed sequence, estimates, milestones, and completion gate live in the
+[Azure Migration Plan](azure-migration-plan.md). Earlier provider research
+remains in the
 [Deployment Provider Assessment](deployment-provider-assessment.md).
 
 ## Portfolio Chatbot And Product Work
@@ -55,4 +69,6 @@ Provider comparison remains in
 
 ## Current Priority
 
-Make the pre-deployment review decision before starting provider selection.
+Approve the Azure planning boundary and complete Milestone A: produce one
+hardened, single-origin container without creating cloud resources or adding
+billing by implication.
