@@ -27,8 +27,14 @@ See [Architecture Decisions](adr/README.md),
 
 ## Azure Migration Planning
 
-- [ ] Approve the synthetic-only Azure portfolio boundary, subscription,
-      region, availability objectives, monthly budget, and operational owner.
+- [x] Approve the production-shaped, single-owner, synthetic-only Azure
+      boundary and record it in
+      [ADR 0030](adr/0030-use-a-production-shaped-single-owner-azure-environment.md).
+- [ ] Confirm the subscription, region, availability objectives, monthly
+      ceiling, budget thresholds, and resource names.
+- [ ] Complete the owner account, billing, workstation, provider, quota, and
+      GitHub OIDC setup in the
+      [Azure Deployment Prerequisites](azure-prerequisites.md).
 - [ ] Run a final architecture, security, and scalability review. Record the
       implemented deployment architecture in a new ADR.
 - [ ] Build the single-origin React and Spring Boot container described in the
@@ -40,6 +46,9 @@ See [Architecture Decisions](adr/README.md),
       database identity and prove forward migration and application rollback.
 - [ ] Add GitHub OIDC delivery with immutable images, environment approval,
       health verification, and an authenticated synthetic smoke gate.
+- [ ] Implement transactional owner bootstrap, closed production registration,
+      sign-in throttling, full-session revocation, and operator-assisted account
+      recovery.
 
 ## Azure Portfolio Demo Release
 
@@ -49,8 +58,8 @@ See [Architecture Decisions](adr/README.md),
       Insights and Log Analytics with explicit retention and basic alerting.
 - [ ] Prove both application JSON restore and PostgreSQL point-in-time restore
       into separate targets.
-- [ ] Disable unrestricted signup or provide isolated, expiring synthetic demo
-      accounts so reviewers never encounter another visitor's state.
+- [ ] Create the owner account with the temporary bootstrap credential, rotate
+      that credential, disable signup, and populate only synthetic values.
 - [ ] Run and record hosted authorization, CSRF, save, concurrency, recovery,
       browser, accessibility, responsive, and failure-path checks.
 

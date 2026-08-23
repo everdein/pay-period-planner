@@ -79,6 +79,11 @@
       "reason": "Deferred portfolio hosting research, provider tradeoffs, and release gates."
     },
     {
+      "path": "docs/azure-prerequisites.md",
+      "kind": "document",
+      "reason": "Owner-safe Azure account, billing, workstation, and deployment prerequisites."
+    },
+    {
       "path": "docs/adr/README.md",
       "kind": "document",
       "reason": "ADR status and supersession index."
@@ -197,6 +202,11 @@
       "path": "docs/adr/0029-retire-inactive-v1-schema-and-legacy-adoption.md",
       "kind": "document",
       "reason": "Inactive V1 schema and legacy adoption retirement decision."
+    },
+    {
+      "path": "docs/adr/0030-use-a-production-shaped-single-owner-azure-environment.md",
+      "kind": "document",
+      "reason": "Production-shaped single-owner Azure deployment boundary."
     },
     {
       "path": "frontend/src/features/financials/financialsProjection.ts",

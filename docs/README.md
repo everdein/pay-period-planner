@@ -34,6 +34,7 @@ canonical owner below instead of copying the same claim into several files.
 | What is intentionally incomplete?                       | [Known limitations](known-limitations.md)                           |
 | How are logs, metrics, and request IDs handled?         | [Observability guide](observability-guide.md)                       |
 | What is the proposed Azure deployment and effort?       | [Azure migration plan](azure-migration-plan.md)                     |
+| What must be set up before the first Azure deployment?  | [Azure deployment prerequisites](azure-prerequisites.md)            |
 | How did the hosting-provider direction evolve?          | [Deployment provider assessment](deployment-provider-assessment.md) |
 | What remains on the product and deployment path?        | [Production-readiness roadmap](production-readiness-roadmap.md)     |
 
@@ -102,6 +103,7 @@ in the case study, which is in the corpus.
 - [Snyk MCP/API assessment](snyk-integration-assessment.md)
 - [Deployment provider assessment](deployment-provider-assessment.md)
 - [Azure migration plan](azure-migration-plan.md)
+- [Azure deployment prerequisites](azure-prerequisites.md)
 
 These documents are maintained and link-checked, but they are not automatically
 part of the public corpus.
