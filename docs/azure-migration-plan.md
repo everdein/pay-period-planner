@@ -1,6 +1,6 @@
 # Azure Migration Plan
 
-Status: Planning baseline; no Azure resources approved or created
+Status: Deployment boundary approved; no Azure resources created
 
 ## Objective
 
@@ -9,9 +9,36 @@ Azure portfolio environment that uses synthetic data. Preserve the current
 single-origin browser security model, PostgreSQL-only persistence, Flyway
 migration authority, and repository verification gates.
 
-This plan does not approve hosting personal financial data or opening
-unrestricted public signup. A real-user release requires a separate privacy,
-retention, deletion, incident-response, and compliance decision.
+ADR 0030 approves a production-shaped, single-owner learning environment. The
+owner may create the first real account, but every financial value, backup,
+restore artifact, log, and screenshot in Azure must remain synthetic. This plan
+does not approve unrestricted public signup or hosting personal financial data.
+
+## Confirmed Planning Decisions
+
+- **Purpose:** production-grade Azure learning and portfolio evidence, not a
+  supported public financial product.
+- **Supported user:** one owner-operated account. Additional real users are out
+  of scope.
+- **Data:** synthetic financial values only. Local personal PostgreSQL data and
+  application exports do not cross the cloud boundary.
+- **Identity:** retain and harden the existing application-managed accounts,
+  hashed passwords, opaque sessions, CSRF, and workspace authorization.
+- **Registration:** production defaults to closed registration. A temporary,
+  secret-protected owner-bootstrap mode creates exactly one first account and
+  is then disabled.
+- **Recovery:** operator-assisted account recovery for the single-owner phase;
+  no email reset workflow or security questions.
+- **Public exposure:** HTTPS may be public, but public registration is not.
+  Synthetic data reduces privacy impact without removing abuse, availability,
+  credential, or cost risk.
+- **Delivery:** infrastructure as code, federated GitHub deployment identity,
+  immutable images, controlled Flyway migrations, health gates, and rollback.
+- **Operations:** private database access, managed secrets, sanitized telemetry,
+  cost alerts, backup retention, and proved restore remain release gates.
+
+The accepted rationale and tradeoffs are recorded in
+[ADR 0030](adr/0030-use-a-production-shaped-single-owner-azure-environment.md).
 
 ## Target Boundary
 
@@ -55,6 +82,126 @@ low-cost PostgreSQL SKU when the measured workload permits it. Do not enable
 production high availability by assumption. Select General Purpose compute,
 multiple application replicas, zone redundancy, geo-redundant recovery, or
 Front Door only after availability objectives and budget justify them.
+
+## Recommended Implementation Defaults
+
+These are the starting defaults for implementation, not authorization to spend:
+
+| Decision                | Recommended default                                                       | Reason                                                                         |
+| ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Infrastructure language | Bicep                                                                     | Azure-native, reviewable, and sufficient for this single-cloud learning goal   |
+| Environments            | `dev` first; add `portfolio` only after the deployment path is repeatable | Prevent an unproved environment from becoming the production path              |
+| Region                  | East US 2, subject to subscription availability and a price check         | Close to the owner and commonly supports the planned services                  |
+| Public origin           | Container Apps managed HTTPS domain initially                             | A custom domain should not block the first deployment                          |
+| Application scale       | One replica with conservative CPU and memory                              | Appropriate for one supported user; measure before scaling                     |
+| PostgreSQL              | Lowest suitable development SKU, private access, no HA initially          | Keep the learning environment affordable while retaining managed backups       |
+| Backup retention        | 7 days initially, followed by a proved restore                            | Expand only when recovery objectives justify the storage cost                  |
+| Log retention           | 30 days initially                                                         | Enough for learning and incident review without indefinite telemetry cost      |
+| Edge service            | No Front Door initially                                                   | Add it when WAF, routing, custom-domain, or edge-limit requirements justify it |
+| Secrets                 | Key Vault plus managed identity or Container Apps secret references       | Keep production values out of GitHub and infrastructure outputs                |
+| Deployment identity     | GitHub OIDC federation scoped to the deployment environment               | Avoid a long-lived Azure client secret                                         |
+
+Before provisioning, confirm actual regional service availability and obtain an
+Azure pricing estimate for the selected SKUs. Resource names must include the
+application, environment, region abbreviation, and a uniqueness suffix where
+Azure requires global uniqueness. Use tags for `application`, `environment`,
+`owner`, `data-classification=synthetic`, and `managed-by=bicep`.
+
+## Owner Account Bootstrap
+
+The current unrestricted `/api/v1/auth/signup` flow must not be exposed as the
+production registration policy. Implement these states:
+
+| Mode              | Behavior                                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| `disabled`        | Reject signup without revealing account counts; this is the production default                               |
+| `owner-bootstrap` | Permit one signup only when there are no users and the request proves possession of the bootstrap credential |
+| `development`     | Preserve convenient local signup and existing automated tests                                                |
+
+The empty-user check, user creation, personal workspace, membership, initial
+snapshot, and session issuance must succeed atomically. Concurrent bootstrap
+requests must produce one owner at most. Store only a verifier or use a
+constant-time comparison for the temporary bootstrap credential; never log the
+credential or return it in an error. Rate-limit bootstrap and sign-in attempts.
+
+After the owner account is created:
+
+1. verify sign-in, session recovery, CSRF writes, workspace isolation, sign-out,
+   and session revocation;
+2. remove or rotate the bootstrap credential;
+3. redeploy with registration mode `disabled`;
+4. verify signup is closed from the public origin; and
+5. enter only an obvious synthetic workspace.
+
+Account recovery remains an operator procedure. It must identify the one owner,
+replace the password hash through an audited and narrowly scoped operation,
+revoke every active session, and require a fresh sign-in. The recovery procedure
+must be tested without exposing the replacement password in command output,
+logs, shell history, or repository files.
+
+## Threat and Cost Boundaries
+
+The first release explicitly protects against the most relevant learning-stage
+risks:
+
+- unknown users claiming the first account or registering later;
+- credential guessing, session theft, CSRF, and workspace authorization bypass;
+- oversized or abusive requests consuming application or database resources;
+- accidental public PostgreSQL exposure or overly broad database privileges;
+- secrets appearing in source, workflow logs, application logs, or outputs;
+- financial payloads entering telemetry, screenshots, backups, or test reports;
+- migration failure, incompatible rollback, data corruption, and failed restore;
+- runaway compute, telemetry, storage, or network cost; and
+- stale public environments continuing to run without an operational owner.
+
+Controls reduce these risks; they do not establish a production security claim.
+Set at least two budget notifications below and at the approved monthly ceiling,
+and document an emergency stop that disables ingress or scales the application
+down without deleting the database impulsively.
+
+## Provisioning Readiness Checklist
+
+Complete or confirm these values before the first Azure write operation:
+
+The interactive account, billing, workstation, provider, quota, and GitHub OIDC
+steps are maintained in
+[Azure Deployment Prerequisites](azure-prerequisites.md). Complete that checklist
+without committing account identifiers or credentials.
+
+- [ ] Azure tenant and subscription name; do not commit the subscription ID.
+- [ ] Owner account has multi-factor authentication and only the Azure roles
+      needed to provision the environment.
+- [ ] Approved monthly ceiling and two earlier budget-notification thresholds.
+- [ ] East US 2 service/SKU availability and a saved pricing estimate, or an
+      explicitly selected alternate region.
+- [ ] Globally unique naming suffix and the `dev` resource-group name.
+- [ ] Bicep selected as infrastructure authority, with deployment parameters
+      separated from secrets.
+- [ ] GitHub environment name, required reviewer, and OIDC trust boundary.
+- [ ] PostgreSQL administrator, migration-role, and runtime-role ownership plan.
+- [ ] Owner-bootstrap credential generation, Key Vault storage, use, rotation,
+      and removal procedure.
+- [ ] Synthetic seed values and synthetic owner email convention.
+- [ ] Backup redundancy, seven-day retention, and first restore-test target.
+- [ ] Thirty-day telemetry retention, sanitization rules, and initial alerts.
+- [ ] Emergency ingress-disable, scale-down, and full teardown procedures.
+
+## First Implementation Sequence
+
+Tomorrow's work should proceed in this order:
+
+1. create a feature branch and ADR-aligned implementation checklist;
+2. add and verify the single-origin, non-root application container locally;
+3. add the closed-registration and transactional owner-bootstrap behavior with
+   focused concurrency, authentication, and production-guard tests;
+4. add Bicep modules and a non-secret development parameter file;
+5. run a Bicep validation/preview before creating resources;
+6. provision the development foundation with budget controls first;
+7. deploy an empty database and application revision, then verify health;
+8. create the owner account through bootstrap and immediately close signup;
+9. run authenticated hosted checks using only synthetic data; and
+10. configure telemetry, prove backup/restore and rollback, then decide whether
+    the development environment is ready to become the portfolio boundary.
 
 ## Work Areas
 
@@ -167,11 +314,12 @@ Estimated effort: 2-4 engineering days.
 
 ### 9. Demo access and lifecycle
 
-- [ ] Disable unrestricted public signup or replace it with a synthetic demo
-      access flow.
-- [ ] Ensure reviewers never see another reviewer's modified workspace.
-- [ ] Implement isolated, expiring demo accounts or a repeatable synthetic
-      reset with safe concurrency behavior.
+- [ ] Add disabled, owner-bootstrap, and development registration modes.
+- [ ] Create exactly one owner account in one transaction, rotate the bootstrap
+      credential, and prove that later signup is closed.
+- [ ] Add sign-in and bootstrap throttling plus an operator-assisted account
+      recovery and full-session revocation procedure.
+- [ ] Keep all owner-entered financial values synthetic and visibly non-personal.
 - [ ] Provide an operator procedure for access revocation and environment
       shutdown.
 
@@ -242,7 +390,8 @@ The Azure portfolio migration is complete only when:
 4. Flyway migration, health verification, and rollback are proved;
 5. sanitized telemetry and actionable alerts are active;
 6. application and point-in-time restores are proved on separate targets;
-7. demo access cannot expose one visitor's changes to another;
+7. one owner can bootstrap and recover an account while all later public signup
+   remains closed;
 8. hosted security, browser, accessibility, and responsive checks have recorded
    results; and
 9. privacy, retention, cost, incident, and shutdown boundaries are documented.
