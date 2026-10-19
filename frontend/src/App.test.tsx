@@ -379,9 +379,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /important dates/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^reset$/i })).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /export saved financial snapshot backup/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /export backup/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument();
     expect(screen.getByText(/^Tracked assets$/i)).toBeInTheDocument();
     expect(screen.getByText(/^Total debt$/i)).toBeInTheDocument();
@@ -464,7 +462,7 @@ describe('App', () => {
   it('opens financial workflows from the overview dashboard', async () => {
     await renderAuthenticatedApp();
 
-    fireEvent.click(screen.getByRole('button', { name: /open income workflow/i }));
+    fireEvent.click(screen.getByRole('button', { name: /income paychecks and sources/i }));
     expect(screen.getByRole('heading', { name: /income summary/i })).toBeInTheDocument();
 
     fireEvent.change(screen.getByRole('combobox', { name: /financial section/i }), {

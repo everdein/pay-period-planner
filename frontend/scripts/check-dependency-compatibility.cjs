@@ -9,7 +9,7 @@ const legacyMinimatchOwners = [
   'eslint-plugin-jsx-a11y',
   'eslint-plugin-react',
 ];
-const expectedBraceExpansionVersion = '1.1.18';
+const expectedBraceExpansionVersion = '1.1.21';
 let legacyMinimatchCount = 0;
 
 for (const owner of legacyMinimatchOwners) {

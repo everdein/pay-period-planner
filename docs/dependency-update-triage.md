@@ -18,6 +18,12 @@ major updates remain human-reviewed.
 Dependabot groups minor and patch updates where that reduces noise. Major
 updates remain explicit compatibility work unless an owner decides otherwise.
 
+Vitest and its coverage packages are grouped across all update types because
+they require matching versions. ESLint and TypeScript major updates are
+temporarily excluded: the React/accessibility plugins require ESLint 9, and
+typescript-eslint requires TypeScript below 6.1. Revisit these exclusions when
+upstream peer requirements support the new majors.
+
 ## Local Triage Packet
 
 Generate a dependency triage packet from the current working tree:
@@ -49,7 +55,7 @@ The frontend has one temporary, development-only npm override:
 
 | Owner selector    | Resolved dependency      | Introduced | Reason and removal condition                                                                                                                                                                                                                                                             |
 | ----------------- | ------------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `minimatch@3.1.5` | `brace-expansion@1.1.18` | 2026-07-15 | ESLint's legacy minimatch paths require the callable CommonJS 1.x API. Version 1.1.18 includes the applicable fixes on that compatible line. Remove the override when all checked owners leave minimatch 3 or their upstream declarations select a secure compatible release without it. |
+| `minimatch@3.1.5` | `brace-expansion@1.1.21` | 2026-07-15 | ESLint's legacy minimatch paths require the callable CommonJS 1.x API. Version 1.1.21 includes the applicable fixes on that compatible line. Remove the override when all checked owners leave minimatch 3 or their upstream declarations select a secure compatible release without it. |
 
 Run the owned compatibility assertion after a clean install:
 

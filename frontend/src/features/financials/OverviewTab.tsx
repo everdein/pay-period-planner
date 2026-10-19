@@ -67,14 +67,12 @@ export function Overview({
         <nav aria-label="Financial workflows" className="dashboard-workflows">
           {dashboardWorkflows.map((workflow) => (
             <button
-              aria-label={`Open ${workflow.label.toLowerCase()} workflow`}
               className="dashboard-workflow"
               key={workflow.tab}
               onClick={() => onNavigate(workflow.tab)}
               type="button"
             >
-              <strong>{workflow.label}</strong>
-              <span>{workflow.detail}</span>
+              <strong>{workflow.label}</strong> <span>{workflow.detail}</span>
             </button>
           ))}
         </nav>
