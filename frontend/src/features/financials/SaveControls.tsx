@@ -21,13 +21,7 @@ export function SaveControls({
       <button className="ghost" disabled={saving || !isDirty} onClick={onReset} type="button">
         Reset
       </button>
-      <button
-        aria-label="Export saved financial snapshot backup"
-        className="ghost"
-        disabled={exporting}
-        onClick={onExport}
-        type="button"
-      >
+      <button className="ghost" disabled={exporting} onClick={onExport} type="button">
         {exporting ? 'Exporting...' : 'Export Backup'}
       </button>
     </div>

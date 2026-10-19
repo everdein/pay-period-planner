@@ -62,7 +62,7 @@ try {
         npm --prefix frontend audit --audit-level=high
     }
     Invoke-Step "Authenticated Snyk scan" {
-        & $snyk.Source test --all-projects --severity-threshold=high
+        & $snyk.Source test --all-projects --fail-fast --severity-threshold=high
     }
 }
 finally {

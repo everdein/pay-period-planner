@@ -312,7 +312,7 @@ changes in a new ADR.
 - **Impact:** Five current ESLint dependency paths still use `minimatch@3.1.5`
   and its callable CommonJS brace-expansion 1.x contract.
 - **Current mitigation:** `frontend/package.json` scopes those paths to
-  advisory-fixed `brace-expansion@1.1.18`. A read-only compatibility assertion
+  advisory-fixed `brace-expansion@1.1.21`. A read-only compatibility assertion
   exercises both the legacy minimatch 3 paths and the modern minimatch 10 path,
   runs locally and in CI, and clean installs do not mutate `node_modules`.
 - **Revisit when:** Remove the override and assertion after every checked owner

@@ -45,7 +45,7 @@ The frontend demonstrates:
 
 ## Requirements
 
-- Node.js 24+
+- Node.js 24.15+ (24 LTS) or 26+
 - npm 10+
 - Backend application running locally
 

@@ -24,7 +24,19 @@ updates:
       time: '06:30'
       timezone: 'America/Los_Angeles'
     open-pull-requests-limit: 5
+    ignore:
+      # React and accessibility plugins still require ESLint 9; typescript-eslint requires TS <6.1.
+      - dependency-name: 'eslint'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@eslint/js'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
     groups:
+      vitest:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
       frontend-runtime:
         dependency-type: 'production'
         update-types:

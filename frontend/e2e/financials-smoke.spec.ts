@@ -35,7 +35,7 @@ test('creates and saves a first financial snapshot from an empty workspace', asy
 
   await page.getByRole('button', { name: 'Overview' }).click();
   await expect(page.getByRole('heading', { name: 'Household Overview' })).toBeVisible();
-  await page.getByRole('button', { name: 'Open monthly workflow' }).click();
+  await page.getByRole('button', { name: 'Monthly Recurring bills' }).click();
   await expect(page.getByRole('heading', { name: 'Monthly Withdrawals' })).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -62,9 +62,7 @@ test('keeps browser sessions isolated while editing the live PostgreSQL workspac
   await page.reload();
 
   await expect(page.getByRole('heading', { name: 'Pay Period Planner' })).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: /export saved financial snapshot backup/i })
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: /export backup/i })).toBeVisible();
 
   await page.getByRole('button', { name: 'Monthly Withdrawals' }).click();
   const monthlySchedule = page.getByRole('region', { name: 'Monthly schedule' });
