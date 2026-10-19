@@ -53,7 +53,7 @@ MCP command:
 ```toml
 [mcp_servers.snyk]
 command = "npx"
-args = ["-y", "snyk@1.1306.0", "mcp", "-t", "stdio", "--profile=lite"]
+args = ["-y", "snyk@1.1308.1", "mcp", "-t", "stdio", "--profile=lite"]
 ```
 
 This intentionally uses no committed token. Authenticate through the Snyk CLI
