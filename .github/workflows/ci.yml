@@ -159,7 +159,7 @@ jobs:
 
   browser-ux:
     name: Browser & UX
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [frontend-verification, build-backend]
     timeout-minutes: 15
     env:
