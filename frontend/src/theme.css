@@ -1,21 +1,21 @@
 :root {
   color-scheme: light;
   --surface: #ffffff;
-  --surface-soft: #f3f6f4;
+  --surface-soft: #f3f3f3;
   --surface-raised: #ffffff;
-  --text: #101412;
-  --text-muted: #4d5751;
-  --border: #d5dcd7;
-  --border-strong: #aeb8b1;
-  --primary: #2456d8;
-  --primary-strong: #193ea1;
-  --primary-soft: #e7edff;
-  --link: #193ea1;
+  --text: #1f1f1f;
+  --text-muted: #555555;
+  --border: #d5d5d5;
+  --border-strong: #aeaeae;
+  --primary: #0078d4;
+  --primary-strong: #0069b9;
+  --primary-soft: #e7f1fa;
+  --link: #0069b9;
   --on-primary: #ffffff;
-  --positive: #176146;
-  --positive-strong: #104833;
-  --positive-soft: #e2f0e8;
-  --positive-border: #a9d2bd;
+  --positive: #0069b9;
+  --positive-strong: #005a9e;
+  --positive-soft: #e7f1fa;
+  --positive-border: #9cdcfe;
   --warning: #8a5a00;
   --warning-strong: #67420e;
   --warning-soft: #fff4cf;
@@ -26,16 +26,16 @@
   --on-danger: #ffffff;
   --danger-border: #e8b8b0;
   --focus: #d58a00;
-  --rail-surface: #111613;
-  --rail-text: #f7faf7;
-  --rail-muted: #aeb8b1;
-  --rail-rule: #333b36;
-  --rail-accent: #8fd9b7;
-  --rail-selection: #1b2a55;
-  --rail-selection-text: #b3c2ff;
-  --overlay: rgb(16 20 18 / 52%);
-  --shadow-soft: rgb(16 20 18 / 10%);
-  --shadow-strong: rgb(16 20 18 / 24%);
+  --rail-surface: #181818;
+  --rail-text: #cccccc;
+  --rail-muted: #aeaeae;
+  --rail-rule: #454545;
+  --rail-accent: #9cdcfe;
+  --rail-selection: #203448;
+  --rail-selection-text: #9cdcfe;
+  --overlay: rgb(0 0 0 / 52%);
+  --shadow-soft: rgb(0 0 0 / 10%);
+  --shadow-strong: rgb(0 0 0 / 24%);
 }
 
 html[data-theme='dark'] {
@@ -52,10 +52,10 @@ html[data-theme='dark'] {
   --primary-soft: #203448;
   --link: #9cdcfe;
   --on-primary: #ffffff;
-  --positive: #4ec9b0;
-  --positive-strong: #b5cea8;
-  --positive-soft: #20352f;
-  --positive-border: #2ea043;
+  --positive: #9cdcfe;
+  --positive-strong: #9cdcfe;
+  --positive-soft: #203448;
+  --positive-border: #569cd6;
   --warning: #dcdcaa;
   --warning-strong: #ce9178;
   --warning-soft: #383426;
@@ -70,7 +70,7 @@ html[data-theme='dark'] {
   --rail-text: #cccccc;
   --rail-muted: #c8c8c8;
   --rail-rule: #454545;
-  --rail-accent: #4ec9b0;
+  --rail-accent: #9cdcfe;
   --rail-selection: #203448;
   --rail-selection-text: #9cdcfe;
   --overlay: rgb(0 0 0 / 68%);
