@@ -18,6 +18,7 @@ test('captures the synthetic portfolio walkthrough', async ({ page }) => {
 
   await mkdir(evidenceDirectory, { recursive: true });
   await page.setViewportSize({ height: 1000, width: 1440 });
+  await page.addInitScript(() => localStorage.setItem('pay-period-planner-theme', 'dark'));
   await page.goto('/');
   await signUp(page, 'Portfolio Demo', email);
   const workspaceId = await currentWorkspaceId(page);

@@ -125,7 +125,7 @@ html[data-theme='dark'] .theme-icon-moon {
   width: 100%;
 }
 
-.auth-card>p:not(.eyebrow) {
+.auth-card > p:not(.eyebrow) {
   color: var(--text-muted);
 }
 
@@ -152,7 +152,7 @@ html[data-theme='dark'] .theme-icon-moon {
 
 .auth-tabs button.active {
   border-bottom-color: var(--primary);
-  color: var(--primary);
+  color: var(--link);
 }
 
 .auth-status {
@@ -313,8 +313,8 @@ h1 {
   max-width: 560px;
 }
 
-.onboarding-copy>p:not(.eyebrow),
-.workspace-error-state>p:not(.eyebrow) {
+.onboarding-copy > p:not(.eyebrow),
+.workspace-error-state > p:not(.eyebrow) {
   color: var(--text-muted);
 }
 
@@ -363,7 +363,7 @@ h1 {
   padding: 12px 14px;
 }
 
-.workspace-ready>div:first-child {
+.workspace-ready > div:first-child {
   display: grid;
   gap: 2px;
 }
@@ -476,7 +476,7 @@ button.ghost,
 .button-link.ghost {
   background: transparent;
   border-color: var(--border-strong);
-  color: var(--primary);
+  color: var(--link);
 }
 
 button:not(:disabled):hover,
@@ -489,7 +489,7 @@ button.ghost:not(:disabled):hover,
 .button-link.ghost:hover {
   background: var(--primary-soft);
   border-color: var(--primary);
-  color: var(--primary-strong);
+  color: var(--link);
 }
 
 .theme-control:not(:disabled):hover {
@@ -502,7 +502,7 @@ button.ghost:not(:disabled):hover,
   background: transparent;
   border-color: transparent;
   border-bottom-color: var(--primary);
-  color: var(--primary);
+  color: var(--link);
 }
 
 .sidebar button:not(:disabled):hover {
@@ -520,6 +520,7 @@ button.ghost:not(:disabled):hover,
 }
 
 button.danger {
+  color: var(--on-danger);
   background: var(--danger);
   border-color: var(--danger);
 }
@@ -615,7 +616,7 @@ button.danger {
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: 3px;
-  color: var(--primary);
+  color: var(--link);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -628,7 +629,7 @@ button.danger {
   background: var(--surface-soft);
   border-color: var(--border-strong);
   box-shadow: inset 3px 0 0 var(--primary);
-  color: var(--primary-strong);
+  color: var(--link);
 }
 
 .dashboard-workflow strong {
@@ -936,7 +937,6 @@ button.danger {
   gap: 20px;
 }
 
-
 .record-list-section {
   display: grid;
   gap: 10px;
@@ -1152,7 +1152,6 @@ button.danger {
   color: var(--text);
 }
 
-
 table {
   border-collapse: collapse;
   font-size: 0.92rem;
@@ -1271,7 +1270,7 @@ tr.projection-row.neutral td {
 
 .current {
   background: var(--primary-soft);
-  color: var(--primary);
+  color: var(--link);
 }
 
 .received {
@@ -1328,7 +1327,7 @@ tr.projection-row.neutral td {
 .edit-icon {
   background: var(--surface-soft);
   border-color: var(--border-strong);
-  color: var(--primary);
+  color: var(--link);
 }
 
 .edit-icon:hover,
@@ -1342,7 +1341,7 @@ tr.projection-row.neutral td {
 .danger-icon:focus-visible {
   background: var(--danger);
   border-color: var(--danger);
-  color: var(--on-primary);
+  color: var(--on-danger);
 }
 
 .action-button:disabled {
@@ -1441,7 +1440,7 @@ tr.projection-row.neutral td {
   color: var(--danger-strong);
 }
 
-.error>small {
+.error > small {
   display: block;
   font-size: 0.75rem;
   margin-top: 4px;
@@ -1457,7 +1456,7 @@ tr.projection-row.neutral td {
   padding: 12px 14px;
 }
 
-.workflow-notice>div:first-child {
+.workflow-notice > div:first-child {
   display: grid;
   gap: 3px;
 }
@@ -1749,7 +1748,6 @@ tr.projection-row.neutral td {
   }
 }
 
-
 @media (max-width: 700px) {
   .record-list-header {
     align-items: stretch;
@@ -1817,4 +1815,24 @@ tr.projection-row.neutral td {
   .dashboard-workflows {
     grid-template-columns: 1fr;
   }
+}
+
+/* Syntax colors distinguish overview sections without changing financial status meaning. */
+html[data-theme='dark'] .overview-group:nth-of-type(4n + 1) h2::before {
+  background: #4ec9b0;
+}
+html[data-theme='dark'] .overview-group:nth-of-type(4n + 2) h2::before {
+  background: #c586c0;
+}
+html[data-theme='dark'] .overview-group:nth-of-type(4n + 3) h2::before {
+  background: #dcdcaa;
+}
+html[data-theme='dark'] .overview-group:nth-of-type(4n) h2::before {
+  background: #ce9178;
+}
+
+button.danger:not(:disabled):hover {
+  background: var(--danger-strong);
+  border-color: var(--danger-strong);
+  color: var(--on-danger);
 }
