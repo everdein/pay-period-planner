@@ -1829,3 +1829,75 @@ button.danger:not(:disabled):hover {
   border-color: var(--danger-strong);
   color: var(--on-danger);
 }
+
+/* Match the portfolio's category accents without tinting whole work panels. */
+html[data-theme='dark'] .dashboard-workflow:nth-child(4n + 1) strong {
+  color: var(--syntax-variable);
+}
+html[data-theme='dark'] .dashboard-workflow:nth-child(4n + 2) strong {
+  color: var(--syntax-keyword);
+}
+html[data-theme='dark'] .dashboard-workflow:nth-child(4n + 3) strong {
+  color: var(--syntax-function);
+}
+html[data-theme='dark'] .dashboard-workflow:nth-child(4n) strong {
+  color: var(--syntax-string);
+}
+html[data-theme='dark'] .overview-group:nth-of-type(4n + 1) h2 {
+  color: var(--syntax-variable);
+}
+html[data-theme='dark'] .overview-group:nth-of-type(4n + 2) h2 {
+  color: var(--syntax-keyword);
+}
+html[data-theme='dark'] .overview-group:nth-of-type(4n + 3) h2 {
+  color: var(--syntax-function);
+}
+html[data-theme='dark'] .overview-group:nth-of-type(4n) h2 {
+  color: var(--syntax-string);
+}
+html[data-theme='dark'] .overview-group:nth-of-type(4n + 2) .metric-card.good {
+  border-left-color: var(--syntax-keyword);
+}
+html[data-theme='dark'] .overview-group:nth-of-type(4n + 3) .metric-card.good {
+  border-left-color: var(--syntax-function);
+}
+html[data-theme='dark'] .overview-group:nth-of-type(4n) .metric-card.good {
+  border-left-color: var(--syntax-string);
+}
+
+html[data-theme='dark'] .section-header h2 {
+  color: var(--syntax-keyword);
+}
+html[data-theme='dark'] .projection-role-settings h3 {
+  color: var(--syntax-function);
+}
+html[data-theme='dark'] .projection-role-settings + .projection-role-settings h3 {
+  color: var(--syntax-string);
+}
+html[data-theme='dark'] .projection-period-card h3 {
+  color: var(--syntax-variable);
+}
+html[data-theme='dark'] .current-period-context h3 {
+  color: var(--syntax-string);
+}
+html[data-theme='dark'] .projection-summary .metric-card.good:nth-child(3) {
+  border-left-color: var(--syntax-string);
+}
+html[data-theme='dark'] .projection-metrics > div:nth-child(4n + 1) dt {
+  color: var(--syntax-variable);
+}
+html[data-theme='dark'] .projection-metrics > div:nth-child(4n + 2) dt {
+  color: var(--syntax-keyword);
+}
+html[data-theme='dark'] .projection-metrics > div:nth-child(4n + 3) dt {
+  color: var(--syntax-function);
+}
+html[data-theme='dark'] .projection-metrics > div:nth-child(4n) dt {
+  color: var(--syntax-string);
+}
+html[data-theme='dark'] .projection-detail-table th {
+  border-top-color: var(--syntax-keyword);
+}
+html[data-theme='dark'] .debt-progress-fill {
+  background: var(--syntax-keyword);
+}
