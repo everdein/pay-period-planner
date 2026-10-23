@@ -1819,7 +1819,7 @@ tr.projection-row.neutral td {
 
 /* Syntax colors distinguish overview sections without changing financial status meaning. */
 html[data-theme='dark'] .overview-group:nth-of-type(4n + 1) h2::before {
-  background: #4ec9b0;
+  background: #9cdcfe;
 }
 html[data-theme='dark'] .overview-group:nth-of-type(4n + 2) h2::before {
   background: #c586c0;
