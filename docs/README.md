@@ -131,3 +131,7 @@ When behavior changes:
 
 Absence from the manifest is not a defect by itself. The corpus is intentionally
 smaller than the repository.
+
+## Visual system
+
+[Shared visual system](visual-system.md) owns the font pairing, neutral Dark Modern colors and screenshot policy.

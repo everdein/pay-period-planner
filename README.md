@@ -240,3 +240,7 @@ The [production-readiness roadmap](docs/production-readiness-roadmap.md) records
 completed foundations and remaining deployment work. The
 [known limitations register](docs/known-limitations.md) owns the complete set
 of accepted gaps, mitigations, and revisit triggers.
+
+## Visual identity
+
+See [the shared visual system](docs/visual-system.md) for the font pairing, Dark Modern palette and screenshot policy.
