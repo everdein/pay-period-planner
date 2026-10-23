@@ -214,7 +214,8 @@ readable type and 32-pixel action targets while allowing controls to wrap only
 when the available width requires it.
 
 The application supports light and dark themes using the portfolio's shared
-paper, ink, cobalt, and forest palette. It defaults to the operating-system
+light palette and a VS Code Dark Modern dark palette with charcoal surfaces,
+blue actions, and semantic syntax accents. It defaults to the operating-system
 preference, exposes an accessible header toggle on authenticated and account
 screens, and stores the user's explicit selection in local storage. Cobalt is
 reserved for interactive controls while forest communicates positive and saved
