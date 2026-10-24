@@ -135,3 +135,7 @@ smaller than the repository.
 ## Visual system
 
 [Shared visual system](visual-system.md) owns the font pairing, neutral Dark Modern colors and screenshot policy.
+
+## Dependency and runtime baseline
+
+[Dependency maintenance](dependency-maintenance.md) owns current versions, compatibility constraints and the runtime upgrade procedure.

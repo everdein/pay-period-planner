@@ -45,8 +45,8 @@ The frontend demonstrates:
 
 ## Requirements
 
-- Node.js 24.15+ (24 LTS) or 26+
-- npm 10+
+- Node.js 24.22.1 LTS or 26.12.1; the root `.node-version` selects LTS
+- npm 11.19.1+ (bundled with the recommended Node LTS release)
 - Backend application running locally
 
 Verify Node/npm are installed:

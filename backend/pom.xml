@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.1</version>
+        <version>4.1.2</version>
         <relativePath></relativePath>
     </parent>
 
@@ -18,14 +18,11 @@
     <description>Authenticated household cash-flow planning API backed by PostgreSQL</description>
 
     <properties>
-        <java.version>21</java.version>
-        <!-- Compile to Java 21 bytecode so JaCoCo can reliably instrument
-             and analyze classes while the app stays on a widely supported LTS
-             runtime. Revisit this when the project needs newer Java language
-             features and coverage tooling supports the selected class version. -->
-        <maven.compiler.release>21</maven.compiler.release>
-        <jackson-bom.version>3.1.8</jackson-bom.version>
-        <logback.version>1.5.38</logback.version>
+        <java.version>25</java.version>
+        <!-- Java 25 LTS is supported by the pinned JaCoCo release. -->
+        <maven.compiler.release>25</maven.compiler.release>
+        <jackson-bom.version>3.2.4</jackson-bom.version>
+        <logback.version>1.6.5</logback.version>
         <log4j2.version>2.26.1</log4j2.version>
         <postgresql.version>42.7.14</postgresql.version>
         <sortpom.version>4.0.0</sortpom.version>
@@ -33,6 +30,19 @@
         <tomcat.version>11.0.27</tomcat.version>
         <jacoco.version>0.8.15</jacoco.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Keep Jackson annotations aligned with the selected Jackson 3 BOM. -->
+            <dependency>
+                <groupId>tools.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>

@@ -219,7 +219,7 @@ Estimated effort: 1-2 engineering days.
 
 ### 2. Application container
 
-- [ ] Add a multi-stage container build for the Vite frontend and Java 21
+- [ ] Add a multi-stage container build for the Vite frontend and Java 25
       Spring Boot backend.
 - [ ] Package the compiled frontend with the backend so UI and API share one
       public origin.

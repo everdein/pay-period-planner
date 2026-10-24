@@ -40,7 +40,8 @@
     "Vitest",
     "WCAG",
     "viewports",
-    "worktree"
+    "worktree",
+    "Logback"
   ],
   "ignorePaths": [
     ".git",
