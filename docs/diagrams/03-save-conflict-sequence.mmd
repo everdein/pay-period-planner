@@ -1,0 +1,40 @@
+%%{init: {"theme": "base", "securityLevel": "strict", "fontFamily": "Arial, Helvetica, sans-serif", "themeVariables": {"background": "#1F1F1F", "primaryColor": "#253A43", "primaryTextColor": "#CCCCCC", "primaryBorderColor": "#4EC9B0", "lineColor": "#9CDCFE", "secondaryColor": "#353047", "tertiaryColor": "#292929", "clusterBkg": "#181818", "clusterBorder": "#454545", "titleColor": "#FFFFFF", "edgeLabelBackground": "#1F1F1F", "actorBkg": "#253A43", "actorBorder": "#4EC9B0", "actorTextColor": "#FFFFFF", "signalColor": "#9CDCFE", "signalTextColor": "#CCCCCC", "noteBkgColor": "#353047", "noteTextColor": "#FFFFFF", "noteBorderColor": "#C586C0", "labelBoxBkgColor": "#181818", "labelTextColor": "#DCDCAA", "loopTextColor": "#DCDCAA", "fontSize": "18px"}, "flowchart": {"htmlLabels": false, "curve": "linear", "nodeSpacing": 35, "rankSpacing": 50}, "sequence": {"useMaxWidth": false, "wrap": true, "actorMargin": 55, "messageMargin": 40, "noteMargin": 20}, "htmlLabels": false}}%%
+sequenceDiagram
+  accTitle: Two-tab snapshot save and conflict recovery
+  accDescr: Both tabs load version n. Tab A saves successfully. Tab B submits the stale version, receives a conflict, and retains its draft until the user chooses discard and reload.
+  actor U as User
+  participant A as Browser tab A
+  participant B as Browser tab B
+  participant API as Spring Boot API
+  participant DB as PostgreSQL
+  Note over A,B: Same authenticated workspace, each tab has an independent draft
+  A->>API: GET /api/v1/financials
+  API-->>A: Snapshot version n
+  B->>API: GET /api/v1/financials
+  API-->>B: Snapshot version n
+  U->>A: Edit and choose Save Changes
+  A->>API: GET /api/v1/auth/csrf
+  API-->>A: CSRF proof
+  A->>API: PUT complete snapshot, expected version n
+  Note over API: Authenticate session, verify CSRF and workspace membership, validate payload
+  API->>DB: Begin transaction, lock current workspace snapshot
+  DB-->>API: Current version n
+  API->>DB: Replace active snapshot with n+1, insert audit event
+  DB-->>API: Commit
+  API-->>A: 200 saved snapshot
+  Note over A: Synchronize server snapshot and draft baseline
+  U->>B: Edit and choose Save Changes
+  B->>API: GET /api/v1/auth/csrf
+  API-->>B: CSRF proof
+  B->>API: PUT complete snapshot, expected version n
+  API->>DB: Lock and compare persisted version
+  DB-->>API: Current version n+1
+  Note over API,DB: Reject stale replacement, no stale write is committed
+  API-->>B: 409 structured conflict
+  B-->>U: Keep draft visible, offer Discard Draft and Reload
+  opt User explicitly chooses discard and reload
+    U->>B: Discard Draft and Reload
+    B->>API: GET /api/v1/financials
+    API-->>B: Latest saved snapshot
+    Note over B: Replace local draft with latest snapshot, no automatic merge
+  end

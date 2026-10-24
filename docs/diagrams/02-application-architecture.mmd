@@ -1,0 +1,31 @@
+%%{init: {"theme": "base", "securityLevel": "strict", "fontFamily": "Arial, Helvetica, sans-serif", "themeVariables": {"background": "#1F1F1F", "primaryColor": "#253A43", "primaryTextColor": "#CCCCCC", "primaryBorderColor": "#4EC9B0", "lineColor": "#9CDCFE", "secondaryColor": "#353047", "tertiaryColor": "#292929", "clusterBkg": "#181818", "clusterBorder": "#454545", "titleColor": "#FFFFFF", "edgeLabelBackground": "#1F1F1F", "actorBkg": "#253A43", "actorBorder": "#4EC9B0", "actorTextColor": "#FFFFFF", "signalColor": "#9CDCFE", "signalTextColor": "#CCCCCC", "noteBkgColor": "#353047", "noteTextColor": "#FFFFFF", "noteBorderColor": "#C586C0", "labelBoxBkgColor": "#181818", "labelTextColor": "#DCDCAA", "loopTextColor": "#DCDCAA", "fontSize": "18px"}, "flowchart": {"htmlLabels": false, "curve": "linear", "nodeSpacing": 35, "rankSpacing": 50}, "sequence": {"useMaxWidth": false, "wrap": true, "actorMargin": 55, "messageMargin": 40, "noteMargin": 20}, "htmlLabels": false}}%%
+flowchart TB
+  accTitle: Pay Period Planner application architecture
+  accDescr: A canonical local draft is distinct from the last server snapshot in Redux. HTTP requests cross a session, CSRF and workspace authorization boundary before reaching versioned relational storage.
+  subgraph client["Browser state"]
+    ui["React workspace
+Forms, projections and recovery feedback"]
+    draft["Canonical draft reducer
+Baseline, local edits and draft revision"]
+    redux["Redux slice
+Last server snapshot and request status"]
+    http["HTTP client
+Session cookie, CSRF proof, workspace header"]
+    ui -->|"Local edit commands"| draft
+    redux -->|"Synchronize baseline"| draft
+    draft -->|"Explicit save through thunk"| http
+    http -->|"Server response or structured failure"| redux
+  end
+  subgraph server["Spring Boot API"]
+    security["HTTP and security boundary
+Session, CSRF and membership checks"]
+    services["Query / command services
+Validation and expected version"]
+    persistence["Repository + relational adapter
+Workspace lock and atomic replacement"]
+    security --> services
+    services --> persistence
+  end
+  client -->|"GET / PUT /api/v1/financials"| server
+  server -->|"Workspace-scoped reads and transactional writes"| pg[("PostgreSQL
+Financial records and audit events")]

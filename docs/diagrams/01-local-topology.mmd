@@ -1,0 +1,19 @@
+%%{init: {"theme": "base", "securityLevel": "strict", "fontFamily": "Arial, Helvetica, sans-serif", "themeVariables": {"background": "#1F1F1F", "primaryColor": "#253A43", "primaryTextColor": "#CCCCCC", "primaryBorderColor": "#4EC9B0", "lineColor": "#9CDCFE", "secondaryColor": "#353047", "tertiaryColor": "#292929", "clusterBkg": "#181818", "clusterBorder": "#454545", "titleColor": "#FFFFFF", "edgeLabelBackground": "#1F1F1F", "actorBkg": "#253A43", "actorBorder": "#4EC9B0", "actorTextColor": "#FFFFFF", "signalColor": "#9CDCFE", "signalTextColor": "#CCCCCC", "noteBkgColor": "#353047", "noteTextColor": "#FFFFFF", "noteBorderColor": "#C586C0", "labelBoxBkgColor": "#181818", "labelTextColor": "#DCDCAA", "loopTextColor": "#DCDCAA", "fontSize": "18px"}, "flowchart": {"htmlLabels": false, "curve": "linear", "nodeSpacing": 35, "rankSpacing": 50}, "sequence": {"useMaxWidth": false, "wrap": true, "actorMargin": 55, "messageMargin": 40, "noteMargin": 20}, "htmlLabels": false}}%%
+flowchart LR
+  accTitle: Pay Period Planner local development topology
+  accDescr: The browser loads React from Vite. Vite proxies API requests to Spring Boot, which uses PostgreSQL. This is local development, not deployed cloud infrastructure.
+  user["Household user"] --> browser["Browser"]
+  subgraph local["Local development environment"]
+    vite["Vite dev server :3000
+React and TypeScript assets"]
+    api["Spring Boot :8080
+HTTP API and session security"]
+    pg[("PostgreSQL
+Accounts, sessions, workspaces
+Financial snapshots and audit events")]
+    vite -->|"Proxy /api requests"| api
+    api -->|"Spring JDBC"| pg
+    flyway["Flyway migrations
+Application startup"] -->|"Versioned schema changes"| pg
+  end
+  browser -->|"Load application and call /api"| vite

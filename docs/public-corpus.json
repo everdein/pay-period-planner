@@ -407,6 +407,11 @@
       "path": "scripts/run-security-checks.ps1",
       "kind": "workflow",
       "reason": "Authenticated npm and Snyk dependency gate."
+    },
+    {
+      "path": "docs/diagrams/README.md",
+      "kind": "document",
+      "reason": "Reviewed architecture views, scope, and implementation references."
     }
   ],
   "excludedPatterns": [

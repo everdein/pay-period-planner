@@ -18,6 +18,9 @@ canonical owner below instead of copying the same claim into several files.
 6. [Known limitations](known-limitations.md) - accepted gaps, mitigations, and
    revisit triggers.
 
+[Architecture diagram set](diagrams/README.md) provides implementation-backed
+views of the local topology, application responsibilities, and save conflicts.
+
 ## Canonical Ownership
 
 | Question                                                | Canonical source                                                    |
