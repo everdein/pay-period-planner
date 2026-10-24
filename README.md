@@ -83,6 +83,11 @@ single-workspace planning model while replacing global local state with:
 The result demonstrates how to move a working prototype toward scalable
 boundaries without rewriting the product from scratch.
 
+## Architecture diagrams
+
+[Explore topology, architecture, and workflow diagrams](docs/diagrams/README.md),
+with editable Mermaid sources, full-size SVGs, and implementation references.
+
 ## Architecture
 
 | Boundary              | Responsibility                                                                                                  |

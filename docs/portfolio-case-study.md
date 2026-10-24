@@ -151,3 +151,9 @@ or refreshing these images.
 - [Engineering evidence](engineering-evidence.md)
 - [Verification matrix](verification-matrix.md)
 - [Architecture decision records](adr/README.md)
+
+## Architecture and workflow diagrams
+
+[Inspect the reviewed diagram set](diagrams/README.md) for topology, application
+responsibilities, and a detailed workflow sequence. Each diagram includes its
+scope, editable Mermaid source, and implementation evidence.
