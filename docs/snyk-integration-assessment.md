@@ -3,6 +3,8 @@
 Assessed on 2026-07-13 against official Snyk documentation and the current
 repository scripts/workflows.
 
+The CLI setup example was refreshed on 2026-10-24 to match `.snyk-cli-version`.
+
 ## Decision
 
 Snyk MCP/API integration is feasible and useful for local security triage, but
@@ -53,7 +55,7 @@ MCP command:
 ```toml
 [mcp_servers.snyk]
 command = "npx"
-args = ["-y", "snyk@1.1308.1", "mcp", "-t", "stdio", "--profile=lite"]
+args = ["-y", "snyk@1.1308.3", "mcp", "-t", "stdio", "--profile=lite"]
 ```
 
 This intentionally uses no committed token. Authenticate through the Snyk CLI
