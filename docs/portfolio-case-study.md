@@ -1,9 +1,14 @@
-# Pay Period Planner Portfolio Case Study
+# Pay Period Planner Engineering Case Study
 
 Pay Period Planner turns household income, recurring bills, savings, debt, and
 important dates into a versioned plan for the next pay period. This case study
 explains the product workflow and the engineering transition from a local JSON
 prototype to authenticated PostgreSQL workspaces.
+
+The central engineering problem was preserving a useful planning workflow while
+making ownership and saves reliable. The result demonstrates application design,
+data-integrity decisions, and verification; it does not establish production
+scale, user adoption, or financial outcomes.
 
 Every screenshot below is generated from
 `backend/data/financials.example.json`, a synthetic account under
@@ -61,11 +66,11 @@ The browser edits one canonical draft and submits the complete financial
 workspace with its expected version. The backend resolves the current account
 and workspace from database membership, validates and normalizes the aggregate,
 performs the replacement under a workspace lock, and appends a coarse audit
-event. PostgreSQL relational tables are the sole runtime store. V10 removes the
-obsolete JSONB transition table and migration administration after the owner
-confirmed that the original data remained independently available. V11 removes
-unowned compatibility rows and requires every remaining snapshot to belong to
-a workspace.
+event. PostgreSQL relational tables are the sole runtime store. This keeps each
+save tied to an authorized workspace and prevents an older browser draft from
+silently replacing newer work. Temporary migration storage and tooling were
+retired after independent data re-entry was chosen. The ADRs preserve the
+detailed transition history.
 
 ## STAR Story
 
@@ -80,7 +85,7 @@ multiplied complexity and weakened the portfolio story.
 
 ### Task
 
-Evolve the prototype into one coherent, scalable application without losing
+Evolve the prototype into one coherent application without losing
 the useful pay-period workflow or silently moving personal data. The target
 needed one runtime database, account and workspace isolation, stale-write
 protection, an explicit decision about obsolete personal data, and verification

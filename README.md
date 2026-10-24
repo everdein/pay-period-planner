@@ -3,6 +3,8 @@
 [![CI](https://github.com/everdein/pay-period-planner/actions/workflows/ci.yml/badge.svg)](https://github.com/everdein/pay-period-planner/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/everdein/pay-period-planner/actions/workflows/codeql.yml/badge.svg)](https://github.com/everdein/pay-period-planner/actions/workflows/codeql.yml)
 
+[![Pay Period Planner — household cash-flow planning, by Matthew Clark](docs/images/branding/pay-period-planner-thumbnail.png)](https://github.com/everdein/pay-period-planner)
+
 Pay Period Planner is an independently designed and built household cash-flow
 product for turning income, recurring bills, savings, debt, and important
 dates into a clear plan for the next pay period. It demonstrates product design
