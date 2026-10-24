@@ -21,8 +21,8 @@ The backend demonstrates:
 
 ### Core
 
-- Java 21
-- Spring Boot 4
+- Java 25
+- Spring Boot 4.1.2
 - Spring MVC
 - Maven
 - Jackson
@@ -44,7 +44,7 @@ The backend demonstrates:
 
 ## Requirements
 
-- Java 21+
+- Java 25+
 - Maven Wrapper through `mvnw.cmd`
 - PostgreSQL 18 with the local application database and role
 
@@ -65,8 +65,8 @@ Verify Maven Wrapper:
 Expected:
 
 ```text
-Java 21+
-Maven running with Java 21+
+Java 25+
+Maven running with Java 25+
 ```
 
 ---
@@ -75,7 +75,7 @@ Maven running with Java 21+
 
 This project assumes:
 
-- Java 21 or newer is installed
+- Java 25 or newer is installed
 - `JAVA_HOME` points to the JDK installation directory
 - `%JAVA_HOME%\bin` is available on the system PATH
 

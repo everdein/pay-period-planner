@@ -40,6 +40,7 @@ as the codebase evolves.
 | [0028](0028-retire-legacy-snapshot-migration-administration.md)        | Accepted             | Retire legacy snapshot migration administration        |
 | [0029](0029-retire-inactive-v1-schema-and-legacy-adoption.md)          | Accepted             | Retire V1 schema and legacy adoption paths             |
 | [0030](0030-use-a-production-shaped-single-owner-azure-environment.md) | Accepted             | Use a production-shaped single-owner Azure environment |
+| [0031](0031-adopt-java-25-lts.md)                                      | Accepted             | Adopt Java 25 LTS                                      |
 
 The table summarizes each record. Open the ADR's `Status` section for the
 specific successor and which part of the original decision remains in force.

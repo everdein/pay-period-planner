@@ -137,7 +137,7 @@ readiness.
 | Area     | Stack                                                                          |
 | -------- | ------------------------------------------------------------------------------ |
 | Frontend | React 19, TypeScript, Redux Toolkit, Vite, Vitest, Testing Library, Playwright |
-| Backend  | Java 21, Spring Boot 4, Spring JDBC, Maven, JaCoCo                             |
+| Backend  | Java 25, Spring Boot 4.1.2, Spring JDBC, Maven, JaCoCo                         |
 | Data     | PostgreSQL, Flyway, relational workspace snapshots and audit history           |
 | Quality  | ESLint, Prettier, CSpell, axe, Snyk, CodeQL, Dependency Review                 |
 | Delivery | PowerShell workflows and GitHub Actions                                        |
@@ -244,3 +244,7 @@ of accepted gaps, mitigations, and revisit triggers.
 ## Visual identity
 
 See [the shared visual system](docs/visual-system.md) for the font pairing, Dark Modern palette and screenshot policy.
+
+## Dependency maintenance
+
+See [dependency and runtime maintenance](docs/dependency-maintenance.md) for the current package versions, runtime baseline, upgrade constraints, and verification procedure. Last reviewed October 24, 2026.

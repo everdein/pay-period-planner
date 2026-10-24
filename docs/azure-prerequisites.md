@@ -95,7 +95,7 @@ Before implementation:
       Docker Desktop on this Windows workstation.
 - [ ] Confirm Linux-container mode and verify `docker version` and a minimal
       local container run.
-- [ ] Confirm the existing JDK is Java 21 and the existing Node.js release meets
+- [ ] Confirm the existing JDK is Java 25 and the existing Node.js release meets
       the repository's supported toolchain.
 
 Official installation reference:
