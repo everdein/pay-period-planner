@@ -108,7 +108,30 @@ engineering and publishing workflows.
 Use only reviewers relevant to the change. The parent agent owns deduplication,
 severity normalization, and the final report.
 
+Use subagents for independent, bounded work when doing so would materially
+improve speed or quality. Keep small or tightly dependent tasks in the main
+agent. Use clear file ownership, avoid duplicate work, and have the main agent
+integrate and verify the results. Follow the project's usage budget and
+stopping rules. Start with at most two helpers; avoid recursive delegation.
+
+Give each helper a question, scope, expected evidence, and stopping condition.
+Parallel writers must own disjoint files or use isolated worktrees. Serialize
+branch changes, integration, and publication. Use one review pass and a focused
+recheck after material fixes; stop repeating identical blocked operations.
+
 ## Completion
+
+For implementation work, complete relevant verification, commit only intended
+files, push, open a pull request, merge after required checks pass, verify the
+merged commit and applicable deployments, synchronize local main, and remove
+the completed task's local and remote branches. Do not stop at a draft PR
+unless requested. Confirm the merged PR and head before removing a task branch
+after a squash merge. Preserve active work and unexplained unique commits.
+
+Read-only reviews, planning, and explicit local-only or draft-only requests
+retain their requested scope. Never bypass checks or include unrelated work.
+Changes to social profiles, posts, or Drive documents require user intent for
+that destination; code publication defaults do not authorize those actions.
 
 Report changed files, checks run, skipped checks, documentation or migration
 impact, and remaining risk. Do not claim hosted or authenticated checks passed

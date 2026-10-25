@@ -17,11 +17,21 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout repository
+        id: checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
+      - name: Generate independent weekly packets
+        id: packets
+        if: always() && steps.checkout.outcome == 'success'
+        continue-on-error: true
+        shell: pwsh
+        run: ./scripts/generate-maintenance-packets.ps1 -OutputDirectory "$env:RUNNER_TEMP/maintenance-packets"
+
       - name: Setup Node.js
+        id: node
+        if: always() && steps.checkout.outcome == 'success'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -31,39 +41,47 @@ jobs:
             frontend/package-lock.json
 
       - name: Install root dependencies
+        id: root-install
+        if: always() && steps.node.outcome == 'success'
+        continue-on-error: true
         run: npm ci
 
       - name: Install frontend dependencies
+        id: frontend-install
+        if: always() && steps.node.outcome == 'success'
+        continue-on-error: true
         working-directory: frontend
         run: npm ci
 
-      - name: Generate weekly engineering status
+      - name: Verify maintenance packet regressions
+        id: packet-tests
+        if: always() && steps.checkout.outcome == 'success'
+        continue-on-error: true
         shell: pwsh
-        run: ./scripts/generate-engineering-status.ps1
-
-      - name: Generate dependency triage packet
-        shell: pwsh
-        run: ./scripts/triage-dependency-updates.ps1
-
-      - name: Generate documentation drift packet
-        shell: pwsh
-        run: ./scripts/check-documentation-drift.ps1
+        run: ./scripts/test-maintenance-packets.ps1
 
       - name: Spell check
+        id: spell
+        if: always() && steps.root-install.outcome == 'success'
+        continue-on-error: true
         run: npm run spell
 
       - name: Root dependency audit
         id: root-audit
+        if: always() && steps.root-install.outcome == 'success'
         continue-on-error: true
         run: npm audit --audit-level=high
 
       - name: Frontend dependency audit
         id: frontend-audit
+        if: always() && steps.frontend-install.outcome == 'success'
         continue-on-error: true
         run: npm --prefix frontend audit --audit-level=high
 
       - name: Recent CI runs
-        if: always()
+        id: recent-ci
+        if: always() && steps.checkout.outcome == 'success'
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
@@ -74,18 +92,28 @@ jobs:
             gh run list --repo "${REPOSITORY}" --workflow "CI" --limit 5
           } >> "${GITHUB_STEP_SUMMARY}"
 
-      - name: Enforce dependency audit policy
-        if: always() && (steps.root-audit.outcome == 'failure' || steps.frontend-audit.outcome == 'failure')
+      - name: Retain sanitized maintenance packets
+        id: artifacts
+        if: always() && steps.checkout.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: maintenance-packets
+          path: |
+            ${{ runner.temp }}/maintenance-packets/*.md
+            ${{ runner.temp }}/maintenance-packets/*.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce maintenance completion and security policy
+        if: always()
+        shell: pwsh
         env:
-          ROOT_AUDIT_OUTCOME: ${{ steps.root-audit.outcome }}
-          FRONTEND_AUDIT_OUTCOME: ${{ steps.frontend-audit.outcome }}
+          STEP_OUTCOMES: ${{ toJSON(steps) }}
         run: |
-          {
-            echo "## Dependency audit policy"
-            echo ""
-            echo "High-or-critical dependency findings fail this maintenance review."
-            echo ""
-            echo "- Root audit: ${ROOT_AUDIT_OUTCOME}"
-            echo "- Frontend audit: ${FRONTEND_AUDIT_OUTCOME}"
-          } >> "${GITHUB_STEP_SUMMARY}"
-          exit 1
+          $outcomes = $env:STEP_OUTCOMES | ConvertFrom-Json
+          $required = @('checkout', 'packets', 'node', 'root-install', 'frontend-install', 'packet-tests', 'spell', 'root-audit', 'frontend-audit', 'recent-ci', 'artifacts')
+          $failed = @($required | Where-Object { $outcomes.$_.outcome -ne 'success' })
+          $summary = @('## Maintenance completion policy', '', 'High-or-critical dependency findings fail this review. Failed or skipped diagnostics are incomplete, not clean.', '')
+          foreach ($name in $required) { $summary += "- ${name}: $($outcomes.$name.outcome)" }
+          $summary | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+          if ($failed.Count -gt 0) { throw 'Maintenance review incomplete or failed; inspect the named steps and retained packets.' }

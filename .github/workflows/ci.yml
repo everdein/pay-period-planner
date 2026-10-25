@@ -83,6 +83,10 @@ jobs:
         shell: pwsh
         run: ./scripts/check-public-corpus.ps1
 
+      - name: Verify maintenance packet regressions
+        shell: pwsh
+        run: ./scripts/test-maintenance-packets.ps1
+
   build-backend:
     name: Build & Test Backend
     runs-on: ubuntu-latest

@@ -63,6 +63,17 @@ to reproduce and qualify them.
 
 ## Canonical Commands
 
+Maintenance packet regression checks use isolated temporary Git repositories,
+without PostgreSQL or external services:
+
+```powershell
+.\scripts\test-maintenance-packets.ps1
+```
+
+They cover committed weekly changes, initial/no-change comparisons, independent
+collector failures, summary preservation, and sanitized retained packets. CI's
+Spell Check job and the weekly maintenance workflow run these checks.
+
 ### Environment and setup
 
 ```powershell
