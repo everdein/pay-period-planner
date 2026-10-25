@@ -41,6 +41,7 @@
     "WCAG",
     "viewports",
     "worktree",
+    "worktrees",
     "Logback"
   ],
   "ignorePaths": [

@@ -19,17 +19,25 @@ the source of truth.
 
 ## GitHub Workflow
 
-For requested publication:
+Implementation requests normally include publication and cleanup, following
+the standing completion instructions in `AGENTS.md`. Read-only reviews,
+planning, and explicit local-only or draft-only requests keep their scope.
 
 1. Inspect the branch, status, diff, and intended base.
 2. Stage only the intended files and run relevant local verification.
 3. Commit on a topic branch and push with tracking.
-4. Use `.github/PULL_REQUEST_TEMPLATE.md` and open a draft unless the user asks
-   for a ready or immediately mergeable pull request.
+4. Use `.github/PULL_REQUEST_TEMPLATE.md` and open a ready pull request unless
+   the user requested a draft.
 5. Inspect hosted checks and diagnose failures from their actual logs.
-6. Merge only when requested and required checks pass.
-7. Synchronize the local default branch and remove merged branches when cleanup
-   is requested.
+6. Merge after required checks pass; never bypass repository protection.
+7. Verify the merged commit and applicable deployments. Synchronize local main
+   and remove the completed task's local and remote branches. Confirm its
+   merged PR and reviewed head after a squash merge; preserve active work and
+   unexplained unique commits.
+
+Publication defaults do not authorize unrelated profile updates, social posts,
+Drive edits, messages, or financial-data operations. Follow the selected task's
+scope and report the exact step when completion is blocked.
 
 Prefer the GitHub connector for structured reads and supported pull-request
 operations. Use authenticated `gh` when the connector lacks repository
@@ -110,8 +118,37 @@ agent consolidates findings and owns the final severity and release judgment.
 ## Scheduled Maintenance
 
 `weekly-maintenance.yml` runs deterministic status, dependency, documentation,
-spelling, audit, and recent-CI checks. Its output is advisory. Before acting,
+spelling, audit, and recent-CI checks on GitHub-hosted runners. Its existing
+Monday schedule is unchanged. Packet findings are advisory; before acting,
 verify live PR, issue, workflow, dependency, and security state.
+
+`scripts/generate-maintenance-packets.ps1` collects separate Markdown packets
+and structured `comparison.json` and `maintenance-status.json` files under
+runner temporary storage, then appends every packet to the workflow summary.
+The comparison is the current commit against its latest ancestor before seven
+days ago. New repositories compare against an empty tree; no-change weeks use
+the same base and head. An unavailable comparison fails the affected packets
+instead of silently falling back to a clean working tree. This is a rolling
+seven-day window, not a claim that every change since the last successful run
+was reviewed.
+
+Each packet runs independently. A failed collector gets a generic failure
+packet in place of partial output, and its raw exception is not retained.
+Only the selected Markdown and JSON packet files are uploaded, for 14 days;
+database rows, exports, and raw logs are excluded. Dependency triage is a
+declared inventory, not registry update discovery or an authenticated scan.
+
+Failed or skipped collection, installation, spelling, audit, recent-CI, test,
+or artifact steps fail the final completion gate. High-or-critical dependency
+findings continue to fail the review. Independent diagnostics still run when
+another check fails. Quiet healthy runs write summaries without opening issues
+or posting messages.
+
+Run `scripts/test-maintenance-packets.ps1` for synthetic regression checks of
+committed changes, initial and no-change windows, summary preservation,
+independent failures, sanitized artifacts, and unavailable comparisons. It uses
+temporary Git fixtures and never accesses PostgreSQL. The test also runs in
+the hosted CI and weekly maintenance workflows.
 
 Weekly review should look for:
 
