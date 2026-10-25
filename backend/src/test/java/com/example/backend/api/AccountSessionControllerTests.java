@@ -8,11 +8,13 @@ import com.example.backend.domain.identity.AuthenticatedSession;
 import com.example.backend.dto.identity.AccountSignInRequest;
 import com.example.backend.dto.identity.AccountSignUpRequest;
 import com.example.backend.service.AccountSessionService;
+import com.example.backend.service.AuthenticationAttemptLimiter;
 import com.example.backend.support.InMemoryAccountSessionRepository;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.web.csrf.CsrfToken;
 
@@ -23,12 +25,14 @@ class AccountSessionControllerTests {
     InMemoryAccountSessionRepository repository = new InMemoryAccountSessionRepository();
     FinancialsSecurityProperties properties = properties(false);
     AccountSessionService service = service(repository, properties);
-    AccountSessionController controller = new AccountSessionController(service, properties);
+    AccountSessionController controller =
+        new AccountSessionController(service, properties, new AuthenticationAttemptLimiter());
 
     var csrfResponse = controller.csrfResponse(csrfToken());
     var signupResponse =
         controller.signUp(
-            new AccountSignUpRequest("owner@example.com", "owner-password-123", "Owner"));
+            new AccountSignUpRequest("owner@example.com", "owner-password-123", "Owner"),
+            new MockHttpServletRequest());
     String sessionCookie = signupResponse.getHeaders().getFirst(HttpHeaders.SET_COOKIE);
     String rawToken = cookieValue(sessionCookie);
     AuthenticatedSession session = service.recover(rawToken).orElseThrow();
@@ -45,7 +49,9 @@ class AccountSessionControllerTests {
     assertThat(controller.recover(session).email()).isEqualTo("owner@example.com");
 
     var signinResponse =
-        controller.signIn(new AccountSignInRequest("OWNER@example.com", "owner-password-123"));
+        controller.signIn(
+            new AccountSignInRequest("OWNER@example.com", "owner-password-123"),
+            new MockHttpServletRequest());
     assertThat(signinResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
     var signoutResponse = controller.signOut(session);
@@ -59,11 +65,14 @@ class AccountSessionControllerTests {
     InMemoryAccountSessionRepository repository = new InMemoryAccountSessionRepository();
     FinancialsSecurityProperties properties = properties(true);
     AccountSessionController controller =
-        new AccountSessionController(service(repository, properties), properties);
+        new AccountSessionController(
+            service(repository, properties), properties, new AuthenticationAttemptLimiter());
 
     String sessionCookie =
         controller
-            .signUp(new AccountSignUpRequest("secure@example.com", "secure-password-123", "Secure"))
+            .signUp(
+                new AccountSignUpRequest("secure@example.com", "secure-password-123", "Secure"),
+                new MockHttpServletRequest())
             .getHeaders()
             .getFirst(HttpHeaders.SET_COOKIE);
 

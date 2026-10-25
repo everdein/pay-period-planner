@@ -47,7 +47,7 @@ See [Architecture Decisions](adr/README.md),
 - [ ] Add GitHub OIDC delivery with immutable images, environment approval,
       health verification, and an authenticated synthetic smoke gate.
 - [ ] Implement transactional owner bootstrap, closed production registration,
-      sign-in throttling, full-session revocation, and operator-assisted account
+      shared edge throttling, full-session revocation, and operator-assisted account
       recovery.
 
 ## Azure Portfolio Demo Release

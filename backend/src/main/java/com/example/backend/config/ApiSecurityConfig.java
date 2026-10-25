@@ -1,6 +1,7 @@
 package com.example.backend.config;
 
 import com.example.backend.service.AccountSessionService;
+import com.example.backend.service.AuthenticationAttemptLimiter;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -32,7 +33,8 @@ public class ApiSecurityConfig {
   SecurityFilterChain apiSecurityFilterChain(
       HttpSecurity http,
       WorkspaceSessionAuthenticationFilter workspaceSessionFilter,
-      CookieCsrfTokenRepository csrfTokenRepository)
+      CookieCsrfTokenRepository csrfTokenRepository,
+      AuthenticationAttemptLimiter attemptLimiter)
       throws Exception {
     http.csrf(
             (csrf) ->
@@ -71,6 +73,8 @@ public class ApiSecurityConfig {
             });
 
     http.addFilterBefore(workspaceSessionFilter, BasicAuthenticationFilter.class);
+    http.addFilterBefore(
+        new BasicAuthenticationBudgetFilter(attemptLimiter), BasicAuthenticationFilter.class);
     return http.build();
   }
 

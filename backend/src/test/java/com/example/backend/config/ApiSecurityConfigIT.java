@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -44,6 +45,25 @@ import org.springframework.test.web.servlet.MvcResult;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @EnabledIfEnvironmentVariable(named = "RUN_POSTGRES_INTEGRATION_TESTS", matches = "true")
 class ApiSecurityConfigIT {
+
+  @Test
+  void basicHeadersCannotBypassAuthenticationWorkBudgets() throws Exception {
+    CsrfProof proof = csrfProof();
+    for (int index = 0; index < 31; index++) {
+      mockMvc
+          .perform(
+              post("/api/v1/auth/signin")
+                  .cookie(proof.cookie())
+                  .header(proof.headerName(), proof.token())
+                  .with(httpBasic("unknown-" + index, "wrong-password"))
+                  .with(
+                      request -> {
+                        request.setRemoteAddr("192.0.2.222");
+                        return request;
+                      }))
+          .andExpect(index < 30 ? status().isUnauthorized() : status().isTooManyRequests());
+    }
+  }
 
   private static final String TEST_SCHEMA =
       "api_security_config_test_" + UUID.randomUUID().toString().replace("-", "");

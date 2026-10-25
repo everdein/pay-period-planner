@@ -293,18 +293,15 @@ changes in a new ADR.
   containment, and `docs/observability-guide.md`.
 - **Revisit when:** A persistent shared environment is introduced.
 
-### LIM-025 — Request-size guard depends on declared content length
+### LIM-025 — Streaming request-size enforcement
 
-- **Status:** Partially resolved on 2026-07-15
-- **Impact:** The backend rejects requests above `FINANCIALS_MAX_REQUEST_BYTES`
-  when `Content-Length` is known. Streaming/chunked requests without a declared
-  length still require a production reverse proxy or gateway limit.
-- **Resolution:** ADR 0017 first retired XLSX import and its decompression path.
-  ADR 0018 then retires all CSV/XLSX application backup behavior and the custom
-  tabular codec. JSON restore is parsed by the framework and still passes
-  through the declared-length request guard.
-- **Remaining boundary:** Enforce streaming request limits at the selected edge
-  before roadmap Phase M.
+- **Status:** Resolved on 2026-10-24
+- **Resolution:** The synchronous MVC request boundary counts bytes before
+  controller handling, including unknown/chunked and understated lengths. It
+  rejects overflow with `413` and replays accepted bodies for JSON parsing.
+  ADR 0031 records the bounded buffering and authentication admission controls.
+- **Remaining operational boundary:** Edge upload timeouts, request limits,
+  and shared authentication budgets are still required before hosted release.
 
 ### LIM-026 - Legacy ESLint packages require a scoped transitive override
 

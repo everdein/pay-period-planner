@@ -124,7 +124,10 @@ Runtime guardrails:
   operational metadata only, never financial values or request bodies
 - backend error responses do not include stack traces or binding internals
 - request bodies above `FINANCIALS_MAX_REQUEST_BYTES` are rejected with `413`
-  before controller handling; default is `1048576`
+  before controller handling, including chunked bodies; default is `1048576`
+- signup and sign-in share per-process one-minute budgets: 10 attempts per
+  normalized account, 30 per socket peer, 100 globally, and four concurrent
+  authentication operations; excess requests return `429` with `Retry-After: 60`
 - cross-origin browser calls are denied unless `FINANCIALS_ALLOWED_ORIGINS`
   names exact allowed origins
 - activating `prod` requires non-default operator credentials, no wildcard
@@ -136,6 +139,14 @@ The backend exposes account and session endpoints under `/api/v1/auth`.
 defaults to `7d`; `FINANCIALS_SESSION_COOKIE_SECURE` defaults to `false` for
 local HTTP and must be `true` with the `prod` profile. These sessions authorize
 financial routes through database-derived workspace memberships.
+
+Authentication budgets use the socket peer, not client-supplied forwarding
+headers. HTTP Basic authentication shares these budgets before password
+verification, including when sent to account endpoints. Behind a proxy,
+clients may share that peer budget. Before scaling
+across processes, enforce shared edge limits; process restarts reset local
+budgets. Request bodies are buffered up to the configured limit for synchronous
+MVC handling. Edge upload timeouts and request limits remain required.
 
 See `../docs/observability-guide.md` for request correlation, protected metric
 inspection, production JSON logs, frontend error containment, and data-safety
