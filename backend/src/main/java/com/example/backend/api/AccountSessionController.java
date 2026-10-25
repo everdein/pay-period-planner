@@ -9,6 +9,7 @@ import com.example.backend.dto.identity.AccountSignUpRequest;
 import com.example.backend.dto.identity.CsrfTokenResponse;
 import com.example.backend.service.AccountSessionService;
 import com.example.backend.service.AccountSessionService.IssuedSession;
+import com.example.backend.service.AuthenticationAttemptLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
@@ -29,12 +30,15 @@ public class AccountSessionController {
 
   private final AccountSessionService accountSessionService;
   private final FinancialsSecurityProperties securityProperties;
+  private final AuthenticationAttemptLimiter attemptLimiter;
 
   public AccountSessionController(
       AccountSessionService accountSessionService,
-      FinancialsSecurityProperties securityProperties) {
+      FinancialsSecurityProperties securityProperties,
+      AuthenticationAttemptLimiter attemptLimiter) {
     this.accountSessionService = accountSessionService;
     this.securityProperties = securityProperties;
+    this.attemptLimiter = attemptLimiter;
   }
 
   @GetMapping("/csrf")
@@ -52,17 +56,21 @@ public class AccountSessionController {
 
   @PostMapping("/signup")
   public ResponseEntity<AccountSessionResponse> signUp(
-      @Valid @RequestBody AccountSignUpRequest request) {
-    IssuedSession issued =
-        accountSessionService.signUp(request.email(), request.password(), request.displayName());
-    return sessionResponse(issued, HttpStatus.CREATED);
+      @Valid @RequestBody AccountSignUpRequest request, HttpServletRequest servletRequest) {
+    try (var permit = attemptLimiter.acquire(request.email(), servletRequest.getRemoteAddr())) {
+      IssuedSession issued =
+          accountSessionService.signUp(request.email(), request.password(), request.displayName());
+      return sessionResponse(issued, HttpStatus.CREATED);
+    }
   }
 
   @PostMapping("/signin")
   public ResponseEntity<AccountSessionResponse> signIn(
-      @Valid @RequestBody AccountSignInRequest request) {
-    IssuedSession issued = accountSessionService.signIn(request.email(), request.password());
-    return sessionResponse(issued, HttpStatus.OK);
+      @Valid @RequestBody AccountSignInRequest request, HttpServletRequest servletRequest) {
+    try (var permit = attemptLimiter.acquire(request.email(), servletRequest.getRemoteAddr())) {
+      IssuedSession issued = accountSessionService.signIn(request.email(), request.password());
+      return sessionResponse(issued, HttpStatus.OK);
+    }
   }
 
   @GetMapping("/session")

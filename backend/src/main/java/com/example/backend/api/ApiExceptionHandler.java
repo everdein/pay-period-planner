@@ -3,6 +3,7 @@ package com.example.backend.api;
 import com.example.backend.service.AccountAuthenticationException;
 import com.example.backend.service.AccountConflictException;
 import com.example.backend.service.AccountRequestException;
+import com.example.backend.service.AuthenticationThrottledException;
 import com.example.backend.service.FinancialRequestException;
 import com.example.backend.service.FinancialSnapshotVersionConflictException;
 import com.example.backend.service.WorkspaceAccessDeniedException;
@@ -14,6 +15,7 @@ import java.util.List;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -23,6 +25,17 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+  @ExceptionHandler(AuthenticationThrottledException.class)
+  public ResponseEntity<ProblemDetail> handleAuthenticationThrottled(
+      AuthenticationThrottledException exception) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage());
+    problem.setTitle("Authentication temporarily limited");
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .header("Retry-After", "60")
+        .body(withRequestId(problem));
+  }
 
   @ExceptionHandler(FinancialSnapshotVersionConflictException.class)
   public ProblemDetail handleSnapshotVersionConflict(

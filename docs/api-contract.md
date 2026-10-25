@@ -40,6 +40,19 @@ characters and no more than 72 UTF-8 bytes because the current adaptive encoder
 uses bcrypt. Signup creates one `Personal` workspace with an `owner`
 membership.
 
+Signup and sign-in share per-process, one-minute attempt budgets: 10 per
+trimmed, case-insensitive email, 30 per socket peer, and 100 globally. At most
+four authentication operations run concurrently. Admission happens before
+password hashing, including duplicate signup and unknown-account sign-in.
+Exhausted budgets return `429` Problem Detail with `Retry-After: 60`; clients
+must wait before retrying. Forwarding headers do not select the peer identity.
+These local budgets reset on restart and require shared edge enforcement for
+multiple processes; proxied clients may share a peer budget.
+
+HTTP Basic authentication uses the same budgets before the security chain
+checks passwords, including Basic headers sent to account endpoints. Normal
+browser account requests do not send an operator Basic header.
+
 Successful signup and sign-in set a `financials_session` cookie with
 `HttpOnly`, `SameSite=Strict`, `Path=/`, and the configured lifetime. The raw
 opaque token is never returned in JSON and only its SHA-256 hash is stored.
@@ -72,7 +85,10 @@ account session also aborts active frontend API requests.
 Cross-origin browser calls are denied unless `FINANCIALS_ALLOWED_ORIGINS`
 contains exact allowed origins. Request bodies above
 `FINANCIALS_MAX_REQUEST_BYTES` are rejected with `413 Payload Too Large` before
-controller handling; the local default is `1048576` bytes.
+controller handling, including chunked or understated-length bodies; the local
+default is `1048576` bytes. The synchronous MVC boundary reads at most the
+configured limit plus one bounded read before rejecting overflow, then replays
+accepted bodies for normal JSON handling. Exact-limit bodies are accepted.
 
 Clients may send `X-Request-ID` using 1–100 letters, numbers, periods,
 underscores, colons, or hyphens. The backend replaces missing or unsafe values

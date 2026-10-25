@@ -317,7 +317,7 @@ Estimated effort: 2-4 engineering days.
 - [ ] Add disabled, owner-bootstrap, and development registration modes.
 - [ ] Create exactly one owner account in one transaction, rotate the bootstrap
       credential, and prove that later signup is closed.
-- [ ] Add sign-in and bootstrap throttling plus an operator-assisted account
+- [ ] Add shared edge and bootstrap throttling plus an operator-assisted account
       recovery and full-session revocation procedure.
 - [ ] Keep all owner-entered financial values synthetic and visibly non-personal.
 - [ ] Provide an operator procedure for access revocation and environment
