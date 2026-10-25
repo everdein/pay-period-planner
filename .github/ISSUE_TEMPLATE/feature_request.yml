@@ -7,8 +7,8 @@ body:
     attributes:
       value: |
         Describe the outcome, not just the implementation. If the request
-        touches financial data, use synthetic examples and state whether JSON,
-        PostgreSQL, or both profiles are affected.
+        touches financial data, use synthetic examples. PostgreSQL is the active
+        persistence path; distinguish runtime storage from JSON backup/export.
 
   - type: textarea
     id: problem
@@ -38,7 +38,7 @@ body:
         - Frontend state/API client
         - Backend API/DTO
         - Backend service/domain logic
-        - JSON persistence
+        - Backup/export JSON
         - PostgreSQL persistence
         - Migrations/schema
         - CI/security
@@ -68,6 +68,22 @@ body:
       placeholder: Do not change the public API contract or read personal local data.
     validations:
       required: false
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Expected verification
+      description: Name the checks or evidence that will demonstrate the outcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and owner
+      description: Link prerequisites, name the owner and any blockers; write none when independent.
+    validations:
+      required: true
 
   - type: checkboxes
     id: data_safety

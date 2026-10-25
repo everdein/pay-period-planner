@@ -1,5 +1,5 @@
-name: Implementation task
-description: Define a scoped engineering task that can be turned into a branch and PR.
+name: Engineering task
+description: Scope implementation, maintenance, or a bounded investigation.
 title: '[task]: '
 labels: ['implementation', 'needs-triage']
 body:
@@ -9,6 +9,17 @@ body:
         Use this when the desired change is already understood. The goal is to
         give a maintainer or coding agent enough context to create a branch,
         implement the change, verify it, and open a PR without guessing.
+
+  - type: dropdown
+    id: work_type
+    attributes:
+      label: Work type
+      options:
+        - Implementation
+        - Maintenance
+        - Investigation
+    validations:
+      required: true
 
   - type: textarea
     id: objective
@@ -50,7 +61,7 @@ body:
         - Frontend state/API client
         - Backend API/DTO
         - Backend service/domain logic
-        - JSON persistence
+        - Backup/export JSON
         - PostgreSQL persistence
         - Migrations/schema
         - CI/security
@@ -84,6 +95,14 @@ body:
     validations:
       required: true
 
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and owner
+      description: Link prerequisites, name the owner and any blockers; write none when independent.
+    validations:
+      required: true
+
   - type: checkboxes
     id: approvals
     attributes:
@@ -93,4 +112,4 @@ body:
           required: true
         - label: This task does not require changing GitHub secrets, repository permissions, Snyk policy, database roles, or destructive data behavior unless explicitly stated above.
           required: true
-        - label: An implementation agent may create a branch and draft PR after confirming scope.
+        - label: Implementation follows the ready-PR, verification, merge, and safe cleanup agreement in AGENTS.md unless a narrower scope is explicitly requested.

@@ -46,8 +46,27 @@ CLI coverage. Do not use GitHub APIs to edit files that are available locally.
 
 Issue forms under `.github/ISSUE_TEMPLATE/` define intake fields. Before
 implementation, confirm the objective, acceptance criteria, affected surface,
-verification, and data-safety state. An issue defines scope; it does not grant
+verification, dependencies, owner, and data-safety state. An issue defines scope; it does not grant
 permission for deployment, data mutation, or unrelated repository writes.
+
+Use Bug report for a reproducible defect, Feature request for a proposed
+capability, and Engineering task for understood implementation, maintenance,
+or investigation. For an investigation, define the question, time limit and
+expected evidence instead of promising a code change. PostgreSQL is runtime
+storage; JSON backup/export is a separate affected area.
+
+Ready means objective, scope/non-goals, observable acceptance, verification,
+dependencies and owner are identified. Keep one primary item active. A merged
+PR remains in Review / Verification until main and applicable deployment/live
+checks pass and task-branch cleanup is complete; then close the issue and mark
+Done. Draft-only and read-only work keep their selected scope.
+
+For example, a synthetic maintenance task can name “remove an obsolete command
+from an issue-form placeholder” as its objective, limit scope to that form,
+require that the replacement matches the current setup guide, and verify YAML
+parsing, spelling and the rendered form. Record “no dependencies” explicitly;
+exclude application/data changes. Do not invent runtime test results for an
+intake-only change.
 
 ## Hosted Automation
 
