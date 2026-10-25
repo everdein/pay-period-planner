@@ -30,7 +30,7 @@ body:
         - Frontend state/API client
         - Backend API/DTO
         - Backend service/domain logic
-        - JSON persistence
+        - Backup/export JSON
         - PostgreSQL persistence
         - Migrations/schema
         - CI/security
@@ -45,7 +45,7 @@ body:
       label: Reproduction steps
       description: Use mock data or a redacted minimal example.
       placeholder: |
-        1. Start the backend with the default JSON profile.
+        1. Start the backend with an isolated synthetic PostgreSQL workspace.
         2. Open the frontend.
         3. Edit a synthetic monthly withdrawal.
         4. Save and refresh.
@@ -70,6 +70,22 @@ body:
         - Saving an edited synthetic withdrawal persists after refresh.
         - A regression test covers the failed path.
         - Documentation is updated if behavior changed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Expected verification and scope limits
+      description: Name relevant checks or evidence, and what should remain unchanged.
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and owner
+      description: Link prerequisites, name the owner and any blockers; write none when independent.
     validations:
       required: true
 
