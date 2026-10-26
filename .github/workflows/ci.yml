@@ -324,6 +324,22 @@ jobs:
           chmod +x backend/mvnw
           snyk test --all-projects --fail-fast --severity-threshold=high
 
+  container-smoke:
+    name: Container smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build and verify isolated synthetic container
+        run: python3 scripts/verify-container.py --evidence "${RUNNER_TEMP}/container-evidence.json"
+      - name: Retain image identity and verification evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: container-evidence
+          path: ${{ runner.temp }}/container-evidence.json
+          if-no-files-found: error
+
   scans:
     name: Scans
     runs-on: ubuntu-latest
@@ -336,6 +352,7 @@ jobs:
       - postgres-integration
       - snyk-security
       - spell-check
+      - container-smoke
     env:
       BACKEND_RESULT: ${{ needs.build-backend.result }}
       BROWSER_RESULT: ${{ needs.browser-ux.result }}
@@ -344,6 +361,7 @@ jobs:
       POSTGRES_RESULT: ${{ needs.postgres-integration.result }}
       SECURITY_RESULT: ${{ needs.snyk-security.result }}
       SPELL_RESULT: ${{ needs.spell-check.result }}
+      CONTAINER_RESULT: ${{ needs.container-smoke.result }}
     steps:
       - name: Enforce complete CI gate
         run: |
@@ -355,13 +373,14 @@ jobs:
             [browser]="${BROWSER_RESULT}"
             [coverage]="${COVERAGE_RESULT}"
             [security]="${SECURITY_RESULT}"
+            [container]="${CONTAINER_RESULT}"
           )
 
           failed=false
           {
             echo "## Complete CI gate"
             echo ""
-            for check in frontend spell backend postgres browser coverage security; do
+            for check in frontend spell backend postgres browser coverage security container; do
               result="${results[$check]}"
               echo "- ${check}: \`${result}\`"
               if [ "${result}" != "success" ]; then

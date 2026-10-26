@@ -1,0 +1,20 @@
+# Allow only application build inputs; never send private data or local config.
+**
+!Dockerfile
+!frontend/
+!frontend/**
+!backend/
+!backend/**
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+backend/target/
+backend/data/
+**/.env*
+**/*.log
+**/*.local.*
+**/.git/
+**/.codex/
+**/.agents/
