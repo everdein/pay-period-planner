@@ -42,7 +42,10 @@ def main():
         image_id = docker("image", "inspect", "--format", "{{.Id}}", image)
         assert docker("image", "inspect", "--format", "{{.Config.User}}", image) == "10001:10001"
         checks.append("non-root-image")
-        docker("network", "create", "--internal", network)
+        # A normal bridge permits the explicitly loopback-published app port.
+        # Docker internal networks suppress that host binding on some engines.
+        # The database has no published port; both containers are unique fixtures.
+        docker("network", "create", network)
         docker("run", "-d", "--name", database, "--network", network, "--network-alias", "database",
                "--env", "POSTGRES_PASSWORD", "--env", "POSTGRES_USER", "--env", "POSTGRES_DB", POSTGRES, env=env)
         for attempt in range(60):
@@ -59,7 +62,10 @@ def main():
                "--env", "DATABASE_URL=jdbc:postgresql://database:5432/synthetic",
                "--env", "DATABASE_USERNAME", "--env", "DATABASE_PASSWORD",
                "--env", "FINANCIALS_API_USERNAME", "--env", "FINANCIALS_API_PASSWORD", image, env=env)
-        port = json.loads(docker("inspect", app))[0]["NetworkSettings"]["Ports"]["8080/tcp"][0]["HostPort"]
+        bindings = json.loads(docker("inspect", app))[0]["NetworkSettings"]["Ports"].get("8080/tcp")
+        if not bindings or bindings[0]["HostIp"] != "127.0.0.1":
+            raise RuntimeError("App must publish only a loopback port")
+        port = bindings[0]["HostPort"]
         origin = f"http://127.0.0.1:{port}"
         cookies = {}
 

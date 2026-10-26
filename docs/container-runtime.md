@@ -14,9 +14,9 @@ python3 scripts/verify-container.py --evidence /tmp/planner-container-evidence.j
 ```
 
 The script builds from digest-pinned Node 24 and Java 25 images, starts a
-disposable PostgreSQL 18 container on a unique internal network, then binds the
+disposable PostgreSQL 18 container on a unique bridge network, then binds the
 application to a random loopback port. It never reads the host database or
-personal financial files. Random fixture credentials stay in process/container
+personal financial files. The database has no published host port. Random fixture credentials stay in process/container
 environment variables and are not printed or retained in the evidence packet.
 The script removes only its uniquely named containers, volumes, network and
 image tag on exit. CI runs this on PRs and main, retains the exact source SHA
