@@ -86,6 +86,12 @@ def main():
                     cookies.update({key: item.value for key, item in parsed.items()})
                 return response.status, response.read(), response.headers
 
+        def protected_request(path, method, data, headers=None):
+            status, body, _ = request("/api/v1/auth/csrf")
+            assert status == 200
+            token = json.loads(body)
+            return request(path, method, data, {**(headers or {}), token["headerName"]: token["token"]})
+
         for attempt in range(90):
             try:
                 status, body, _ = request("/actuator/health")
@@ -143,9 +149,8 @@ def main():
         assert status == 200
         csrf = json.loads(body)
         proof = {csrf["headerName"]: csrf["token"]}
-        authorized = {**workspace, **proof}
-        assert request("/api/v1/financials", "POST", {
-            "startDate": "2026-10-01", "endDate": "2026-10-14"}, authorized)[0] == 201
+        assert protected_request("/api/v1/financials", "POST", {
+            "startDate": "2026-10-01", "endDate": "2026-10-14"}, workspace)[0] == 201
         status, body, _ = request("/api/v1/financials", headers=workspace)
         assert status == 200
         # Export owns the write DTO shape; the presentation response contains
@@ -153,12 +158,14 @@ def main():
         status, body, _ = request("/api/v1/financials/export", headers=workspace)
         assert status == 200
         payload = json.loads(body)["snapshot"]
-        assert request("/api/v1/financials", "PUT", payload, authorized)[0] == 200
-        assert request("/api/v1/financials", "PUT", payload, authorized)[0] == 409
+        assert protected_request("/api/v1/financials", "PUT", payload, workspace)[0] == 200
+        assert protected_request("/api/v1/financials", "PUT", payload, workspace)[0] == 409
         assert request("/api/v1/financials", headers={"X-Workspace-ID": "999999999"})[0] == 403
-        assert request("/api/v1/auth/signin", "POST", b"x" * 1048577, proof)[0] == 413
-        assert request("/api/v1/financials", "OPTIONS", headers={
-            "Origin": "https://attacker.invalid", "Access-Control-Request-Method": "PUT"})[0] == 403
+        assert protected_request("/api/v1/auth/signin", "POST", b"x" * 1048577)[0] == 413
+        status, _, headers = request("/api/v1/financials", "OPTIONS", headers={
+            "Origin": "https://attacker.invalid", "Access-Control-Request-Method": "PUT"})
+        assert status in (200, 403)
+        assert headers.get("Access-Control-Allow-Origin") is None
         checks.extend(["authentication-and-workspace-isolation", "initialization-save-and-stale-conflict",
                        "csrf-and-cors", "secure-cookie-flags",
                        "untrusted-forwarding-headers", "request-body-limit"])
