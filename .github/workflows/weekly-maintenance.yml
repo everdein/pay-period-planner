@@ -5,6 +5,11 @@ on:
     - cron: '15 7 * * 1'
       timezone: 'America/Los_Angeles'
   workflow_dispatch:
+    inputs:
+      base_commit:
+        description: 'Optional full ancestor commit SHA for bounded catch-up; empty uses the normal seven-day window'
+        required: false
+        type: string
 
 permissions:
   actions: read
@@ -27,7 +32,12 @@ jobs:
         if: always() && steps.checkout.outcome == 'success'
         continue-on-error: true
         shell: pwsh
-        run: ./scripts/generate-maintenance-packets.ps1 -OutputDirectory "$env:RUNNER_TEMP/maintenance-packets"
+        env:
+          CATCH_UP_BASE: ${{ inputs.base_commit }}
+        run: |
+          $arguments = @{ OutputDirectory = "$env:RUNNER_TEMP/maintenance-packets" }
+          if (-not [string]::IsNullOrWhiteSpace($env:CATCH_UP_BASE)) { $arguments.BaseRef = $env:CATCH_UP_BASE }
+          ./scripts/generate-maintenance-packets.ps1 @arguments
 
       - name: Setup Node.js
         id: node

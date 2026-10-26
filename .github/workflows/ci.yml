@@ -86,6 +86,8 @@ jobs:
       - name: Verify maintenance packet regressions
         shell: pwsh
         run: ./scripts/test-maintenance-packets.ps1
+      - name: Verify bounded Dependabot patch eligibility
+        run: node --test .github/scripts/dependabot-eligibility.test.mjs
 
   build-backend:
     name: Build & Test Backend

@@ -78,6 +78,6 @@ remains in the
 
 ## Current Priority
 
-Approve the Azure planning boundary and complete Milestone A: produce one
+The Azure planning boundary is approved in ADR 0030. Next, complete Milestone A: produce one
 hardened, single-origin container without creating cloud resources or adding
 billing by implication.

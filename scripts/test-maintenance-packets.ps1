@@ -17,13 +17,15 @@ function Invoke-FixtureGit {
     return $output
 }
 function Invoke-Case {
-    param([string]$Name, [string]$Since, [bool]$ExpectFailure = $false, [string]$HeadRef = "HEAD")
+    param([string]$Name, [string]$Since, [bool]$ExpectFailure = $false, [string]$HeadRef = "HEAD", [string]$BaseRef)
     $outputDirectory = Join-Path $fixtureRoot $Name
     $summary = Join-Path $fixtureRoot "$Name-summary.md"
     Set-Content -LiteralPath $summary -Value "Existing workflow section"
     $failed = $false
     try {
-        & $runner -RepositoryRoot $repository -OutputDirectory $outputDirectory -Since $Since -SummaryPath $summary -HeadRef $HeadRef
+        $arguments = @{ RepositoryRoot = $repository; OutputDirectory = $outputDirectory; SummaryPath = $summary; HeadRef = $HeadRef }
+        if ($BaseRef) { $arguments.BaseRef = $BaseRef } else { $arguments.Since = $Since }
+        & $runner @arguments
     }
     catch { $failed = $true }
     Assert-True ($failed -eq $ExpectFailure) "Unexpected completion state in $Name."
@@ -50,6 +52,7 @@ Set-Content -LiteralPath $SummaryPath -Value "# Dependency fixture`n$changed"
     $env:GIT_COMMITTER_DATE = "2000-01-01T12:00:00Z"
     Invoke-FixtureGit @("add", ".") | Out-Null
     Invoke-FixtureGit @("-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "commit", "--no-verify", "--date=2000-01-01T12:00:00Z", "-m", "Synthetic baseline") | Out-Null
+    $baseline = Invoke-FixtureGit @('rev-parse', 'HEAD')
     Set-Content -LiteralPath "$repository/backend/src/main/java/example/api/Snapshot.java" -Value "// Synthetic API change"
     $env:GIT_COMMITTER_DATE = "2001-01-01T12:00:00Z"
     Invoke-FixtureGit @("add", ".") | Out-Null
@@ -64,6 +67,19 @@ Set-Content -LiteralPath $SummaryPath -Value "# Dependency fixture`n$changed"
     Assert-True ($initial.Status.comparison.mode -eq "initial-full-tree" -and $initial.Summary -match "Snapshot.java") "Initial comparison omitted the full tree."
     $quiet = Invoke-Case "quiet" "2002-01-01T00:00:00Z"
     Assert-True ($quiet.Status.comparison.mode -eq "no-changes" -and $quiet.Summary -match "Changed files: 0") "No-change comparison is incorrect."
+
+    $catchUp = Invoke-Case -Name 'old-gap' -BaseRef $baseline
+    Assert-True ($catchUp.Status.comparison.mode -eq 'explicit-base' -and $null -eq $catchUp.Status.comparison.since -and $catchUp.Status.comparison.base -eq $baseline -and $catchUp.Summary -match 'Snapshot.java') 'Explicit catch-up omitted old changes or lost provenance.'
+    $missingBase = Invoke-Case -Name 'missing-base' -BaseRef ('f' * 40) -ExpectFailure $true
+    Assert-True ($missingBase.Status.comparison.mode -eq 'unavailable' -and $missingBase.Status.collectors[0].status -eq 'passed') 'Missing catch-up base suppressed independent evidence or appeared clean.'
+    Invoke-FixtureGit @('switch', '--detach', $baseline) | Out-Null
+    Set-Content -LiteralPath "$repository/divergent.txt" -Value 'Synthetic divergent change'
+    Invoke-FixtureGit @('add', '.') | Out-Null
+    Invoke-FixtureGit @('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', 'commit', '-m', 'Divergent fixture') | Out-Null
+    $divergent = Invoke-FixtureGit @('rev-parse', 'HEAD')
+    Invoke-FixtureGit @('switch', 'main') | Out-Null
+    $nonAncestor = Invoke-Case -Name 'nonancestor' -BaseRef $divergent -ExpectFailure $true
+    Assert-True ($nonAncestor.Status.comparison.mode -eq 'unavailable') 'Nonancestor catch-up base accepted.'
 
     @'
 param([string]$SummaryPath)

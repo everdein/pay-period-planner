@@ -2,6 +2,7 @@ param(
     [string]$RepositoryRoot = (Split-Path -Parent $PSScriptRoot),
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
     [datetimeoffset]$Since = [datetimeoffset]::UtcNow.AddDays(-7),
+    [string]$BaseRef,
     [string]$HeadRef = "HEAD",
     [string]$SummaryPath = $env:GITHUB_STEP_SUMMARY
 )
@@ -22,11 +23,24 @@ $comparison = [ordered]@{
     head = $null
     base = $null
     mode = "unavailable"
+    requestedBase = $null
 }
 try {
     $comparison.head = Invoke-Git @("rev-parse", "--verify", "$HeadRef^{commit}")
-    $comparison.base = Invoke-Git @("rev-list", "-1", "--before=$($comparison.since)", $comparison.head)
-    if ([string]::IsNullOrWhiteSpace($comparison.base)) {
+    if (-not [string]::IsNullOrWhiteSpace($BaseRef)) {
+        if ($PSBoundParameters.ContainsKey('Since') -or $BaseRef -notmatch '^[a-fA-F0-9]{40}$') { throw 'Use one explicit commit base or a time window.' }
+        $comparison.requestedBase = $BaseRef.ToLowerInvariant()
+        $comparison.base = Invoke-Git @('rev-parse', '--verify', "$BaseRef^{commit}")
+        & git -C $RepositoryRoot merge-base --is-ancestor $comparison.base $comparison.head 2>$null
+        if ($LASTEXITCODE -ne 0) { throw 'Catch-up base must be an ancestor of the selected head.' }
+        $comparison.since = $null
+        $comparison.mode = 'explicit-base'
+    }
+    else { $comparison.base = Invoke-Git @("rev-list", "-1", "--before=$($comparison.since)", $comparison.head) }
+    if ($comparison.mode -eq 'explicit-base') {
+        # Preserve explicit comparison provenance even for an unchanged head.
+    }
+    elseif ([string]::IsNullOrWhiteSpace($comparison.base)) {
         # New repositories have no commit before the window: compare the full tree.
         $comparison.base = $null | & git -C $RepositoryRoot hash-object -w -t tree --stdin
         if ($LASTEXITCODE -ne 0) { throw "Cannot create empty comparison tree." }
