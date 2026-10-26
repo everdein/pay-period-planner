@@ -138,7 +138,10 @@ agent consolidates findings and owns the final severity and release judgment.
 
 `weekly-maintenance.yml` runs deterministic status, dependency, documentation,
 spelling, audit, and recent-CI checks on GitHub-hosted runners. Its existing
-Monday schedule is unchanged. Packet findings are advisory; before acting,
+Monday schedule is 07:15 America/Los_Angeles (10:15 America/New_York while
+both locations observe the same daylight-saving offset). The workflow's IANA
+time zone, not the cron text alone, determines the run time. Packet findings
+are advisory; before acting,
 verify live PR, issue, workflow, dependency, and security state.
 
 `scripts/generate-maintenance-packets.ps1` collects separate Markdown packets
@@ -150,6 +153,25 @@ the same base and head. An unavailable comparison fails the affected packets
 instead of silently falling back to a clean working tree. This is a rolling
 seven-day window, not a claim that every change since the last successful run
 was reviewed.
+
+For a missed-review gap, run a bounded catch-up with a known successful
+review's full commit SHA as `-BaseRef`; the manual workflow exposes the same
+value as `base_commit`. The script verifies that commit exists and is an
+ancestor of the selected head. It records `explicit-base`, exact base/head
+and a null time window rather than silently reverting to seven days. Missing,
+invalid or unrelated bases fail comparison-dependent packets while retaining
+independent engineering status. Do not combine `-Since` and `-BaseRef`.
+
+```powershell
+./scripts/generate-maintenance-packets.ps1 -OutputDirectory "$env:TEMP/planner-catch-up" -BaseRef <full-reviewed-ancestor-SHA>
+```
+
+The reviewer selects and records the prior successful review and resulting
+head, then verifies the whole final maintenance gate and retained packets.
+This manual catch-up does not create a durable unattended checkpoint or prove
+every historical interval was reviewed. Scheduled runs still use the disclosed
+rolling window. Healthy unchanged runs remain summary/artifact-only; no new
+notification channel or write permission is needed.
 
 Each packet runs independently. A failed collector gets a generic failure
 packet in place of partial output, and its raw exception is not retained.
@@ -168,6 +190,17 @@ committed changes, initial and no-change windows, summary preservation,
 independent failures, sanitized artifacts, and unavailable comparisons. It uses
 temporary Git fixtures and never accesses PostgreSQL. The test also runs in
 the hosted CI and weekly maintenance workflows.
+
+Dependabot auto-queueing is narrower than update discovery: only allowlisted
+npm development-tool patch updates with matching manifest/lockfile scope and
+unchanged other manifest fields qualify. Mixed minor/patch groups remain manual
+because metadata reports their highest change. Runtime/framework/security,
+Maven and Actions updates remain manual. The privileged workflow loads only
+its trusted base revision's eligibility helper, never PR code; provider gaps
+fail closed and the queue request matches the event head. Existing required
+checks still govern the merge. Run the helper's synthetic negative cases with
+`node --test .github/scripts/dependabot-eligibility.test.mjs`; fixtures are not
+evidence of a real eligible update being merged.
 
 Weekly review should look for:
 

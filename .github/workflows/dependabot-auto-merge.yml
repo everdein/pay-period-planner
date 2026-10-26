@@ -27,20 +27,39 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Enable squash auto-merge for patch updates
-        if: steps.metadata.outputs.update-type == 'version-update:semver-patch'
+      - name: Load trusted eligibility helper
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          TRUSTED_WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          # Read only the helper committed alongside this trusted base workflow.
+          # Never check out or execute code from the pull request branch.
+          gh api --method GET "repos/${REPOSITORY}/contents/.github/scripts/dependabot-eligibility.mjs?ref=${TRUSTED_WORKFLOW_SHA}" \
+            --header 'Accept: application/vnd.github.raw+json' > "${RUNNER_TEMP}/dependabot-eligibility.mjs"
+
+      - name: Verify bounded patch eligibility
+        id: eligibility
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          MAINTAINER_CHANGES: ${{ steps.metadata.outputs.maintainer-changes }}
+          UPDATED_DEPENDENCIES_JSON: ${{ steps.metadata.outputs.updated-dependencies-json }}
+        run: node "${RUNNER_TEMP}/dependabot-eligibility.mjs"
+
+      - name: Enable squash auto-merge for eligible patch updates
+        if: steps.eligibility.outputs.eligible == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge --auto --squash "${PR_URL}"
+          REVIEWED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: gh pr merge --auto --squash --match-head-commit "${REVIEWED_HEAD}" "${PR_URL}"
 
       - name: Record manual-review decision
-        if: steps.metadata.outputs.update-type != 'version-update:semver-patch'
-        env:
-          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+        if: steps.eligibility.outputs.eligible != 'true'
         run: |
           {
             echo "## Dependabot merge policy"
             echo ""
-            echo "This update remains manual because its type is \`${UPDATE_TYPE}\`."
+            echo "This update remains manual unless the bounded eligibility check succeeds."
           } >> "${GITHUB_STEP_SUMMARY}"
