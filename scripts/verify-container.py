@@ -116,6 +116,9 @@ def main():
         checks.append("single-origin-assets-and-bounded-fallback")
         assert request("/api/v1/financials")[0] == 401
         assert request("/api/v1/auth/signup", "POST", {})[0] == 403
+        # Earlier rejected requests may already issue a CSRF cookie. Start a
+        # fresh browser session so this response actually emits its attributes.
+        cookies.clear()
         status, body, headers = request("/api/v1/auth/csrf", headers={
             "Forwarded": "for=203.0.113.1;proto=https;host=attacker.invalid",
             "X-Forwarded-Host": "attacker.invalid", "X-Forwarded-Proto": "https"})
