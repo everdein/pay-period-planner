@@ -346,6 +346,9 @@ Estimated effort: 5-8 engineering days across verification and documentation.
 
 The repository builds one hardened container, serves the frontend and API from
 one origin, and passes the current local and hosted verification gates.
+The [container runtime guide](container-runtime.md) owns build/run commands,
+runtime restrictions and synthetic CI smoke evidence. This artifact does not
+complete the closed-registration or Azure provisioning gates below.
 
 ### Milestone B: Non-production Azure environment
 

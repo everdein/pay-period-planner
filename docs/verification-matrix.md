@@ -2,6 +2,12 @@
 
 ## Default Completion Gate
 
+Container packaging additionally requires
+`python3 scripts/verify-container.py --evidence /tmp/planner-container-evidence.json`
+on a Docker-capable machine. CI's Container smoke job runs this against isolated
+synthetic PostgreSQL and feeds the required Scans aggregate. See the
+[runtime guide](container-runtime.md) for exact scope and TLS limitations.
+
 From the repository root:
 
 ```powershell
