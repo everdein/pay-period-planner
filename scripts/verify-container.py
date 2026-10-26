@@ -135,16 +135,32 @@ def main():
                    and "SameSite=Strict" in value for value in headers.get_all("Set-Cookie", []))
         assert request("/api/v1/auth/session")[0] == 200
         workspace = {"X-Workspace-ID": str(account["workspaces"][0]["id"])}
-        assert request("/api/v1/financials", headers=workspace)[0] == 200
+        # A new account owns an empty workspace; initialization is a distinct
+        # explicit operation, just as it is in the browser workflow.
+        assert request("/api/v1/financials", headers=workspace)[0] == 404
         assert request("/api/v1/financials", "PUT", {}, workspace)[0] == 403
         status, body, _ = request("/api/v1/auth/csrf")
         assert status == 200
         csrf = json.loads(body)
         proof = {csrf["headerName"]: csrf["token"]}
+        authorized = {**workspace, **proof}
+        assert request("/api/v1/financials", "POST", {
+            "startDate": "2026-10-01", "endDate": "2026-10-14"}, authorized)[0] == 201
+        status, body, _ = request("/api/v1/financials", headers=workspace)
+        assert status == 200
+        snapshot = json.loads(body)
+        fields = ("version", "payPeriodStart", "payPeriodEnd", "planningSettings", "projectionRoles",
+                  "bills", "annualWithdrawals", "assetCategories", "debtAccounts", "incomeSummaryItems",
+                  "incomeEvents", "importantDates")
+        payload = {key: snapshot[key] for key in fields}
+        assert request("/api/v1/financials", "PUT", payload, authorized)[0] == 200
+        assert request("/api/v1/financials", "PUT", payload, authorized)[0] == 409
+        assert request("/api/v1/financials", headers={"X-Workspace-ID": "999999999"})[0] == 403
         assert request("/api/v1/auth/signin", "POST", b"x" * 1048577, proof)[0] == 413
         assert request("/api/v1/financials", "OPTIONS", headers={
             "Origin": "https://attacker.invalid", "Access-Control-Request-Method": "PUT"})[0] == 403
-        checks.extend(["authentication-and-workspace-access", "csrf-and-cors", "secure-cookie-flags",
+        checks.extend(["authentication-and-workspace-isolation", "initialization-save-and-stale-conflict",
+                       "csrf-and-cors", "secure-cookie-flags",
                        "untrusted-forwarding-headers", "request-body-limit"])
         Path(args.evidence).write_text(json.dumps({"imageId": image_id, "postgresImage": POSTGRES,
             "sourceSha": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
