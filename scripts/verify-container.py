@@ -137,8 +137,13 @@ def main():
         workspace = {"X-Workspace-ID": str(account["workspaces"][0]["id"])}
         assert request("/api/v1/financials", headers=workspace)[0] == 200
         assert request("/api/v1/financials", "PUT", {}, workspace)[0] == 403
-        assert request("/api/v1/auth/signin", "POST", b"x" * 1048577)[0] == 413
-        assert request("/api/v1/auth/csrf", headers={"Origin": "https://attacker.invalid"})[0] == 403
+        status, body, _ = request("/api/v1/auth/csrf")
+        assert status == 200
+        csrf = json.loads(body)
+        proof = {csrf["headerName"]: csrf["token"]}
+        assert request("/api/v1/auth/signin", "POST", b"x" * 1048577, proof)[0] == 413
+        assert request("/api/v1/financials", "OPTIONS", headers={
+            "Origin": "https://attacker.invalid", "Access-Control-Request-Method": "PUT"})[0] == 403
         checks.extend(["authentication-and-workspace-access", "csrf-and-cors", "secure-cookie-flags",
                        "untrusted-forwarding-headers", "request-body-limit"])
         Path(args.evidence).write_text(json.dumps({"imageId": image_id, "postgresImage": POSTGRES,
