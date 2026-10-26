@@ -148,11 +148,11 @@ def main():
             "startDate": "2026-10-01", "endDate": "2026-10-14"}, authorized)[0] == 201
         status, body, _ = request("/api/v1/financials", headers=workspace)
         assert status == 200
-        snapshot = json.loads(body)
-        fields = ("version", "payPeriodStart", "payPeriodEnd", "planningSettings", "projectionRoles",
-                  "bills", "annualWithdrawals", "assetCategories", "debtAccounts", "incomeSummaryItems",
-                  "incomeEvents", "importantDates")
-        payload = {key: snapshot[key] for key in fields}
+        # Export owns the write DTO shape; the presentation response contains
+        # calculated nested fields and must not be sent back as a save request.
+        status, body, _ = request("/api/v1/financials/export", headers=workspace)
+        assert status == 200
+        payload = json.loads(body)["snapshot"]
         assert request("/api/v1/financials", "PUT", payload, authorized)[0] == 200
         assert request("/api/v1/financials", "PUT", payload, authorized)[0] == 409
         assert request("/api/v1/financials", headers={"X-Workspace-ID": "999999999"})[0] == 403
