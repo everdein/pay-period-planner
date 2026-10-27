@@ -42,15 +42,6 @@ export default function App() {
     let current = true;
 
     accountSessionService
-      .registration()
-      .then((availability) => {
-        if (current) setRegistrationEnabled(availability.registrationEnabled);
-      })
-      .catch(() => {
-        if (current) setRegistrationEnabled(false);
-      });
-
-    accountSessionService
       .recover()
       .then((session) => {
         if (current) {
@@ -72,6 +63,15 @@ export default function App() {
       .finally(() => {
         if (current) {
           setRecoveringSession(false);
+          // Session cleanup aborts pending requests, so read availability afterward.
+          void accountSessionService
+            .registration()
+            .then((availability) => {
+              if (current) setRegistrationEnabled(availability.registrationEnabled);
+            })
+            .catch(() => {
+              if (current) setRegistrationEnabled(false);
+            });
         }
       });
 
