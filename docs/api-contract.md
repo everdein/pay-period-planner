@@ -26,19 +26,38 @@ authentication returns `401` without a browser Basic-auth challenge.
 
 The account API is exposed under `/api/v1/auth`:
 
-| Method | Path                   | Success       | Purpose                               |
-| ------ | ---------------------- | ------------- | ------------------------------------- |
-| `GET`  | `/api/v1/auth/csrf`    | `200` token   | Bootstrap cookie-auth CSRF protection |
-| `POST` | `/api/v1/auth/signup`  | `201` session | Create user, workspace, and session   |
-| `POST` | `/api/v1/auth/signin`  | `200` session | Verify credentials and create session |
-| `GET`  | `/api/v1/auth/session` | `200` session | Recover the current browser session   |
-| `POST` | `/api/v1/auth/signout` | `204` empty   | Revoke and expire the current session |
+| Method | Path                        | Success       | Purpose                                   |
+| ------ | --------------------------- | ------------- | ----------------------------------------- |
+| `GET`  | `/api/v1/auth/csrf`         | `200` token   | Bootstrap cookie-auth CSRF protection     |
+| `GET`  | `/api/v1/auth/registration` | `200` policy  | Report whether ordinary signup is enabled |
+| `POST` | `/api/v1/auth/signup`       | `201` session | Create user, workspace, and session       |
+| `POST` | `/api/v1/auth/signin`       | `200` session | Verify credentials and create session     |
+| `GET`  | `/api/v1/auth/session`      | `200` session | Recover the current browser session       |
+| `POST` | `/api/v1/auth/signout`      | `204` empty   | Revoke and expire the current session     |
 
 Signup accepts `email`, `password`, and `displayName`; sign-in accepts `email`
 and `password`. Email uniqueness is case-insensitive. Passwords must be 12-72
 characters and no more than 72 UTF-8 bytes because the current adaptive encoder
 uses bcrypt. Signup creates one `Personal` workspace with an `owner`
 membership.
+
+`FINANCIALS_REGISTRATION_MODE` selects `development`, `disabled`, or
+`owner-bootstrap`. Local development permits ordinary signup; the `prod`
+profile defaults to `disabled` and rejects `development` at startup. Closed
+registration returns `403` without exposing whether accounts exist. The public
+registration policy returns only `registrationEnabled`; the browser presents
+sign-in without a signup option when that flag is false or cannot be loaded.
+
+Temporary `owner-bootstrap` mode requires a 64-character hexadecimal SHA-256
+verifier in `FINANCIALS_OWNER_BOOTSTRAP_TOKEN_HASH`. An operator supplies the
+original 32–1024-character token in `X-Owner-Bootstrap-Token` on a normal
+CSRF-protected signup request. The server compares verifier bytes in constant
+time. The user-count check and account/workspace/session creation share one
+transaction and a PostgreSQL table lock, so competing bootstrap requests cannot
+create two first owners. Once any user exists, bootstrap signup returns `403`.
+This credential has no browser form and must never enter URLs or logs. Remove
+the verifier and return to `disabled` after owner creation. Shared edge limits,
+operator recovery, and live Azure verification remain deployment work.
 
 Signup and sign-in share per-process, one-minute attempt budgets: 10 per
 trimmed, case-insensitive email, 30 per socket peer, and 100 globally. At most

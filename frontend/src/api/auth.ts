@@ -32,6 +32,7 @@ const WORKSPACE_STORAGE_KEY = 'pay-period-planner.auth.workspaceId';
 const LEGACY_WORKSPACE_STORAGE_KEY = 'end-to-end-app.auth.workspaceId';
 
 export const accountSessionService = {
+  registration: async () => httpGet<{ registrationEnabled: boolean }>('/api/v1/auth/registration'),
   recover: async () =>
     activateSession(
       await httpGet<AccountSession>('/api/v1/auth/session', { notifyUnauthorized: false })

@@ -56,7 +56,10 @@ public class ApiSecurityConfig {
                   .requestMatchers("/actuator/health", "/actuator/info")
                   .permitAll()
                   .requestMatchers(
-                      "/api/v1/auth/csrf", "/api/v1/auth/signup", "/api/v1/auth/signin")
+                      "/api/v1/auth/csrf",
+                      "/api/v1/auth/signup",
+                      "/api/v1/auth/signin",
+                      "/api/v1/auth/registration")
                   .permitAll()
                   .requestMatchers("/api/v1/auth/**")
                   .hasRole(WorkspaceSessionAuthenticationFilter.WORKSPACE_ROLE)

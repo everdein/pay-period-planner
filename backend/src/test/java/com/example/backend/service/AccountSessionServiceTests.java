@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.backend.config.FinancialsSecurityProperties;
+import com.example.backend.config.RegistrationMode;
 import com.example.backend.domain.identity.AuthenticatedSession;
 import com.example.backend.service.AccountSessionService.IssuedSession;
 import com.example.backend.support.InMemoryAccountSessionRepository;
@@ -24,12 +25,13 @@ class AccountSessionServiceTests {
   private InMemoryAccountSessionRepository repository;
   private PasswordEncoder passwordEncoder;
   private AccountSessionService service;
+  private FinancialsSecurityProperties properties;
 
   @BeforeEach
   void setUp() {
     repository = new InMemoryAccountSessionRepository();
     passwordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
-    FinancialsSecurityProperties properties = new FinancialsSecurityProperties();
+    properties = new FinancialsSecurityProperties();
     properties.setSessionDuration(Duration.ofHours(2));
     service =
         new AccountSessionService(
@@ -38,6 +40,67 @@ class AccountSessionServiceTests {
             properties,
             Clock.fixed(NOW, ZoneOffset.UTC),
             new SecureRandom());
+  }
+
+  @Test
+  void closedRegistrationRejectsSignupButPreservesSignInAndSessionRecovery() {
+    IssuedSession owner = service.signUp("owner@example.test", "owner-password-123", "Owner");
+    properties.setRegistrationMode(RegistrationMode.DISABLED);
+    assertThat(service.registrationEnabled()).isFalse();
+    assertThatThrownBy(() -> service.signUp("other@example.test", "other-password-123", "Other"))
+        .isInstanceOf(RegistrationClosedException.class);
+    assertThat(service.signIn("owner@example.test", "owner-password-123").session().userId())
+        .isEqualTo(owner.session().userId());
+    assertThat(service.recover(owner.rawToken())).isPresent();
+  }
+
+  @Test
+  void ownerBootstrapRequiresProofAndRejectsLaterAccountsWithoutRevealingCounts() {
+    String token = "synthetic-bootstrap-token-at-least-32-characters";
+    properties.setRegistrationMode(RegistrationMode.OWNER_BOOTSTRAP);
+    properties.setOwnerBootstrapTokenHash(sha256(token));
+    assertThat(service.registrationEnabled()).isFalse();
+    for (String rejected :
+        new String[] {null, "short", "wrong-token-at-least-32-characters", "x".repeat(1025)}) {
+      assertThatThrownBy(
+              () -> service.signUp("owner@example.test", "owner-password-123", "Owner", rejected))
+          .isInstanceOf(RegistrationClosedException.class)
+          .hasMessage("Account registration is unavailable");
+    }
+    IssuedSession issued =
+        service.signUp("owner@example.test", "owner-password-123", "Owner", token);
+    assertThat(service.recover(issued.rawToken())).isPresent();
+    assertThatThrownBy(
+            () -> service.signUp("other@example.test", "other-password-123", "Other", token))
+        .isInstanceOf(RegistrationClosedException.class)
+        .hasMessage("Account registration is unavailable");
+  }
+
+  @Test
+  void missingAndInvalidBootstrapVerifiersFailClosed() {
+    properties.setRegistrationMode(RegistrationMode.OWNER_BOOTSTRAP);
+    for (String verifier : new String[] {null, "", "not-a-verifier", "z".repeat(64)}) {
+      properties.setOwnerBootstrapTokenHash(verifier);
+      assertThatThrownBy(
+              () ->
+                  service.signUp(
+                      "owner@example.test",
+                      "owner-password-123",
+                      "Owner",
+                      "synthetic-bootstrap-token-at-least-32-characters"))
+          .isInstanceOf(RegistrationClosedException.class);
+    }
+  }
+
+  private String sha256(String token) {
+    try {
+      return java.util.HexFormat.of()
+          .formatHex(
+              java.security.MessageDigest.getInstance("SHA-256")
+                  .digest(token.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    } catch (java.security.NoSuchAlgorithmException exception) {
+      throw new IllegalStateException(exception);
+    }
   }
 
   @Test

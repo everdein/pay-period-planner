@@ -14,6 +14,7 @@ export default function App() {
   const [activeSession, setActiveSession] = useState<ActiveAccountSession | null>(null);
   const [recoveringSession, setRecoveringSession] = useState(true);
   const [authMode, setAuthMode] = useState<AuthMode>('sign-in');
+  const [registrationEnabled, setRegistrationEnabled] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,6 +40,15 @@ export default function App() {
 
   useEffect(() => {
     let current = true;
+
+    accountSessionService
+      .registration()
+      .then((availability) => {
+        if (current) setRegistrationEnabled(availability.registrationEnabled);
+      })
+      .catch(() => {
+        if (current) setRegistrationEnabled(false);
+      });
 
     accountSessionService
       .recover()
@@ -123,6 +133,7 @@ export default function App() {
   }
 
   function switchAuthMode(mode: AuthMode) {
+    if (mode === 'sign-up' && !registrationEnabled) return;
     setAuthMode(mode);
     setAuthError(null);
     setPassword('');
@@ -130,6 +141,7 @@ export default function App() {
   }
 
   function handleAuthTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, mode: AuthMode) {
+    if (!registrationEnabled) return;
     let nextMode: AuthMode | null = null;
 
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
@@ -194,21 +206,26 @@ export default function App() {
             >
               Sign In
             </button>
-            <button
-              aria-controls="account-panel"
-              aria-selected={signingUp}
-              className={signingUp ? 'active' : ''}
-              id="sign-up-tab"
-              onClick={() => switchAuthMode('sign-up')}
-              onKeyDown={(event) => handleAuthTabKeyDown(event, 'sign-up')}
-              ref={signUpTabRef}
-              role="tab"
-              tabIndex={signingUp ? 0 : -1}
-              type="button"
-            >
-              Create Account
-            </button>
+            {registrationEnabled && (
+              <button
+                aria-controls="account-panel"
+                aria-selected={signingUp}
+                className={signingUp ? 'active' : ''}
+                id="sign-up-tab"
+                onClick={() => switchAuthMode('sign-up')}
+                onKeyDown={(event) => handleAuthTabKeyDown(event, 'sign-up')}
+                ref={signUpTabRef}
+                role="tab"
+                tabIndex={signingUp ? 0 : -1}
+                type="button"
+              >
+                Create Account
+              </button>
+            )}
           </div>
+          {!registrationEnabled && (
+            <p>Account registration is closed. Sign in with your existing account.</p>
+          )}
           <div
             aria-labelledby={signingUp ? 'sign-up-tab' : 'sign-in-tab'}
             id="account-panel"

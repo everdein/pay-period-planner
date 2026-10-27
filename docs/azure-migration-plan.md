@@ -2,6 +2,12 @@
 
 Status: Deployment boundary approved; no Azure resources created
 
+Implementation checkpoint, October 27, 2026: the single-origin container and
+closed-registration/transactional owner-bootstrap implementation are present.
+The [infrastructure preparation guide](../infra/azure/README.md) describes
+compilable templates and preview tooling. Subscription validation, provisioning,
+database-role setup, delivery, recovery and live verification remain incomplete.
+
 ## Objective
 
 Move Pay Period Planner from its local-first runtime to an access-controlled
@@ -109,8 +115,8 @@ Azure requires global uniqueness. Use tags for `application`, `environment`,
 
 ## Owner Account Bootstrap
 
-The current unrestricted `/api/v1/auth/signup` flow must not be exposed as the
-production registration policy. Implement these states:
+The account API implements these registration states. The
+[API contract](api-contract.md) owns the current request/header behavior:
 
 | Mode              | Behavior                                                                                                     |
 | ----------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -188,13 +194,13 @@ without committing account identifiers or credentials.
 
 ## First Implementation Sequence
 
-Tomorrow's work should proceed in this order:
+The remaining work follows this sequence; existing source foundations do not
+need to be rebuilt:
 
 1. create a feature branch and ADR-aligned implementation checklist;
-2. add and verify the single-origin, non-root application container locally;
-3. add the closed-registration and transactional owner-bootstrap behavior with
-   focused concurrency, authentication, and production-guard tests;
-4. add Bicep modules and a non-secret development parameter file;
+2. retain the single-origin, non-root container and its hosted smoke gate;
+3. verify restricted registration and owner bootstrap before cloud exposure;
+4. review the Bicep modules and prepare private environment parameters;
 5. run a Bicep validation/preview before creating resources;
 6. provision the development foundation with budget controls first;
 7. deploy an empty database and application revision, then verify health;
@@ -219,11 +225,11 @@ Estimated effort: 1-2 engineering days.
 
 ### 2. Application container
 
-- [ ] Add a multi-stage container build for the Vite frontend and Java 25
+- [x] Add a multi-stage container build for the Vite frontend and Java 25
       Spring Boot backend.
-- [ ] Package the compiled frontend with the backend so UI and API share one
+- [x] Package the compiled frontend with the backend so UI and API share one
       public origin.
-- [ ] Run the final image as a non-root user with an ephemeral filesystem.
+- [x] Run the final image as a non-root user with an ephemeral filesystem.
 - [ ] Use `/actuator/health` for startup, readiness, and liveness checks.
 - [ ] Verify secure cookies, forwarded HTTPS headers, static-route fallback,
       request identifiers, and maximum request size behind Azure ingress.
@@ -314,7 +320,7 @@ Estimated effort: 2-4 engineering days.
 
 ### 9. Demo access and lifecycle
 
-- [ ] Add disabled, owner-bootstrap, and development registration modes.
+- [x] Add disabled, owner-bootstrap, and development registration modes.
 - [ ] Create exactly one owner account in one transaction, rotate the bootstrap
       credential, and prove that later signup is closed.
 - [ ] Add shared edge and bootstrap throttling plus an operator-assisted account

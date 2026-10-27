@@ -7,6 +7,8 @@ import java.util.UUID;
 
 public interface AccountSessionRepository {
 
+  boolean lockRegistrationAndHasUsers();
+
   Optional<UserCredential> findUserCredential(String email);
 
   long createUser(String email, String passwordHash, String displayName);

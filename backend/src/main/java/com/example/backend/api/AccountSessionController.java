@@ -50,6 +50,13 @@ public class AccountSessionController {
     return csrfResponse(token);
   }
 
+  @GetMapping("/registration")
+  public RegistrationAvailability registration() {
+    return new RegistrationAvailability(accountSessionService.registrationEnabled());
+  }
+
+  public record RegistrationAvailability(boolean registrationEnabled) {}
+
   CsrfTokenResponse csrfResponse(CsrfToken csrfToken) {
     return CsrfTokenResponse.from(csrfToken);
   }
@@ -59,7 +66,11 @@ public class AccountSessionController {
       @Valid @RequestBody AccountSignUpRequest request, HttpServletRequest servletRequest) {
     try (var permit = attemptLimiter.acquire(request.email(), servletRequest.getRemoteAddr())) {
       IssuedSession issued =
-          accountSessionService.signUp(request.email(), request.password(), request.displayName());
+          accountSessionService.signUp(
+              request.email(),
+              request.password(),
+              request.displayName(),
+              servletRequest.getHeader("X-Owner-Bootstrap-Token"));
       return sessionResponse(issued, HttpStatus.CREATED);
     }
   }

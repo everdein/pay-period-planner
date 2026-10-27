@@ -1,0 +1,84 @@
+name: Azure Preview
+# cspell:ignore pipefail
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infra/azure/**'
+      - 'scripts/preview-azure.ps1'
+      - '.github/workflows/azure-preview.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/azure/**'
+      - 'scripts/preview-azure.ps1'
+      - '.github/workflows/azure-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: azure-preview
+  cancel-in-progress: false
+
+jobs:
+  compile:
+    name: Compile infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Compile templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          az bicep install --version v0.48.1
+          for template in infra/azure/*.bicep; do
+            az bicep build --file "$template" --outfile "$RUNNER_TEMP/$(basename "$template" .bicep).json"
+          done
+
+  budget-preview:
+    name: Preview budget with federated identity
+    needs: compile
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.AZURE_PREVIEW_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: azure-dev
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Sign in with environment-scoped federation
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Preview budget only
+        shell: pwsh
+        env:
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_MONTHLY_BUDGET: ${{ vars.AZURE_MONTHLY_BUDGET }}
+          AZURE_BUDGET_START_DATE: ${{ vars.AZURE_BUDGET_START_DATE }}
+          AZURE_BUDGET_CONTACT_EMAIL: ${{ secrets.AZURE_BUDGET_CONTACT_EMAIL }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($name in @('AZURE_RESOURCE_GROUP', 'AZURE_MONTHLY_BUDGET', 'AZURE_BUDGET_START_DATE', 'AZURE_BUDGET_CONTACT_EMAIL')) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) { throw "Missing required configuration: $name" }
+          }
+          $path = Join-Path $env:RUNNER_TEMP 'budget.parameters.json'
+          @{
+            '$schema' = 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#'
+            contentVersion = '1.0.0.0'
+            parameters = @{
+              monthlyBudget = @{ value = [int]$env:AZURE_MONTHLY_BUDGET }
+              contactEmails = @{ value = @($env:AZURE_BUDGET_CONTACT_EMAIL) }
+              startDate = @{ value = $env:AZURE_BUDGET_START_DATE }
+            }
+          } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $path
+          try {
+            ./scripts/preview-azure.ps1 -Stage budget -ResourceGroup $env:AZURE_RESOURCE_GROUP -ParameterFile $path -ApprovedMonthlyBudget ([int]$env:AZURE_MONTHLY_BUDGET)
+          } finally {
+            Remove-Item -LiteralPath $path -ErrorAction SilentlyContinue
+          }

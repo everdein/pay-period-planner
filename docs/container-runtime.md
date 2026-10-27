@@ -2,8 +2,8 @@
 
 Milestone A packages the compiled frontend and Spring Boot API in one image.
 It is a synthetic verification artifact, not an Azure deployment or approval
-to expose signup publicly. ADR 0030's closed registration, owner bootstrap,
-budget, identity and operational gates remain separate work.
+to expose signup publicly. Restricted registration is implemented; ADR 0030's
+cloud budget, identity and operational gates remain separate work.
 
 ## Build and verify
 
@@ -43,6 +43,11 @@ Update pinned image digests deliberately alongside compatibility verification.
   `FINANCIALS_API_USERNAME` and `FINANCIALS_API_PASSWORD` externally.
   Existing production guards reject default operator credentials or insecure
   cookie configuration. No credentials are embedded in image layers.
+- Production registration defaults to disabled. The smoke fixture explicitly
+  enables owner bootstrap with a random token verifier and proves that missing
+  proof and a second signup are rejected. Operational bootstrap must use a
+  separately generated secret and return to disabled mode afterward; see the
+  [API contract](api-contract.md).
 - `/actuator/health` is the health probe; database availability participates
   in readiness. No cloud health configuration is provisioned here.
 - Forwarded headers are ignored by default. A future trusted proxy must strip

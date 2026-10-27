@@ -1,6 +1,7 @@
 """Build/run only disposable synthetic containers; never connect to a host database."""
 
 import argparse
+import hashlib
 import http.cookies
 import json
 import os
@@ -36,6 +37,9 @@ def main():
                POSTGRES_DB="synthetic", DATABASE_USERNAME="synthetic",
                FINANCIALS_API_USERNAME="synthetic-operator", FINANCIALS_API_PASSWORD=secrets.token_urlsafe(32))
     env["DATABASE_PASSWORD"] = env["POSTGRES_PASSWORD"]
+    bootstrap_token = secrets.token_urlsafe(48)
+    env["FINANCIALS_REGISTRATION_MODE"] = "owner-bootstrap"
+    env["FINANCIALS_OWNER_BOOTSTRAP_TOKEN_HASH"] = hashlib.sha256(bootstrap_token.encode()).hexdigest()
     checks = []
     try:
         docker("build", "--tag", image, ".")
@@ -61,6 +65,7 @@ def main():
                "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--memory", "768m", "--cpus", "2",
                "--env", "DATABASE_URL=jdbc:postgresql://database:5432/synthetic",
                "--env", "DATABASE_USERNAME", "--env", "DATABASE_PASSWORD",
+               "--env", "FINANCIALS_REGISTRATION_MODE", "--env", "FINANCIALS_OWNER_BOOTSTRAP_TOKEN_HASH",
                "--env", "FINANCIALS_API_USERNAME", "--env", "FINANCIALS_API_PASSWORD", image, env=env)
         bindings = json.loads(docker("inspect", app))[0]["NetworkSettings"]["Ports"].get("8080/tcp")
         if not bindings or bindings[0]["HostIp"] != "127.0.0.1":
@@ -133,10 +138,19 @@ def main():
         cookie_headers = headers.get_all("Set-Cookie", [])
         assert any("Secure" in value and "HttpOnly" in value for value in cookie_headers)
         proof = {csrf["headerName"]: csrf["token"]}
+        assert request("/api/v1/auth/registration")[0] == 200
+        assert json.loads(request("/api/v1/auth/registration")[1]) == {"registrationEnabled": False}
+        assert request("/api/v1/auth/signup", "POST", {
+            "email": "uninvited@example.invalid", "password": secrets.token_urlsafe(20),
+            "displayName": "Uninvited Synthetic"}, proof)[0] == 403
+        proof["X-Owner-Bootstrap-Token"] = bootstrap_token
         status, body, headers = request("/api/v1/auth/signup", "POST", {
             "email": "container@example.invalid", "password": secrets.token_urlsafe(20), "displayName": "Synthetic Container"}, proof)
         assert status == 201
         account = json.loads(body)
+        assert protected_request("/api/v1/auth/signup", "POST", {
+            "email": "second@example.invalid", "password": secrets.token_urlsafe(20),
+            "displayName": "Second Synthetic"}, {"X-Owner-Bootstrap-Token": bootstrap_token})[0] == 403
         assert any("financials_session=" in value and "Secure" in value and "HttpOnly" in value
                    and "SameSite=Strict" in value for value in headers.get_all("Set-Cookie", []))
         assert request("/api/v1/auth/session")[0] == 200
@@ -168,12 +182,12 @@ def main():
         assert headers.get("Access-Control-Allow-Origin") is None
         checks.extend(["authentication-and-workspace-isolation", "initialization-save-and-stale-conflict",
                        "csrf-and-cors", "secure-cookie-flags",
-                       "untrusted-forwarding-headers", "request-body-limit"])
+                       "untrusted-forwarding-headers", "request-body-limit", "single-owner-bootstrap"])
         Path(args.evidence).write_text(json.dumps({"imageId": image_id, "postgresImage": POSTGRES,
             "sourceSha": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
             "checks": checks, "state": "passed", "limits": [
                 "Loopback HTTP fixture sends Secure cookies explicitly to test server contracts; not a TLS deployment.",
-                "Registration policy is unchanged; no public exposure or Azure readiness is claimed."]}, indent=2) + "\n")
+                "Synthetic owner bootstrap is tested; no public exposure or Azure readiness is claimed."]}, indent=2) + "\n")
         print("PASS: " + ", ".join(checks))
     finally:
         for name in (app, database):
