@@ -1,6 +1,7 @@
 package com.example.backend.service;
 
 import com.example.backend.config.FinancialsSecurityProperties;
+import com.example.backend.config.RegistrationMode;
 import com.example.backend.domain.identity.AuthenticatedSession;
 import com.example.backend.repository.AccountSessionRepository;
 import com.example.backend.repository.AccountSessionRepository.UserCredential;
@@ -58,6 +59,13 @@ public class AccountSessionService {
 
   @Transactional
   public IssuedSession signUp(String email, String password, String displayName) {
+    return signUp(email, password, displayName, null);
+  }
+
+  @Transactional
+  public IssuedSession signUp(
+      String email, String password, String displayName, String bootstrapToken) {
+    checkRegistration(bootstrapToken);
     String normalizedEmail = email.trim();
     String normalizedDisplayName = displayName.trim();
     validateSignUp(normalizedEmail, password, normalizedDisplayName);
@@ -71,6 +79,31 @@ public class AccountSessionService {
       return issueSession(userId);
     } catch (DuplicateKeyException exception) {
       throw new AccountConflictException();
+    }
+  }
+
+  public boolean registrationEnabled() {
+    return securityProperties.registrationMode() == RegistrationMode.DEVELOPMENT;
+  }
+
+  private void checkRegistration(String bootstrapToken) {
+    if (registrationEnabled()) {
+      return;
+    }
+    String expectedHash = securityProperties.ownerBootstrapTokenHash();
+    if (securityProperties.registrationMode() != RegistrationMode.OWNER_BOOTSTRAP
+        || bootstrapToken == null
+        || bootstrapToken.length() < 32
+        || bootstrapToken.length() > 1024
+        || expectedHash == null
+        || !expectedHash.matches("[0-9a-fA-F]{64}")
+        || !MessageDigest.isEqual(
+            HexFormat.of().parseHex(expectedHash),
+            HexFormat.of().parseHex(hashToken(bootstrapToken)))) {
+      throw new RegistrationClosedException();
+    }
+    if (repository.lockRegistrationAndHasUsers()) {
+      throw new RegistrationClosedException();
     }
   }
 

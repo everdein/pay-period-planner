@@ -6,6 +6,7 @@ import com.example.backend.service.AccountRequestException;
 import com.example.backend.service.AuthenticationThrottledException;
 import com.example.backend.service.FinancialRequestException;
 import com.example.backend.service.FinancialSnapshotVersionConflictException;
+import com.example.backend.service.RegistrationClosedException;
 import com.example.backend.service.WorkspaceAccessDeniedException;
 import com.example.backend.service.WorkspaceFinancialSnapshotConflictException;
 import com.example.backend.service.WorkspaceFinancialSnapshotNotFoundException;
@@ -25,6 +26,14 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+  @ExceptionHandler(RegistrationClosedException.class)
+  public ProblemDetail handleRegistrationClosed(RegistrationClosedException exception) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, exception.getMessage());
+    problem.setTitle("Registration unavailable");
+    return withRequestId(problem);
+  }
 
   @ExceptionHandler(AuthenticationThrottledException.class)
   public ResponseEntity<ProblemDetail> handleAuthenticationThrottled(

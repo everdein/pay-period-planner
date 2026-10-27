@@ -26,6 +26,14 @@ const account = {
 };
 
 describe('accountSessionService', () => {
+  it('reads registration availability without storing a bootstrap credential', async () => {
+    mockHttpGet.mockResolvedValue({ registrationEnabled: false });
+    await expect(accountSessionService.registration()).resolves.toEqual({
+      registrationEnabled: false,
+    });
+    expect(mockHttpGet).toHaveBeenCalledWith('/api/v1/auth/registration');
+    expect(sessionStorage.length).toBe(0);
+  });
   beforeEach(() => {
     sessionStorage.clear();
     mockClearApiSessionContext.mockClear();

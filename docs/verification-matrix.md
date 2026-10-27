@@ -69,6 +69,14 @@ to reproduce and qualify them.
 
 ## Canonical Commands
 
+Azure infrastructure changes also compile every `infra/azure/*.bicep` template
+with Bicep 0.48.1 and parse `scripts/preview-azure.ps1`. The `Azure Preview`
+workflow runs compilation for relevant pull requests and main changes. Its
+optional environment-approved budget preview uses Azure OIDC and performs no
+resource deployment. Compilation does not prove subscription permissions,
+regional availability, database TLS trust, or live application behavior; see
+the [infrastructure preparation guide](../infra/azure/README.md).
+
 Maintenance packet regression checks use isolated temporary Git repositories,
 without PostgreSQL or external services:
 

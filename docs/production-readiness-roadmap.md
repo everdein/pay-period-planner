@@ -37,7 +37,7 @@ See [Architecture Decisions](adr/README.md),
       [Azure Deployment Prerequisites](azure-prerequisites.md).
 - [ ] Run a final architecture, security, and scalability review. Record the
       implemented deployment architecture in a new ADR.
-- [ ] Build the single-origin React and Spring Boot container described in the
+- [x] Build the single-origin React and Spring Boot container described in the
       [Azure Migration Plan](azure-migration-plan.md).
 - [ ] Provision Azure Container Apps, Azure Database for PostgreSQL Flexible
       Server, Container Registry, Key Vault, private networking, and monitoring
@@ -46,9 +46,9 @@ See [Architecture Decisions](adr/README.md),
       database identity and prove forward migration and application rollback.
 - [ ] Add GitHub OIDC delivery with immutable images, environment approval,
       health verification, and an authenticated synthetic smoke gate.
-- [ ] Implement transactional owner bootstrap, closed production registration,
-      shared edge throttling, full-session revocation, and operator-assisted account
-      recovery.
+- [x] Implement transactional owner bootstrap and closed production registration.
+- [ ] Verify shared edge throttling, full-session revocation, and operator-assisted
+      account recovery in the deployed boundary.
 
 ## Azure Portfolio Demo Release
 
@@ -78,6 +78,9 @@ remains in the
 
 ## Current Priority
 
-The Azure planning boundary is approved in ADR 0030. Next, complete Milestone A: produce one
-hardened, single-origin container without creating cloud resources or adding
-billing by implication.
+The Azure planning boundary is approved in ADR 0030. The single-origin container
+and restricted registration foundation are implemented. Next, select the
+personal subscription and monthly budget, validate the
+[infrastructure templates](../infra/azure/README.md) against that subscription,
+and complete the database-role and operational gates before exposing the app.
+No Azure resource or successful live deployment is implied by template compilation.

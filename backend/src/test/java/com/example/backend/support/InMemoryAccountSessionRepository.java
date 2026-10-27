@@ -16,6 +16,11 @@ import org.springframework.dao.DuplicateKeyException;
 
 public class InMemoryAccountSessionRepository implements AccountSessionRepository {
 
+  @Override
+  public boolean lockRegistrationAndHasUsers() {
+    return !usersByEmail.isEmpty();
+  }
+
   private final AtomicLong nextUserId = new AtomicLong(1);
   private final AtomicLong nextWorkspaceId = new AtomicLong(1);
   private final Map<String, UserCredential> usersByEmail = new HashMap<>();

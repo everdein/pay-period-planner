@@ -9,6 +9,32 @@ import org.junit.jupiter.api.Test;
 class ProductionConfigurationGuardTests {
 
   @Test
+  void rejectsDevelopmentRegistrationInProductionAndInvalidBootstrapConfiguration() {
+    FinancialsSecurityProperties properties = new FinancialsSecurityProperties();
+    assertThatThrownBy(
+            () -> ProductionConfigurationGuard.validateRegistration(List.of("prod"), properties))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Development registration");
+    properties.setRegistrationMode(RegistrationMode.OWNER_BOOTSTRAP);
+    assertThatThrownBy(
+            () -> ProductionConfigurationGuard.validateRegistration(List.of("prod"), properties))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("SHA-256 token verifier");
+    properties.setOwnerBootstrapTokenHash("a".repeat(64));
+    assertThatCode(
+            () -> ProductionConfigurationGuard.validateRegistration(List.of("prod"), properties))
+        .doesNotThrowAnyException();
+    properties.setRegistrationMode(RegistrationMode.DISABLED);
+    properties.setOwnerBootstrapTokenHash("");
+    assertThatCode(
+            () -> ProductionConfigurationGuard.validateRegistration(List.of("prod"), properties))
+        .doesNotThrowAnyException();
+    properties.setRegistrationMode(RegistrationMode.DEVELOPMENT);
+    assertThatCode(() -> ProductionConfigurationGuard.validateRegistration(List.of(), properties))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
   void ignoresNonProductionProfiles() {
     assertThatCode(
             () ->

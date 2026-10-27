@@ -23,12 +23,26 @@ public class ProductionConfigurationGuard implements ApplicationRunner {
 
   @Override
   public void run(ApplicationArguments args) {
+    validateRegistration(Arrays.asList(environment.getActiveProfiles()), securityProperties);
     validate(
         Arrays.asList(environment.getActiveProfiles()),
         securityProperties.username(),
         securityProperties.password(),
         securityProperties.allowedOrigins(),
         securityProperties.sessionCookieSecure());
+  }
+
+  static void validateRegistration(
+      List<String> activeProfiles, FinancialsSecurityProperties properties) {
+    if (activeProfiles.contains(PROD_PROFILE)
+        && properties.registrationMode() == RegistrationMode.DEVELOPMENT) {
+      throw new IllegalStateException("Development registration is forbidden in production");
+    }
+    if (properties.registrationMode() == RegistrationMode.OWNER_BOOTSTRAP
+        && (properties.ownerBootstrapTokenHash() == null
+            || !properties.ownerBootstrapTokenHash().matches("[0-9a-fA-F]{64}"))) {
+      throw new IllegalStateException("Owner bootstrap requires a SHA-256 token verifier");
+    }
   }
 
   static void validate(

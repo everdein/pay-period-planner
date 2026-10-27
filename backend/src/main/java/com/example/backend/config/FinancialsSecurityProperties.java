@@ -14,6 +14,24 @@ public class FinancialsSecurityProperties {
   private long maxRequestBytes = 1_048_576L;
   private Duration sessionDuration = Duration.ofDays(7);
   private boolean sessionCookieSecure;
+  private RegistrationMode registrationMode = RegistrationMode.DEVELOPMENT;
+  private String ownerBootstrapTokenHash = "";
+
+  public RegistrationMode registrationMode() {
+    return registrationMode;
+  }
+
+  public void setRegistrationMode(RegistrationMode registrationMode) {
+    this.registrationMode = registrationMode;
+  }
+
+  public String ownerBootstrapTokenHash() {
+    return ownerBootstrapTokenHash;
+  }
+
+  public void setOwnerBootstrapTokenHash(String ownerBootstrapTokenHash) {
+    this.ownerBootstrapTokenHash = ownerBootstrapTokenHash;
+  }
 
   public String username() {
     return username;

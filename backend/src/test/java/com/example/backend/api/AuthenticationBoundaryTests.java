@@ -1,11 +1,14 @@
 package com.example.backend.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.backend.config.FinancialsSecurityProperties;
+import com.example.backend.config.RegistrationMode;
 import com.example.backend.config.RequestSizeLimitFilter;
 import com.example.backend.service.AccountSessionService;
 import com.example.backend.service.AuthenticationAttemptLimiter;
@@ -21,6 +24,10 @@ class AuthenticationBoundaryTests {
 
   private MockMvc mvc() {
     FinancialsSecurityProperties properties = new FinancialsSecurityProperties();
+    return mvc(properties);
+  }
+
+  private MockMvc mvc(FinancialsSecurityProperties properties) {
     AccountSessionService service =
         new AccountSessionService(new InMemoryAccountSessionRepository(), encoder, properties);
     encoder.calls = 0;
@@ -29,6 +36,63 @@ class AuthenticationBoundaryTests {
         .setControllerAdvice(new ApiExceptionHandler())
         .addFilters(new RequestSizeLimitFilter(properties))
         .build();
+  }
+
+  @Test
+  void closedRegistrationReturnsGeneric403WithoutPasswordWork() throws Exception {
+    FinancialsSecurityProperties properties = new FinancialsSecurityProperties();
+    properties.setRegistrationMode(RegistrationMode.DISABLED);
+    MockMvc mvc = mvc(properties);
+    mvc.perform(get("/api/v1/auth/registration"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.registrationEnabled").value(false));
+    mvc.perform(
+            post("/api/v1/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"email\":\"owner@example.test\",\"password\":\"owner-password-123\",\"displayName\":\"Owner\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.detail").value("Account registration is unavailable"));
+    assertThat(encoder.calls).isZero();
+  }
+
+  @Test
+  void bootstrapHeaderPermitsOneAccountAndIsNeverReturned() throws Exception {
+    String token = "synthetic-bootstrap-token-at-least-32-characters";
+    FinancialsSecurityProperties properties = new FinancialsSecurityProperties();
+    properties.setRegistrationMode(RegistrationMode.OWNER_BOOTSTRAP);
+    properties.setOwnerBootstrapTokenHash(
+        java.util.HexFormat.of()
+            .formatHex(
+                java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(token.getBytes(java.nio.charset.StandardCharsets.UTF_8))));
+    MockMvc mvc = mvc(properties);
+    String body =
+        "{\"email\":\"owner@example.test\",\"password\":\"owner-password-123\",\"displayName\":\"Owner\"}";
+    mvc.perform(get("/api/v1/auth/registration"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.registrationEnabled").value(false));
+    mvc.perform(post("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON).content(body))
+        .andExpect(status().isForbidden());
+    var response =
+        mvc.perform(
+                post("/api/v1/auth/signup")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("X-Owner-Bootstrap-Token", token)
+                    .content(body))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse();
+    assertThat(response.getContentAsString()).doesNotContain(token);
+    assertThat(response.getHeader("X-Owner-Bootstrap-Token")).isNull();
+    mvc.perform(
+            post("/api/v1/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Owner-Bootstrap-Token", token)
+                .content(body))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.detail").value("Account registration is unavailable"));
+    assertThat(encoder.calls).isEqualTo(1);
   }
 
   @Test

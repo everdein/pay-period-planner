@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Repository
 public class PostgresAccountSessionRepository implements AccountSessionRepository {
@@ -17,6 +18,17 @@ public class PostgresAccountSessionRepository implements AccountSessionRepositor
 
   public PostgresAccountSessionRepository(JdbcTemplate jdbcTemplate) {
     this.jdbcTemplate = jdbcTemplate;
+  }
+
+  @Override
+  public boolean lockRegistrationAndHasUsers() {
+    if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+      throw new IllegalStateException("Owner bootstrap requires an active transaction");
+    }
+    jdbcTemplate.execute("lock table application_user in share row exclusive mode");
+    return Boolean.TRUE.equals(
+        jdbcTemplate.queryForObject(
+            "select exists(select 1 from application_user)", Boolean.class));
   }
 
   @Override

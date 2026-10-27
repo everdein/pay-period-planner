@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mockDispatch = vi.fn();
 const mockGetMonthlyExpenses = vi.hoisted(() => vi.fn());
 const mockRecover = vi.hoisted(() => vi.fn());
+const mockRegistration = vi.hoisted(() => vi.fn());
 const mockSignIn = vi.hoisted(() => vi.fn());
 const mockSignUp = vi.hoisted(() => vi.fn());
 const mockSignOut = vi.hoisted(() => vi.fn());
@@ -173,6 +174,7 @@ vi.mock('./app/hooks', () => ({
 
 vi.mock('./api/auth', () => ({
   accountSessionService: {
+    registration: mockRegistration,
     recover: mockRecover,
     selectWorkspace: mockSelectWorkspace,
     signIn: mockSignIn,
@@ -198,7 +200,23 @@ async function renderAuthenticatedApp() {
 }
 
 describe('App', () => {
+  it('hides account creation when registration is closed', async () => {
+    mockRegistration.mockResolvedValue({ registrationEnabled: false });
+    mockRecover.mockRejectedValue(new ApiError('Unauthorized', 401, 'request-401'));
+    await renderAuthenticatedApp();
+    expect(screen.queryByRole('tab', { name: 'Create Account' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Account registration is closed/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign In' })).toBeInTheDocument();
+  });
+
+  it('keeps account creation closed when availability cannot be read', async () => {
+    mockRegistration.mockRejectedValue(new Error('Unavailable'));
+    mockRecover.mockRejectedValue(new ApiError('Unauthorized', 401, 'request-401'));
+    await renderAuthenticatedApp();
+    expect(screen.queryByRole('tab', { name: 'Create Account' })).not.toBeInTheDocument();
+  });
   beforeEach(() => {
+    mockRegistration.mockResolvedValue({ registrationEnabled: true });
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-22T12:00:00'));
     mockRecover.mockResolvedValue(activeSession);

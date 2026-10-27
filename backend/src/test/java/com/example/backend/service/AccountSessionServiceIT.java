@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import com.example.backend.config.FinancialsSecurityProperties;
+import com.example.backend.config.RegistrationMode;
 import com.example.backend.domain.identity.AuthenticatedSession;
 import com.example.backend.repository.PostgresAccountSessionRepository;
 import com.example.backend.service.AccountSessionService.IssuedSession;
@@ -14,15 +15,20 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @EnabledIfEnvironmentVariable(named = "RUN_POSTGRES_INTEGRATION_TESTS", matches = "true")
 class AccountSessionServiceIT {
@@ -32,6 +38,8 @@ class AccountSessionServiceIT {
   private PasswordEncoder passwordEncoder;
   private AccountSessionService service;
   private Instant now;
+  private FinancialsSecurityProperties securityProperties;
+  private TransactionTemplate transaction;
 
   @BeforeEach
   void setUp() {
@@ -50,8 +58,9 @@ class AccountSessionServiceIT {
         .migrate();
 
     jdbcTemplate = new JdbcTemplate(dataSource);
+    transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
     passwordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
-    FinancialsSecurityProperties securityProperties = new FinancialsSecurityProperties();
+    securityProperties = new FinancialsSecurityProperties();
     securityProperties.setSessionDuration(Duration.ofHours(2));
     now = Instant.now().plusSeconds(60);
     service =
@@ -61,6 +70,91 @@ class AccountSessionServiceIT {
             securityProperties,
             Clock.fixed(now, ZoneOffset.UTC),
             new SecureRandom());
+  }
+
+  @Test
+  void concurrentBootstrapTransactionsCreateExactlyOneCompleteOwner() throws Exception {
+    String token = "synthetic-bootstrap-token-at-least-32-characters";
+    securityProperties.setRegistrationMode(RegistrationMode.OWNER_BOOTSTRAP);
+    securityProperties.setOwnerBootstrapTokenHash(
+        java.util.HexFormat.of()
+            .formatHex(
+                java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(token.getBytes(java.nio.charset.StandardCharsets.UTF_8))));
+    CountDownLatch start = new CountDownLatch(1);
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      var attempts =
+          java.util.stream.IntStream.range(0, 2)
+              .mapToObj(
+                  index ->
+                      executor.submit(
+                          () -> {
+                            if (!start.await(10, TimeUnit.SECONDS))
+                              throw new IllegalStateException("Bootstrap test did not start");
+                            try {
+                              transaction.execute(
+                                  status ->
+                                      service.signUp(
+                                          "owner-" + index + "@example.test",
+                                          "owner-password-123",
+                                          "Owner",
+                                          token));
+                              return true;
+                            } catch (RegistrationClosedException exception) {
+                              return false;
+                            }
+                          }))
+              .toList();
+      start.countDown();
+      assertThat(
+              java.util.List.of(
+                  attempts.get(0).get(20, TimeUnit.SECONDS),
+                  attempts.get(1).get(20, TimeUnit.SECONDS)))
+          .containsExactlyInAnyOrder(true, false);
+    }
+    for (String table :
+        java.util.List.of(
+            "application_user", "workspace", "workspace_membership", "application_session")) {
+      assertThat(jdbcTemplate.queryForObject("select count(*) from " + table, Integer.class))
+          .isEqualTo(1);
+    }
+  }
+
+  @Test
+  void failedBootstrapRollsBackOwnerWorkspaceMembershipAndAllowsRetry() throws Exception {
+    String token = "synthetic-bootstrap-token-at-least-32-characters";
+    securityProperties.setRegistrationMode(RegistrationMode.OWNER_BOOTSTRAP);
+    securityProperties.setOwnerBootstrapTokenHash(
+        java.util.HexFormat.of()
+            .formatHex(
+                java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(token.getBytes(java.nio.charset.StandardCharsets.UTF_8))));
+    var failingRepository =
+        new PostgresAccountSessionRepository(jdbcTemplate) {
+          @Override
+          public void createSession(java.util.UUID id, long userId, String hash, Instant expiry) {
+            throw new IllegalStateException("Synthetic session failure");
+          }
+        };
+    var failingService =
+        new AccountSessionService(failingRepository, passwordEncoder, securityProperties);
+    assertThatThrownBy(
+            () ->
+                transaction.execute(
+                    status ->
+                        failingService.signUp(
+                            "owner@example.test", "owner-password-123", "Owner", token)))
+        .isInstanceOf(IllegalStateException.class);
+    for (String table :
+        java.util.List.of(
+            "application_user", "workspace", "workspace_membership", "application_session")) {
+      assertThat(jdbcTemplate.queryForObject("select count(*) from " + table, Integer.class))
+          .isZero();
+    }
+    IssuedSession retried =
+        transaction.execute(
+            status -> service.signUp("owner@example.test", "owner-password-123", "Owner", token));
+    assertThat(retried).isNotNull();
   }
 
   @AfterEach
