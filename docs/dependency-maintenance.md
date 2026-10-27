@@ -2,6 +2,8 @@
 
 Checked against the npm registry and official release metadata on October 24, 2026.
 
+On October 27, 2026, the paired typescript-eslint plugin and parser were updated to 8.72.1 after checking their published peer and Node requirements. The patch retains compatibility with the declared ESLint 9, TypeScript 6.0, and Node baselines.
+
 Use Node.js **24.22.1 LTS** (selected by `.node-version`) with its bundled npm 11.19.1. Node 26.12.1 is also supported. CI reads the version file; algorithm projects additionally verify Node 26.12.1. These are patched releases; older 24.x/26.x versions are outside the declared engine range.
 
 ## Declared dependency baseline
@@ -24,8 +26,8 @@ Use Node.js **24.22.1 LTS** (selected by `.node-version`) with its bundled npm 1
 | @types/node                      | 26.6.5  |
 | @types/react                     | 19.3.0  |
 | @types/react-dom                 | 19.3.0  |
-| @typescript-eslint/eslint-plugin | 8.72.0  |
-| @typescript-eslint/parser        | 8.72.0  |
+| @typescript-eslint/eslint-plugin | 8.72.1  |
+| @typescript-eslint/parser        | 8.72.1  |
 | @vitejs/plugin-react             | 6.1.2   |
 | @vitest/coverage-v8              | 5.0.5   |
 | eslint                           | 9.39.5  |
@@ -43,7 +45,7 @@ Use Node.js **24.22.1 LTS** (selected by `.node-version`) with its bundled npm 1
 
 ## Compatibility constraints
 
-ESLint remains **9.39.5** because the current React and JSX accessibility plugins declare support through ESLint 9, not 10. TypeScript remains **6.0.3** because typescript-eslint 8.72.0 declares `>=4.8.4 <6.1.0`, and TypeScript 7 changes the compiler API used by these integrations. Do not bypass peer dependencies with force or legacy-peer-deps. Revisit when the upstream plugins support the newer majors.
+ESLint remains **9.39.5** because the current React and JSX accessibility plugins declare support through ESLint 9, not 10. TypeScript remains **6.0.3** because typescript-eslint 8.72.1 declares `>=4.8.4 <6.1.0`, and TypeScript 7 changes the compiler API used by these integrations. Do not bypass peer dependencies with force or legacy-peer-deps. Revisit when the upstream plugins support the newer majors.
 
 React/React DOM 19.3.1, Vitest/coverage 5.0.5, Playwright 1.64.1, and axe-core Playwright 4.14.0 were already current where used. Lockfiles include current compatible transitive dependencies. Existing security overrides remain scoped and covered by their compatibility checks.
 
