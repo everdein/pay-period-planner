@@ -16,7 +16,7 @@
     "test:e2e:install": "playwright install chromium",
     "test:responsive": "playwright test e2e/responsive.spec.ts",
     "test:watch": "vitest",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc -b",
     "check:dependency-compat": "node scripts/check-dependency-compatibility.cjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
